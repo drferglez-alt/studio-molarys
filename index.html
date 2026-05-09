@@ -1492,7 +1492,6 @@
 
         <!-- AGENDA -->
         <div class="module-page" id="module-agenda">
-          <!-- Topbar -->
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;">Agenda</div>
@@ -1500,58 +1499,23 @@
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
               <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
-                <button class="agenda-view-btn active" onclick="setAgendaView(this,'month')">Mes</button>
-                <button class="agenda-view-btn" onclick="setAgendaView(this,'week')">Semana</button>
-                <button class="agenda-view-btn" onclick="setAgendaView(this,'day')">Día</button>
-                <button class="agenda-view-btn" onclick="setAgendaView(this,'list')">Lista</button>
+                <button class="agenda-view-btn active" onclick="setIframeView(this,'month')">Mes</button>
+                <button class="agenda-view-btn" onclick="setIframeView(this,'week')">Semana</button>
+                <button class="agenda-view-btn" onclick="setIframeView(this,'day')">Día</button>
+                <button class="agenda-view-btn" onclick="setIframeView(this,'agenda')">Lista</button>
               </div>
-              <button class="btn-new" onclick="openNewEventModal()">+ Nueva Cita</button>
+              <a href="https://calendar.google.com/calendar/r/eventedit" target="_blank" class="btn-new" style="text-decoration:none;display:flex;align-items:center;gap:6px;">+ Nueva Cita</a>
             </div>
           </div>
 
-          <!-- Calendar container -->
-          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:600px;">
-            <!-- Month nav -->
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
-              <button onclick="calNav(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 12px;cursor:pointer;font-size:16px;">‹</button>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-month-title">Cargando...</div>
-              <button onclick="calNav(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 12px;cursor:pointer;font-size:16px;">›</button>
-            </div>
-
-            <!-- Month view -->
-            <div id="agenda-month-view">
-              <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">DOM</div>
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">LUN</div>
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">MAR</div>
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">MIÉ</div>
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">JUE</div>
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">VIE</div>
-                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">SÁB</div>
-              </div>
-              <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
-            </div>
-
-            <!-- Week view -->
-            <div id="agenda-week-view" style="display:none;padding:24px;">
-              <div id="week-grid"></div>
-            </div>
-
-            <!-- Day view -->
-            <div id="agenda-day-view" style="display:none;padding:24px;">
-              <div id="day-grid"></div>
-            </div>
-
-            <!-- List view -->
-            <div id="agenda-list-view" style="display:none;padding:24px;">
-              <div id="list-grid"></div>
-            </div>
-          </div>
-
-          <!-- Loading indicator -->
-          <div id="cal-loading" style="text-align:center;padding:40px;display:none;">
-            <div class="loading" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--gold);width:32px;height:32px;border-width:3px;margin:0 auto 12px;"></div>
-            <div style="font-size:13px;color:var(--text-muted);">Cargando citas...</div>
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+            <iframe
+              id="gcal-iframe"
+              src="https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%23ffffff"
+              style="border:0;width:100%;height:700px;display:block;"
+              frameborder="0"
+              scrolling="no">
+            </iframe>
           </div>
         </div>
 
@@ -2554,6 +2518,14 @@ async function loadCalendarEvents() {
   }
   document.getElementById('cal-loading').style.display = 'none';
   renderCalendar();
+}
+
+function setIframeView(btn, mode) {
+  document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const modeMap = { month: 'MONTH', week: 'WEEK', day: 'DAY', agenda: 'AGENDA' };
+  const iframe = document.getElementById('gcal-iframe');
+  iframe.src = `https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&mode=${modeMap[mode]}&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%23ffffff`;
 }
 
 function setAgendaView(btn, view) {
