@@ -1490,46 +1490,101 @@
           </div>
         </div>
 
-        <!-- OTHER MODULES (coming soon) -->
         <!-- AGENDA -->
         <div class="module-page" id="module-agenda">
+          <!-- Topbar -->
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
             <div>
-              <div style="font-family:Cormorant Garamond,serif;font-size:22px;font-weight:400;color:var(--text-primary)">Agenda — Google Calendar</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizada en tiempo real con tu Google Calendar</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;">Agenda</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizada con Google Calendar</div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button class="btn-secondary" onclick="copyAgendaLink()" style="display:flex;align-items:center;gap:6px;">🔗 Link para pacientes</button>
-              <a href="https://calendar.google.com/calendar/r/eventedit?add=drferglez@gmail.com" target="_blank" class="btn-new" style="text-decoration:none;display:flex;align-items:center;gap:6px;">+ Nueva Cita</a>
+              <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+                <button class="agenda-view-btn active" onclick="setAgendaView(this,'month')">Mes</button>
+                <button class="agenda-view-btn" onclick="setAgendaView(this,'week')">Semana</button>
+                <button class="agenda-view-btn" onclick="setAgendaView(this,'day')">Día</button>
+                <button class="agenda-view-btn" onclick="setAgendaView(this,'list')">Lista</button>
+              </div>
+              <button class="btn-new" onclick="openNewEventModal()">+ Nueva Cita</button>
             </div>
           </div>
-          <div style="display:flex;gap:0;margin-bottom:16px;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;">
-            <button class="agenda-view-btn active" onclick="setCalView(this,MONTH)" id="view-month">Mes</button>
-            <button class="agenda-view-btn" onclick="setCalView(this,WEEK)" id="view-week">Semana</button>
-            <button class="agenda-view-btn" onclick="setCalView(this,DAY)" id="view-day">Día</button>
-            <button class="agenda-view-btn" onclick="setCalView(this,AGENDA)" id="view-agenda">Lista</button>
-          </div>
-          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-            <iframe id="gcal-iframe" src="https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&bgcolor=%23FFFFFF" style="border:0;width:100%;height:680px;display:block;" frameborder="0" scrolling="no"></iframe>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px;">
-            <div class="stat-card" style="cursor:pointer;" onclick="copyAgendaLink()">
-              <div class="stat-label">Link para pacientes</div>
-              <div style="font-size:14px;color:var(--text-primary);margin-top:8px;">Comparte para que tus pacientes se agenden solos</div>
-              <div style="margin-top:12px;font-size:12px;color:var(--gold);font-weight:500;">📋 Copiar link →</div>
-              <div class="stat-icon">🔗</div>
+
+          <!-- Calendar container -->
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:600px;">
+            <!-- Month nav -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
+              <button onclick="calNav(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 12px;cursor:pointer;font-size:16px;">‹</button>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-month-title">Cargando...</div>
+              <button onclick="calNav(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 12px;cursor:pointer;font-size:16px;">›</button>
             </div>
-            <div class="stat-card" style="cursor:pointer;" onclick="window.open('https://calendar.google.com/calendar/r/eventedit','_blank')">
-              <div class="stat-label">Nueva Cita en Google</div>
-              <div style="font-size:14px;color:var(--text-primary);margin-top:8px;">Crea una cita directamente en Google Calendar</div>
-              <div style="margin-top:12px;font-size:12px;color:var(--gold);font-weight:500;">📅 Abrir Google Calendar →</div>
-              <div class="stat-icon">📅</div>
+
+            <!-- Month view -->
+            <div id="agenda-month-view">
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">DOM</div>
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">LUN</div>
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">MAR</div>
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">MIÉ</div>
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">JUE</div>
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">VIE</div>
+                <div style="padding:10px;text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:1px;">SÁB</div>
+              </div>
+              <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Sincronización</div>
-              <div style="font-size:14px;color:var(--text-primary);margin-top:8px;">Cualquier cambio en Google Calendar se refleja aquí automáticamente</div>
-              <div style="margin-top:12px;font-size:12px;color:var(--success);font-weight:500;">✓ Sincronizado en tiempo real</div>
-              <div class="stat-icon">🔄</div>
+
+            <!-- Week view -->
+            <div id="agenda-week-view" style="display:none;padding:24px;">
+              <div id="week-grid"></div>
+            </div>
+
+            <!-- Day view -->
+            <div id="agenda-day-view" style="display:none;padding:24px;">
+              <div id="day-grid"></div>
+            </div>
+
+            <!-- List view -->
+            <div id="agenda-list-view" style="display:none;padding:24px;">
+              <div id="list-grid"></div>
+            </div>
+          </div>
+
+          <!-- Loading indicator -->
+          <div id="cal-loading" style="text-align:center;padding:40px;display:none;">
+            <div class="loading" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--gold);width:32px;height:32px;border-width:3px;margin:0 auto 12px;"></div>
+            <div style="font-size:13px;color:var(--text-muted);">Cargando citas...</div>
+          </div>
+        </div>
+
+        <!-- NEW EVENT MODAL -->
+        <div class="modal-overlay" id="modal-new-event">
+          <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+              <div class="modal-title">Nueva Cita</div>
+              <button class="modal-close" onclick="closeModal('modal-new-event')">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-row single">
+                <div class="form-field"><label>Título *</label><input type="text" id="ev-title" placeholder="Ej. Consulta — Juan Pérez"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-field"><label>Fecha *</label><input type="date" id="ev-date"></div>
+                <div class="form-field"><label>Hora inicio *</label><input type="time" id="ev-start" value="09:00"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-field"><label>Hora fin</label><input type="time" id="ev-end" value="10:00"></div>
+                <div class="form-field"><label>Paciente</label>
+                  <select id="ev-patient">
+                    <option value="">Sin vincular</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row single">
+                <div class="form-field"><label>Notas</label><textarea id="ev-notes" placeholder="Tratamiento a realizar, indicaciones..."></textarea></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-secondary" onclick="closeModal('modal-new-event')">Cancelar</button>
+              <button class="btn-gold" onclick="saveNewEvent()" id="btn-save-event">Guardar Cita</button>
             </div>
           </div>
         </div>
@@ -2245,6 +2300,11 @@ function showModule(module) {
   document.getElementById('topbar-title').textContent = titles[module] || module;
   currentModule = module;
 
+  // Load calendar when agenda is shown
+  if (module === 'agenda') {
+    setTimeout(() => loadCalendarEvents(), 100);
+  }
+
   // Close sidebar on mobile
   document.querySelector('.sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('open');
@@ -2469,24 +2529,249 @@ document.addEventListener('keydown', e => {
 });
 
 // ============================================================
-// AGENDA
+// AGENDA — Google Calendar API
 // ============================================================
-function setCalView(btn, mode) {
-  document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const iframe = document.getElementById('gcal-iframe');
-  const base = 'https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&bgcolor=%23FFFFFF&mode=';
-  iframe.src = base + mode;
+const GCAL_API_KEY = 'AIzaSyBvZF49rjR6w8blJSk911BVXQuM0m0t7Lg';
+const GCAL_ID = 'drferglez@gmail.com';
+let calCurrentDate = new Date();
+let calView = 'month';
+let calEvents = [];
+
+async function loadCalendarEvents() {
+  document.getElementById('cal-loading').style.display = 'block';
+  try {
+    const now = new Date(calCurrentDate);
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_ID)}/events?key=${GCAL_API_KEY}&timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=250`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    calEvents = data.items || [];
+  } catch(e) {
+    console.error('Calendar error:', e);
+    calEvents = [];
+  }
+  document.getElementById('cal-loading').style.display = 'none';
+  renderCalendar();
 }
 
-function copyAgendaLink() {
-  const link = 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ3odzKN0i8kDy4c9q4N';
-  navigator.clipboard.writeText(link).then(() => {
-    showToast('Link de agendamiento copiado ✓', 'success');
-  }).catch(() => {
-    showToast('Abre Google Calendar > Citas para obtener tu link', 'success');
+function setAgendaView(btn, view) {
+  calView = view;
+  document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('agenda-month-view').style.display = view === 'month' ? 'block' : 'none';
+  document.getElementById('agenda-week-view').style.display = view === 'week' ? 'block' : 'none';
+  document.getElementById('agenda-day-view').style.display = view === 'day' ? 'block' : 'none';
+  document.getElementById('agenda-list-view').style.display = view === 'list' ? 'block' : 'none';
+  renderCalendar();
+}
+
+function calNav(dir) {
+  if (calView === 'month') calCurrentDate.setMonth(calCurrentDate.getMonth() + dir);
+  else if (calView === 'week') calCurrentDate.setDate(calCurrentDate.getDate() + (dir * 7));
+  else calCurrentDate.setDate(calCurrentDate.getDate() + dir);
+  loadCalendarEvents();
+}
+
+function renderCalendar() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const title = document.getElementById('cal-month-title');
+  if (calView === 'month') title.textContent = `${months[calCurrentDate.getMonth()]} ${calCurrentDate.getFullYear()}`;
+  else if (calView === 'week') title.textContent = `Semana del ${calCurrentDate.toLocaleDateString('es-MX')}`;
+  else title.textContent = calCurrentDate.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  if (calView === 'month') renderMonthView();
+  else if (calView === 'week') renderWeekView();
+  else if (calView === 'day') renderDayView();
+  else renderListView();
+}
+
+function getEventsForDay(date) {
+  const d = date.toDateString();
+  return calEvents.filter(ev => {
+    const start = ev.start?.dateTime || ev.start?.date;
+    return new Date(start).toDateString() === d;
   });
 }
+
+function renderMonthView() {
+  const grid = document.getElementById('cal-grid');
+  const year = calCurrentDate.getFullYear();
+  const month = calCurrentDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date().toDateString();
+
+  let html = '';
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    html += '<div style="min-height:100px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--cream);opacity:0.5;"></div>';
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const isToday = date.toDateString() === today;
+    const events = getEventsForDay(date);
+    const col = (firstDay + d - 1) % 7;
+    const isWeekend = col === 0 || col === 6;
+
+    html += `<div style="min-height:100px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:${isWeekend ? 'rgba(0,0,0,0.01)' : 'var(--white)'};">
+      <div style="font-size:13px;font-weight:${isToday ? '600' : '400'};color:${isToday ? 'var(--white)' : 'var(--text-primary)'};background:${isToday ? 'var(--obsidian)' : 'transparent'};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${d}</div>
+      ${events.slice(0,3).map(ev => {
+        const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+        return `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${time ? time + ' ' : ''}${ev.summary || 'Cita'}</div>`;
+      }).join('')}
+      ${events.length > 3 ? `<div style="font-size:10px;color:var(--text-muted);padding:2px 4px;">+${events.length - 3} más</div>` : ''}
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function renderWeekView() {
+  const grid = document.getElementById('week-grid');
+  const startOfWeek = new Date(calCurrentDate);
+  startOfWeek.setDate(calCurrentDate.getDate() - calCurrentDate.getDay());
+
+  const hours = Array.from({length: 14}, (_, i) => i + 7); // 7am to 8pm
+  const days = Array.from({length: 7}, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    return d;
+  });
+
+  const dayNames = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const today = new Date().toDateString();
+
+  let html = `<div style="display:grid;grid-template-columns:50px repeat(7,1fr);gap:0;">
+    <div></div>
+    ${days.map((d, i) => `<div style="text-align:center;padding:8px 4px;border-left:1px solid var(--border);background:${d.toDateString()===today?'var(--obsidian)':'var(--cream)'};color:${d.toDateString()===today?'var(--gold)':'var(--text-secondary)'};">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;">${dayNames[i]}</div>
+      <div style="font-size:18px;font-family:Cormorant Garamond,serif;">${d.getDate()}</div>
+    </div>`).join('')}
+    ${hours.map(h => `
+      <div style="padding:4px 8px;font-size:11px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);height:60px;display:flex;align-items:flex-start;padding-top:4px;">${h}:00</div>
+      ${days.map(d => {
+        const dayEvents = getEventsForDay(d).filter(ev => {
+          if (!ev.start?.dateTime) return false;
+          const evHour = new Date(ev.start.dateTime).getHours();
+          return evHour === h;
+        });
+        return `<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);height:60px;padding:2px;position:relative;">
+          ${dayEvents.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;">${ev.summary||'Cita'}</div>`).join('')}
+        </div>`;
+      }).join('')}
+    `).join('')}
+  </div>`;
+
+  grid.innerHTML = html;
+}
+
+function renderDayView() {
+  const grid = document.getElementById('day-grid');
+  const hours = Array.from({length: 14}, (_, i) => i + 7);
+  const dayEvents = getEventsForDay(calCurrentDate);
+
+  let html = `<div style="display:grid;grid-template-columns:60px 1fr;gap:0;">
+    ${hours.map(h => {
+      const hEvents = dayEvents.filter(ev => {
+        if (!ev.start?.dateTime) return false;
+        return new Date(ev.start.dateTime).getHours() === h;
+      });
+      return `<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:70px;">${h}:00</div>
+        <div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:70px;padding:4px;">
+          ${hEvents.map(ev => {
+            const start = new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+            const end = ev.end?.dateTime ? new Date(ev.end.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
+            return `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;">
+              <div style="font-weight:500;font-size:14px;">${ev.summary||'Cita'}</div>
+              <div style="font-size:12px;opacity:0.7;">${start}${end?' — '+end:''}</div>
+              ${ev.description ? `<div style="font-size:11px;opacity:0.6;margin-top:4px;">${ev.description}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+    }).join('')}
+  </div>`;
+
+  grid.innerHTML = html;
+}
+
+function renderListView() {
+  const grid = document.getElementById('list-grid');
+  const now = new Date();
+  const upcoming = calEvents
+    .filter(ev => new Date(ev.start?.dateTime || ev.start?.date) >= now)
+    .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
+
+  if (upcoming.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas próximas</h3><p>No tienes citas programadas</p></div>';
+    return;
+  }
+
+  let html = '';
+  let lastDate = '';
+  upcoming.forEach(ev => {
+    const start = new Date(ev.start?.dateTime || ev.start?.date);
+    const dateStr = start.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
+    const timeStr = ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día';
+
+    if (dateStr !== lastDate) {
+      html += `<div style="font-family:Cormorant Garamond,serif;font-size:16px;font-weight:500;color:var(--text-primary);padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;">${dateStr}</div>`;
+      lastDate = dateStr;
+    }
+
+    html += `<div onclick="showEventDetail('${ev.id}')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;">
+      <div style="width:4px;height:40px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-weight:500;font-size:14px;">${ev.summary||'Cita'}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${timeStr}</div>
+      </div>
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+function showEventDetail(id) {
+  const ev = calEvents.find(e => e.id === id);
+  if (!ev) return;
+  const start = new Date(ev.start?.dateTime || ev.start?.date);
+  const end = ev.end?.dateTime ? new Date(ev.end.dateTime) : null;
+  const msg = `${ev.summary||'Cita'}\n${start.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'})}\n${ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día'}${end?' — '+end.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):''}${ev.description?'\n\n'+ev.description:''}`;
+  alert(msg);
+}
+
+function openNewEventModal() {
+  // Set default date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('ev-date').value = today;
+  // Populate patients
+  const select = document.getElementById('ev-patient');
+  select.innerHTML = '<option value="">Sin vincular</option>';
+  patients.forEach(p => select.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
+  document.getElementById('modal-new-event').classList.add('open');
+}
+
+async function saveNewEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  const date = document.getElementById('ev-date').value;
+  const start = document.getElementById('ev-start').value;
+  const end = document.getElementById('ev-end').value;
+  const notes = document.getElementById('ev-notes').value.trim();
+
+  if (!title || !date || !start) { showToast('Título, fecha y hora son obligatorios', 'error'); return; }
+
+  // Open Google Calendar with prefilled data
+  const startISO = `${date}T${start}:00`;
+  const endISO = `${date}T${end}:00`;
+  const gcalUrl = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(title)}&dates=${startISO.replace(/[-:]/g,'')}/${endISO.replace(/[-:]/g,'')}&details=${encodeURIComponent(notes)}&add=${encodeURIComponent(GCAL_ID)}`;
+  window.open(gcalUrl, '_blank');
+  closeModal('modal-new-event');
+  showToast('Se abrió Google Calendar para confirmar la cita', 'success');
+  setTimeout(() => loadCalendarEvents(), 3000);
+}
+
 
 // ============================================================
 // HISTORIAS CLÍNICAS
