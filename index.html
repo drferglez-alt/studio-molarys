@@ -1224,6 +1224,21 @@
   .progress-step.done { background: var(--gold); }
   .progress-step.active { background: var(--obsidian); }
 
+  .agenda-view-btn {
+    padding: 8px 18px;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    font-family: DM Sans, sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+  .agenda-view-btn:last-child { border-right: none; }
+  .agenda-view-btn:hover { background: var(--cream); color: var(--text-primary); }
+  .agenda-view-btn.active { background: var(--obsidian); color: var(--gold); }
+
   .mobile-nav-btns {
     display: flex;
     gap: 12px;
@@ -1476,11 +1491,46 @@
         </div>
 
         <!-- OTHER MODULES (coming soon) -->
+        <!-- AGENDA -->
         <div class="module-page" id="module-agenda">
-          <div class="empty-state" style="padding:80px 0">
-            <div class="empty-state-icon">📅</div>
-            <h3>Agenda — Próximamente</h3>
-            <p>Este módulo estará disponible en la siguiente actualización, con sincronización a Google Calendar</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-family:Cormorant Garamond,serif;font-size:22px;font-weight:400;color:var(--text-primary)">Agenda — Google Calendar</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizada en tiempo real con tu Google Calendar</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn-secondary" onclick="copyAgendaLink()" style="display:flex;align-items:center;gap:6px;">🔗 Link para pacientes</button>
+              <a href="https://calendar.google.com/calendar/r/eventedit?add=drferglez@gmail.com" target="_blank" class="btn-new" style="text-decoration:none;display:flex;align-items:center;gap:6px;">+ Nueva Cita</a>
+            </div>
+          </div>
+          <div style="display:flex;gap:0;margin-bottom:16px;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;">
+            <button class="agenda-view-btn active" onclick="setCalView(this,MONTH)" id="view-month">Mes</button>
+            <button class="agenda-view-btn" onclick="setCalView(this,WEEK)" id="view-week">Semana</button>
+            <button class="agenda-view-btn" onclick="setCalView(this,DAY)" id="view-day">Día</button>
+            <button class="agenda-view-btn" onclick="setCalView(this,AGENDA)" id="view-agenda">Lista</button>
+          </div>
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+            <iframe id="gcal-iframe" src="https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&bgcolor=%23FFFFFF" style="border:0;width:100%;height:680px;display:block;" frameborder="0" scrolling="no"></iframe>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px;">
+            <div class="stat-card" style="cursor:pointer;" onclick="copyAgendaLink()">
+              <div class="stat-label">Link para pacientes</div>
+              <div style="font-size:14px;color:var(--text-primary);margin-top:8px;">Comparte para que tus pacientes se agenden solos</div>
+              <div style="margin-top:12px;font-size:12px;color:var(--gold);font-weight:500;">📋 Copiar link →</div>
+              <div class="stat-icon">🔗</div>
+            </div>
+            <div class="stat-card" style="cursor:pointer;" onclick="window.open('https://calendar.google.com/calendar/r/eventedit','_blank')">
+              <div class="stat-label">Nueva Cita en Google</div>
+              <div style="font-size:14px;color:var(--text-primary);margin-top:8px;">Crea una cita directamente en Google Calendar</div>
+              <div style="margin-top:12px;font-size:12px;color:var(--gold);font-weight:500;">📅 Abrir Google Calendar →</div>
+              <div class="stat-icon">📅</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Sincronización</div>
+              <div style="font-size:14px;color:var(--text-primary);margin-top:8px;">Cualquier cambio en Google Calendar se refleja aquí automáticamente</div>
+              <div style="margin-top:12px;font-size:12px;color:var(--success);font-weight:500;">✓ Sincronizado en tiempo real</div>
+              <div class="stat-icon">🔄</div>
+            </div>
           </div>
         </div>
 
@@ -2417,6 +2467,26 @@ document.addEventListener('keydown', e => {
     handleLogin();
   }
 });
+
+// ============================================================
+// AGENDA
+// ============================================================
+function setCalView(btn, mode) {
+  document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const iframe = document.getElementById('gcal-iframe');
+  const base = 'https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&bgcolor=%23FFFFFF&mode=';
+  iframe.src = base + mode;
+}
+
+function copyAgendaLink() {
+  const link = 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ3odzKN0i8kDy4c9q4N';
+  navigator.clipboard.writeText(link).then(() => {
+    showToast('Link de agendamiento copiado ✓', 'success');
+  }).catch(() => {
+    showToast('Abre Google Calendar > Citas para obtener tu link', 'success');
+  });
+}
 
 // ============================================================
 // HISTORIAS CLÍNICAS
