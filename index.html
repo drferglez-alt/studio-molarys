@@ -1492,30 +1492,90 @@
 
         <!-- AGENDA -->
         <div class="module-page" id="module-agenda">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-            <div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;">Agenda</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizada con Google Calendar</div>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
-                <button class="agenda-view-btn active" onclick="setIframeView(this,'month')">Mes</button>
-                <button class="agenda-view-btn" onclick="setIframeView(this,'week')">Semana</button>
-                <button class="agenda-view-btn" onclick="setIframeView(this,'day')">Día</button>
-                <button class="agenda-view-btn" onclick="setIframeView(this,'agenda')">Lista</button>
-              </div>
-              <a href="https://calendar.google.com/calendar/r/eventedit" target="_blank" class="btn-new" style="text-decoration:none;display:flex;align-items:center;gap:6px;">+ Nueva Cita</a>
+          <!-- Not connected state -->
+          <div id="agenda-connect-state">
+            <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;padding:60px 40px;text-align:center;max-width:500px;margin:0 auto;">
+              <div style="font-size:48px;margin-bottom:20px;">📅</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;margin-bottom:12px;">Conecta tu Google Calendar</div>
+              <div style="font-size:14px;color:var(--text-muted);margin-bottom:32px;line-height:1.6;">Inicia sesión con Google una sola vez para ver, crear y editar tus citas directamente desde Studio Molarys.</div>
+              <button onclick="connectGoogle()" style="display:inline-flex;align-items:center;gap:12px;padding:14px 28px;background:var(--white);border:2px solid var(--border);border-radius:6px;font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Conectar con Google Calendar
+              </button>
             </div>
           </div>
 
-          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-            <iframe
-              id="gcal-iframe"
-              src="https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%23ffffff"
-              style="border:0;width:100%;height:700px;display:block;"
-              frameborder="0"
-              scrolling="no">
-            </iframe>
+          <!-- Connected state -->
+          <div id="agenda-calendar-state" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+              <div>
+                <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;">Agenda</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:2px;" id="agenda-account-label"></div>
+              </div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+                  <button class="agenda-view-btn active" onclick="setCalendarView(this,'month')">Mes</button>
+                  <button class="agenda-view-btn" onclick="setCalendarView(this,'week')">Semana</button>
+                  <button class="agenda-view-btn" onclick="setCalendarView(this,'day')">Día</button>
+                  <button class="agenda-view-btn" onclick="setCalendarView(this,'list')">Lista</button>
+                </div>
+                <button class="btn-new" onclick="openNewEventModal()">+ Nueva Cita</button>
+                <button onclick="disconnectGoogle()" style="background:none;border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">Desconectar</button>
+              </div>
+            </div>
+
+            <!-- Month nav -->
+            <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
+                <button onclick="calNavigate(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">‹</button>
+                <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-title">---</div>
+                <button onclick="calNavigate(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">›</button>
+              </div>
+
+              <!-- Month view -->
+              <div id="view-month-cal">
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">DOM</div>
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">LUN</div>
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MAR</div>
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MIÉ</div>
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">JUE</div>
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">VIE</div>
+                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">SÁB</div>
+                </div>
+                <div id="month-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
+              </div>
+
+              <!-- Week view -->
+              <div id="view-week-cal" style="display:none;overflow-x:auto;">
+                <div id="week-grid-cal"></div>
+              </div>
+
+              <!-- Day view -->
+              <div id="view-day-cal" style="display:none;">
+                <div id="day-grid-cal" style="padding:16px;"></div>
+              </div>
+
+              <!-- List view -->
+              <div id="view-list-cal" style="display:none;">
+                <div id="list-grid-cal" style="padding:24px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EVENT DETAIL MODAL -->
+        <div class="modal-overlay" id="modal-event-detail">
+          <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+              <div class="modal-title" id="event-detail-title">Cita</div>
+              <button class="modal-close" onclick="closeModal('modal-event-detail')">✕</button>
+            </div>
+            <div class="modal-body" id="event-detail-body"></div>
+            <div class="modal-footer">
+              <button class="btn-secondary" onclick="closeModal('modal-event-detail')">Cerrar</button>
+              <button class="btn-gold" onclick="editCurrentEvent()" id="btn-edit-event">Editar en Google</button>
+            </div>
           </div>
         </div>
 
@@ -1537,18 +1597,16 @@
               <div class="form-row">
                 <div class="form-field"><label>Hora fin</label><input type="time" id="ev-end" value="10:00"></div>
                 <div class="form-field"><label>Paciente</label>
-                  <select id="ev-patient">
-                    <option value="">Sin vincular</option>
-                  </select>
+                  <select id="ev-patient"><option value="">Sin vincular</option></select>
                 </div>
               </div>
               <div class="form-row single">
-                <div class="form-field"><label>Notas</label><textarea id="ev-notes" placeholder="Tratamiento a realizar, indicaciones..."></textarea></div>
+                <div class="form-field"><label>Notas</label><textarea id="ev-notes" placeholder="Tratamiento, indicaciones..."></textarea></div>
               </div>
             </div>
             <div class="modal-footer">
               <button class="btn-secondary" onclick="closeModal('modal-new-event')">Cancelar</button>
-              <button class="btn-gold" onclick="saveNewEvent()" id="btn-save-event">Guardar Cita</button>
+              <button class="btn-gold" onclick="createGoogleEvent()" id="btn-save-event">Guardar Cita</button>
             </div>
           </div>
         </div>
@@ -1988,11 +2046,133 @@
           </div>
         </div>
 
+        <!-- CONTROL DE INGRESOS -->
         <div class="module-page" id="module-income">
-          <div class="empty-state" style="padding:80px 0">
-            <div class="empty-state-icon">💰</div>
-            <h3>Control de Ingresos — Próximamente</h3>
-            <p>Gráficas y reportes detallados de tus ingresos mensuales</p>
+          <div id="income-no-access" style="display:none;">
+            <div class="empty-state" style="padding:80px 0">
+              <div class="empty-state-icon">🔐</div>
+              <h3>Acceso Restringido</h3>
+              <p>No tienes permisos para ver el módulo financiero</p>
+            </div>
+          </div>
+          <div id="income-content">
+            <div class="tabs" style="margin-bottom:24px;">
+              <div class="tab active" onclick="showIncomeTab(this,'registro')">💳 Registrar Cobro</div>
+              <div class="tab" onclick="showIncomeTab(this,'historial')">📋 Historial</div>
+              <div class="tab" onclick="showIncomeTab(this,'catalogo')">🗂️ Catálogo</div>
+              <div class="tab" onclick="showIncomeTab(this,'gastos')">⚙️ Gastos Fijos</div>
+              <div class="tab" onclick="showIncomeTab(this,'dashboard')">📊 Dashboard</div>
+            </div>
+            <div id="income-tab-registro">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">Nuevo Cobro</div></div>
+                  <div style="padding:24px;">
+                    <div class="form-field" style="margin-bottom:16px;"><label>Paciente *</label><select id="inc-patient"><option value="">Seleccionar paciente...</option></select></div>
+                    <div class="form-field" style="margin-bottom:16px;"><label>Tratamiento *</label><select id="inc-treatment" onchange="fillTreatmentPrice()"><option value="">Seleccionar tratamiento...</option></select></div>
+                    <div class="form-row">
+                      <div class="form-field"><label>Precio Base ($)</label><input type="number" id="inc-precio" placeholder="0.00" oninput="calcCascada()"></div>
+                      <div class="form-field"><label>Descuento ($)</label><input type="number" id="inc-descuento" placeholder="0.00" value="0" oninput="calcCascada()"></div>
+                    </div>
+                    <div class="form-field" style="margin-bottom:16px;"><label>Forma de Pago</label>
+                      <select id="inc-pago" onchange="calcCascada()">
+                        <option value="efectivo">💵 Efectivo</option>
+                        <option value="tarjeta">💳 Tarjeta</option>
+                        <option value="transferencia">📱 Transferencia</option>
+                      </select>
+                    </div>
+                    <div class="form-field" style="margin-bottom:16px;"><label>¿Incluye Laboratorio?</label>
+                      <select id="inc-lab" onchange="calcCascada()">
+                        <option value="no">No</option>
+                        <option value="si">Sí (20%)</option>
+                      </select>
+                    </div>
+                    <div class="form-field" style="margin-bottom:20px;"><label>Notas</label><textarea id="inc-notas" placeholder="Observaciones..."></textarea></div>
+                    <button class="btn-gold" style="width:100%" onclick="saveIncome()">Registrar Cobro</button>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header"><div class="card-title">💧 La Cascada</div></div>
+                  <div style="padding:24px;" id="cascada-preview">
+                    <div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><div style="font-size:32px;margin-bottom:12px;">💧</div><div>Ingresa un monto para ver el desglose</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="income-tab-historial" style="display:none;">
+              <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+                <input type="text" class="search-input" placeholder="Buscar por paciente o tratamiento..." id="income-search" oninput="filterIncome()" style="flex:1;">
+                <select id="income-filter-pago" onchange="filterIncome()" style="padding:10px 12px;border:1px solid var(--border);border-radius:4px;font-family:DM Sans,sans-serif;background:var(--white);"><option value="">Todos los pagos</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option></select>
+              </div>
+              <div class="patients-table">
+                <div class="table-header" style="grid-template-columns:140px 1fr 120px 100px 120px 100px">
+                  <div class="th">Fecha</div><div class="th">Paciente / Tratamiento</div><div class="th">Bruto</div><div class="th">Pago</div><div class="th">Neto Doctor</div><div class="th">Acciones</div>
+                </div>
+                <div id="income-table-body"><div class="empty-state"><div class="empty-state-icon">💰</div><h3>Sin cobros registrados</h3></div></div>
+              </div>
+            </div>
+            <div id="income-tab-catalogo" style="display:none;">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:20px;"><button class="btn-new" onclick="openNewTreatmentModal()">+ Nuevo Tratamiento</button></div>
+              <div class="patients-table">
+                <div class="table-header" style="grid-template-columns:1fr 140px 120px 80px 80px">
+                  <div class="th">Tratamiento</div><div class="th">Categoría</div><div class="th">Precio</div><div class="th">Estado</div><div class="th">Acciones</div>
+                </div>
+                <div id="treatments-table-body"><div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Sin tratamientos</h3><button class="btn-gold" onclick="openNewTreatmentModal()">+ Nuevo Tratamiento</button></div></div>
+              </div>
+            </div>
+            <div id="income-tab-gastos" style="display:none;">
+              <div class="card" style="max-width:600px;">
+                <div class="card-header"><div class="card-title">Gastos Fijos Mensuales</div><button class="btn-gold" onclick="saveGastos()" style="padding:6px 16px;font-size:12px;">Guardar</button></div>
+                <div style="padding:24px;"><div id="gastos-list"></div><button onclick="addGasto()" class="btn-secondary" style="margin-top:16px;width:100%;">+ Agregar Gasto</button></div>
+              </div>
+            </div>
+            <div id="income-tab-dashboard" style="display:none;">
+              <div class="stats-grid" style="margin-bottom:24px;">
+                <div class="stat-card"><div class="stat-label">Ingresos Brutos</div><div class="stat-value" id="dash-bruto">$0</div><div class="stat-sub">este mes</div><div class="stat-icon">💵</div></div>
+                <div class="stat-card"><div class="stat-label">Neto Doctor</div><div class="stat-value" id="dash-doctor">$0</div><div class="stat-sub">comisiones del mes</div><div class="stat-icon">👨‍⚕️</div></div>
+                <div class="stat-card"><div class="stat-label">Gastos Fijos</div><div class="stat-value" id="dash-gastos">$0</div><div class="stat-sub">mes actual</div><div class="stat-icon">📋</div></div>
+                <div class="stat-card"><div class="stat-label">Utilidad Neta</div><div class="stat-value" id="dash-utilidad">$0</div><div class="stat-sub">clínica este mes</div><div class="stat-icon">📈</div></div>
+              </div>
+              <div class="card">
+                <div class="card-header"><div class="card-title">Corte Semanal</div><button class="btn-gold" onclick="generateWeeklyCut()" style="padding:6px 16px;font-size:12px;">Generar Corte</button></div>
+                <div id="weekly-cut-body" style="padding:24px;"><div class="empty-state"><div class="empty-state-icon">📊</div><h3>Sin datos esta semana</h3></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL NUEVO TRATAMIENTO -->
+        <div class="modal-overlay" id="modal-new-treatment">
+          <div class="modal" style="max-width:480px;">
+            <div class="modal-header"><div class="modal-title">Nuevo Tratamiento</div><button class="modal-close" onclick="closeModal('modal-new-treatment')">✕</button></div>
+            <div class="modal-body">
+              <div class="form-row single"><div class="form-field"><label>Nombre *</label><input type="text" id="tr-nombre" placeholder="Ej. Extracción simple"></div></div>
+              <div class="form-row">
+                <div class="form-field"><label>Categoría</label>
+                  <select id="tr-categoria">
+                    <option value="general">Odontología General</option>
+                    <option value="cirugia">Cirugía Oral</option>
+                    <option value="implantes">Implantología</option>
+                    <option value="rehabilitacion">Rehabilitación</option>
+                    <option value="estetica">Estética Dental</option>
+                    <option value="ortodoncia">Ortodoncia</option>
+                    <option value="fotografia">Fotografía Dental</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div class="form-field"><label>Precio Base ($)</label><input type="number" id="tr-precio" placeholder="0.00"></div>
+              </div>
+            </div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="closeModal('modal-new-treatment')">Cancelar</button><button class="btn-gold" onclick="saveTreatment()">Guardar</button></div>
+          </div>
+        </div>
+
+        <!-- MODAL DETALLE INGRESO -->
+        <div class="modal-overlay" id="modal-income-detail">
+          <div class="modal" style="max-width:520px;">
+            <div class="modal-header"><div class="modal-title">Detalle del Cobro</div><button class="modal-close" onclick="closeModal('modal-income-detail')">✕</button></div>
+            <div class="modal-body" id="income-detail-body"></div>
+            <div class="modal-footer"><button class="btn-secondary" onclick="closeModal('modal-income-detail')">Cerrar</button></div>
           </div>
         </div>
 
@@ -2009,6 +2189,29 @@
             <div class="empty-state-icon">⭐</div>
             <h3>Encuestas — Próximamente</h3>
             <p>Envía encuestas de satisfacción a tus pacientes y mide tu desempeño</p>
+          </div>
+        </div>
+
+        <!-- USUARIOS -->
+        <div class="module-page" id="module-users">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <div>
+              <div style="font-family:Cormorant Garamond,serif;font-size:22px;">Gestión de Usuarios</div>
+              <div style="font-size:13px;color:var(--text-muted);">Administra el acceso al sistema</div>
+            </div>
+            <button class="btn-new" onclick="openNewUserModal()">+ Nuevo Usuario</button>
+          </div>
+          <div class="patients-table">
+            <div class="table-header" style="grid-template-columns:1fr 160px 120px 100px 80px">
+              <div class="th">Usuario</div>
+              <div class="th">Correo</div>
+              <div class="th">Rol</div>
+              <div class="th">Estado</div>
+              <div class="th">Acciones</div>
+            </div>
+            <div id="users-table-body">
+              <div class="empty-state"><div class="empty-state-icon">👥</div><h3>Cargando usuarios...</h3></div>
+            </div>
           </div>
         </div>
 
@@ -2118,6 +2321,41 @@
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('modal-new-patient')">Cancelar</button>
       <button class="btn-gold" onclick="saveNewPatient()" id="btn-save-patient">Guardar Paciente</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW USER MODAL -->
+<div class="modal-overlay" id="modal-new-user">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header"><div class="modal-title" id="user-modal-title">Nuevo Usuario</div><button class="modal-close" onclick="closeModal('modal-new-user')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-field"><label>Nombre completo *</label><input type="text" id="usr-nombre" placeholder="Nombre del usuario"></div>
+        <div class="form-field"><label>Correo *</label><input type="email" id="usr-email" placeholder="correo@ejemplo.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Contraseña *</label><input type="password" id="usr-password" placeholder="Mínimo 6 caracteres"></div>
+        <div class="form-field"><label>Rol *</label>
+          <select id="usr-rol">
+            <option value="recepcion">Recepción — Pacientes y Agenda</option>
+            <option value="doctor">Doctor — Clínico + Comisiones</option>
+            <option value="admin">Admin — Acceso Total</option>
+          </select>
+        </div>
+      </div>
+      <div style="background:var(--cream);border-radius:6px;padding:16px;margin-top:8px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">Permisos por Rol</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.8;">
+          <div>👤 <strong>Recepción:</strong> Pacientes, Agenda, Historias Clínicas</div>
+          <div>👨‍⚕️ <strong>Doctor:</strong> Todo lo anterior + ver sus propias comisiones</div>
+          <div>🔐 <strong>Admin:</strong> Acceso total incluyendo finanzas y usuarios</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-new-user')">Cancelar</button>
+      <button class="btn-gold" onclick="saveNewUser()" id="btn-save-user">Crear Usuario</button>
     </div>
   </div>
 </div>
@@ -2238,6 +2476,17 @@ function showApp() {
   document.getElementById('app-screen').style.display = 'block';
   loadPatients();
   loadHistories();
+  loadTreatments();
+  loadUserProfile();
+  checkGoogleAuth();
+  // Populate patient select for income
+  setTimeout(() => {
+    const sel = document.getElementById('inc-patient');
+    if (sel) {
+      sel.innerHTML = '<option value="">Seleccionar paciente...</option>';
+      patients.forEach(p => sel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
+    }
+  }, 1000);
 }
 
 function showModule(module) {
@@ -2264,9 +2513,15 @@ function showModule(module) {
   document.getElementById('topbar-title').textContent = titles[module] || module;
   currentModule = module;
 
-  // Load calendar when agenda is shown
-  if (module === 'agenda') {
-    setTimeout(() => loadCalendarEvents(), 100);
+  // Load data per module
+  if (module === 'agenda') setTimeout(() => checkGoogleAuth(), 100);
+  if (module === 'users') loadUsers();
+  if (module === 'income') {
+    // Populate selects
+    const pSel = document.getElementById('inc-patient');
+    if (pSel) { pSel.innerHTML = '<option value="">Seleccionar paciente...</option>'; patients.forEach(p => pSel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`); }
+    const tSel = document.getElementById('inc-treatment');
+    if (tSel) { tSel.innerHTML = '<option value="">Seleccionar tratamiento...</option>'; treatments.forEach(t => tSel.innerHTML += `<option value="${t.id}">${t.nombre} — $${t.precio}</option>`); }
   }
 
   // Close sidebar on mobile
@@ -2493,257 +2748,846 @@ document.addEventListener('keydown', e => {
 });
 
 // ============================================================
-// AGENDA — Google Calendar API
+// AGENDA — Google Calendar OAuth
 // ============================================================
-const GCAL_API_KEY = 'AIzaSyBvZF49rjR6w8blJSk911BVXQuM0m0t7Lg';
-const GCAL_ID = 'drferglez@gmail.com';
-let calCurrentDate = new Date();
-let calView = 'month';
-let calEvents = [];
+const GCAL_CLIENT_ID = '78075134021-b15ltrfdlm5j7gruclf7bdacjqa2uf12.apps.googleusercontent.com';
+const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
+let gAccessToken = null;
+let calDate = new Date();
+let calViewMode = 'month';
+let gEvents = [];
+let currentEventId = null;
 
-async function loadCalendarEvents() {
-  document.getElementById('cal-loading').style.display = 'block';
+function connectGoogle() {
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${GCAL_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}` +
+    `&response_type=token` +
+    `&scope=${encodeURIComponent(GCAL_SCOPES)}` +
+    `&prompt=consent`;
+  window.location.href = authUrl;
+}
+
+function disconnectGoogle() {
+  gAccessToken = null;
+  localStorage.removeItem('gcal_token');
+  localStorage.removeItem('gcal_expiry');
+  document.getElementById('agenda-connect-state').style.display = 'block';
+  document.getElementById('agenda-calendar-state').style.display = 'none';
+}
+
+function checkGoogleAuth() {
+  // Check URL hash for token (after OAuth redirect)
+  const hash = window.location.hash;
+  if (hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    gAccessToken = params.get('access_token');
+    const expiresIn = params.get('expires_in');
+    const expiry = Date.now() + (expiresIn * 1000);
+    localStorage.setItem('gcal_token', gAccessToken);
+    localStorage.setItem('gcal_expiry', expiry);
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else {
+    // Check stored token
+    const stored = localStorage.getItem('gcal_token');
+    const expiry = localStorage.getItem('gcal_expiry');
+    if (stored && expiry && Date.now() < parseInt(expiry)) {
+      gAccessToken = stored;
+    }
+  }
+
+  if (gAccessToken) {
+    document.getElementById('agenda-connect-state').style.display = 'none';
+    document.getElementById('agenda-calendar-state').style.display = 'block';
+    loadGoogleEvents();
+  }
+}
+
+async function loadGoogleEvents() {
+  if (!gAccessToken) return;
   try {
-    const now = new Date(calCurrentDate);
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_ID)}/events?key=${GCAL_API_KEY}&timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=250`;
-    const res = await fetch(url);
+    const start = new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1).toISOString();
+    const end = new Date(calDate.getFullYear(), calDate.getMonth() + 2, 0).toISOString();
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=500`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${gAccessToken}` } });
+    if (res.status === 401) { disconnectGoogle(); return; }
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    calEvents = data.items || [];
+    gEvents = data.items || [];
+    renderGoogleCalendar();
   } catch(e) {
     console.error('Calendar error:', e);
-    calEvents = [];
   }
-  document.getElementById('cal-loading').style.display = 'none';
-  renderCalendar();
 }
 
-function setIframeView(btn, mode) {
+function setCalendarView(btn, view) {
+  calViewMode = view;
   document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const modeMap = { month: 'MONTH', week: 'WEEK', day: 'DAY', agenda: 'AGENDA' };
-  const iframe = document.getElementById('gcal-iframe');
-  iframe.src = `https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&mode=${modeMap[mode]}&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%23ffffff`;
+  ['month','week','day','list'].forEach(v => {
+    document.getElementById(`view-${v}-cal`).style.display = v === view ? 'block' : 'none';
+  });
+  renderGoogleCalendar();
 }
 
-function setAgendaView(btn, view) {
-  calView = view;
-  document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('agenda-month-view').style.display = view === 'month' ? 'block' : 'none';
-  document.getElementById('agenda-week-view').style.display = view === 'week' ? 'block' : 'none';
-  document.getElementById('agenda-day-view').style.display = view === 'day' ? 'block' : 'none';
-  document.getElementById('agenda-list-view').style.display = view === 'list' ? 'block' : 'none';
-  renderCalendar();
+function calNavigate(dir) {
+  if (calViewMode === 'month') calDate.setMonth(calDate.getMonth() + dir);
+  else if (calViewMode === 'week') calDate.setDate(calDate.getDate() + dir * 7);
+  else calDate.setDate(calDate.getDate() + dir);
+  loadGoogleEvents();
 }
 
-function calNav(dir) {
-  if (calView === 'month') calCurrentDate.setMonth(calCurrentDate.getMonth() + dir);
-  else if (calView === 'week') calCurrentDate.setDate(calCurrentDate.getDate() + (dir * 7));
-  else calCurrentDate.setDate(calCurrentDate.getDate() + dir);
-  loadCalendarEvents();
-}
-
-function renderCalendar() {
+function renderGoogleCalendar() {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const title = document.getElementById('cal-month-title');
-  if (calView === 'month') title.textContent = `${months[calCurrentDate.getMonth()]} ${calCurrentDate.getFullYear()}`;
-  else if (calView === 'week') title.textContent = `Semana del ${calCurrentDate.toLocaleDateString('es-MX')}`;
-  else title.textContent = calCurrentDate.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const title = document.getElementById('cal-title');
 
-  if (calView === 'month') renderMonthView();
-  else if (calView === 'week') renderWeekView();
-  else if (calView === 'day') renderDayView();
-  else renderListView();
+  if (calViewMode === 'month') {
+    title.textContent = `${months[calDate.getMonth()]} ${calDate.getFullYear()}`;
+    renderMonthGrid();
+  } else if (calViewMode === 'week') {
+    const startW = new Date(calDate);
+    startW.setDate(calDate.getDate() - calDate.getDay());
+    const endW = new Date(startW);
+    endW.setDate(startW.getDate() + 6);
+    title.textContent = `${startW.getDate()} ${months[startW.getMonth()]} — ${endW.getDate()} ${months[endW.getMonth()]}`;
+    renderWeekGrid();
+  } else if (calViewMode === 'day') {
+    title.textContent = calDate.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
+    renderDayGrid();
+  } else {
+    title.textContent = 'Próximas citas';
+    renderListGrid();
+  }
+
+  document.getElementById('agenda-account-label').textContent = '✓ Conectado con Google Calendar';
 }
 
-function getEventsForDay(date) {
+function getEventsForDate(date) {
   const d = date.toDateString();
-  return calEvents.filter(ev => {
-    const start = ev.start?.dateTime || ev.start?.date;
-    return new Date(start).toDateString() === d;
+  return gEvents.filter(ev => {
+    const s = ev.start?.dateTime || ev.start?.date;
+    return new Date(s).toDateString() === d;
   });
 }
 
-function renderMonthView() {
-  const grid = document.getElementById('cal-grid');
-  const year = calCurrentDate.getFullYear();
-  const month = calCurrentDate.getMonth();
+function renderMonthGrid() {
+  const grid = document.getElementById('month-grid');
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date().toDateString();
 
   let html = '';
-  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
-    html += '<div style="min-height:100px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--cream);opacity:0.5;"></div>';
+    html += '<div style="min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--cream);"></div>';
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
     const isToday = date.toDateString() === today;
-    const events = getEventsForDay(date);
+    const evs = getEventsForDate(date);
     const col = (firstDay + d - 1) % 7;
     const isWeekend = col === 0 || col === 6;
 
-    html += `<div style="min-height:100px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:${isWeekend ? 'rgba(0,0,0,0.01)' : 'var(--white)'};">
-      <div style="font-size:13px;font-weight:${isToday ? '600' : '400'};color:${isToday ? 'var(--white)' : 'var(--text-primary)'};background:${isToday ? 'var(--obsidian)' : 'transparent'};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${d}</div>
-      ${events.slice(0,3).map(ev => {
-        const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
-        return `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${time ? time + ' ' : ''}${ev.summary || 'Cita'}</div>`;
+    html += `<div style="min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:${isWeekend ? '#fafafa' : 'var(--white)'};" onclick="calDate=new Date(${year},${month},${d});setCalendarView(document.querySelector('.agenda-view-btn.active'),'day')">
+      <div style="font-size:13px;font-weight:500;color:${isToday?'var(--white)':'var(--text-primary)'};background:${isToday?'var(--obsidian)':'transparent'};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${d}</div>
+      ${evs.slice(0,3).map(ev => {
+        const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
+        const color = ev.colorId ? getEventColor(ev.colorId) : 'var(--obsidian)';
+        return `<div onclick="event.stopPropagation();showEventDetail('${ev.id}')" style="background:${color};color:white;font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${time ? time+' ':''}${ev.summary||'Sin título'}</div>`;
       }).join('')}
-      ${events.length > 3 ? `<div style="font-size:10px;color:var(--text-muted);padding:2px 4px;">+${events.length - 3} más</div>` : ''}
+      ${evs.length > 3 ? `<div style="font-size:10px;color:var(--text-muted);">+${evs.length-3} más</div>` : ''}
     </div>`;
   }
-
   grid.innerHTML = html;
 }
 
-function renderWeekView() {
-  const grid = document.getElementById('week-grid');
-  const startOfWeek = new Date(calCurrentDate);
-  startOfWeek.setDate(calCurrentDate.getDate() - calCurrentDate.getDay());
-
-  const hours = Array.from({length: 14}, (_, i) => i + 7); // 7am to 8pm
-  const days = Array.from({length: 7}, (_, i) => {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + i);
-    return d;
-  });
-
-  const dayNames = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+function renderWeekGrid() {
+  const grid = document.getElementById('week-grid-cal');
+  const startW = new Date(calDate);
+  startW.setDate(calDate.getDate() - calDate.getDay());
+  const weekDays = Array.from({length:7}, (_,i) => { const d = new Date(startW); d.setDate(startW.getDate()+i); return d; });
+  const hours = Array.from({length:14}, (_,i) => i+7);
   const today = new Date().toDateString();
 
-  let html = `<div style="display:grid;grid-template-columns:50px repeat(7,1fr);gap:0;">
-    <div></div>
-    ${days.map((d, i) => `<div style="text-align:center;padding:8px 4px;border-left:1px solid var(--border);background:${d.toDateString()===today?'var(--obsidian)':'var(--cream)'};color:${d.toDateString()===today?'var(--gold)':'var(--text-secondary)'};">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;">${dayNames[i]}</div>
-      <div style="font-size:18px;font-family:Cormorant Garamond,serif;">${d.getDate()}</div>
+  let html = `<div style="display:grid;grid-template-columns:52px repeat(7,1fr);min-width:600px;">
+    <div style="border-bottom:1px solid var(--border);"></div>
+    ${weekDays.map(d => `<div style="text-align:center;padding:10px 4px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);background:${d.toDateString()===today?'var(--obsidian)':'var(--cream)'};color:${d.toDateString()===today?'var(--gold)':'var(--text-secondary)'};">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;">${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]}</div>
+      <div style="font-size:20px;font-family:Cormorant Garamond,serif;font-weight:300;">${d.getDate()}</div>
     </div>`).join('')}
     ${hours.map(h => `
-      <div style="padding:4px 8px;font-size:11px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);height:60px;display:flex;align-items:flex-start;padding-top:4px;">${h}:00</div>
-      ${days.map(d => {
-        const dayEvents = getEventsForDay(d).filter(ev => {
-          if (!ev.start?.dateTime) return false;
-          const evHour = new Date(ev.start.dateTime).getHours();
-          return evHour === h;
-        });
-        return `<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);height:60px;padding:2px;position:relative;">
-          ${dayEvents.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;">${ev.summary||'Cita'}</div>`).join('')}
+      <div style="padding:4px 8px;font-size:11px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);height:56px;">${h}:00</div>
+      ${weekDays.map(d => {
+        const evs = getEventsForDate(d).filter(ev => ev.start?.dateTime && new Date(ev.start.dateTime).getHours()===h);
+        return `<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);height:56px;padding:2px;">
+          ${evs.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;height:100%;">${ev.summary||'Cita'}</div>`).join('')}
         </div>`;
       }).join('')}
     `).join('')}
   </div>`;
-
   grid.innerHTML = html;
 }
 
-function renderDayView() {
-  const grid = document.getElementById('day-grid');
-  const hours = Array.from({length: 14}, (_, i) => i + 7);
-  const dayEvents = getEventsForDay(calCurrentDate);
+function renderDayGrid() {
+  const grid = document.getElementById('day-grid-cal');
+  const hours = Array.from({length:14}, (_,i) => i+7);
+  const dayEvs = getEventsForDate(calDate);
+  const allDay = dayEvs.filter(ev => ev.start?.date && !ev.start?.dateTime);
+  const timed = dayEvs.filter(ev => ev.start?.dateTime);
 
-  let html = `<div style="display:grid;grid-template-columns:60px 1fr;gap:0;">
+  let html = '';
+  if (allDay.length) {
+    html += `<div style="padding:8px 16px;background:var(--cream);border-bottom:1px solid var(--border);">
+      ${allDay.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;margin-bottom:4px;">${ev.summary||'Sin título'} — Todo el día</div>`).join('')}
+    </div>`;
+  }
+
+  html += `<div style="display:grid;grid-template-columns:56px 1fr;">
     ${hours.map(h => {
-      const hEvents = dayEvents.filter(ev => {
-        if (!ev.start?.dateTime) return false;
-        return new Date(ev.start.dateTime).getHours() === h;
-      });
-      return `<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:70px;">${h}:00</div>
-        <div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:70px;padding:4px;">
-          ${hEvents.map(ev => {
+      const evs = timed.filter(ev => new Date(ev.start.dateTime).getHours()===h);
+      return `<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:64px;">${h}:00</div>
+        <div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:64px;padding:4px 8px;">
+          ${evs.map(ev => {
             const start = new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
             const end = ev.end?.dateTime ? new Date(ev.end.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
             return `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;">
-              <div style="font-weight:500;font-size:14px;">${ev.summary||'Cita'}</div>
-              <div style="font-size:12px;opacity:0.7;">${start}${end?' — '+end:''}</div>
-              ${ev.description ? `<div style="font-size:11px;opacity:0.6;margin-top:4px;">${ev.description}</div>` : ''}
+              <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
+              <div style="font-size:12px;opacity:0.7;margin-top:2px;">${start}${end?' — '+end:''}</div>
+              ${ev.description?`<div style="font-size:11px;opacity:0.6;margin-top:4px;">${ev.description}</div>`:''}
             </div>`;
           }).join('')}
         </div>`;
     }).join('')}
   </div>`;
-
   grid.innerHTML = html;
 }
 
-function renderListView() {
-  const grid = document.getElementById('list-grid');
+function renderListGrid() {
+  const grid = document.getElementById('list-grid-cal');
   const now = new Date();
-  const upcoming = calEvents
-    .filter(ev => new Date(ev.start?.dateTime || ev.start?.date) >= now)
+  const upcoming = gEvents
+    .filter(ev => new Date(ev.start?.dateTime||ev.start?.date) >= now)
     .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
-  if (upcoming.length === 0) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas próximas</h3><p>No tienes citas programadas</p></div>';
+  if (!upcoming.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas próximas</h3></div>';
     return;
   }
 
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   let html = '';
   let lastDate = '';
   upcoming.forEach(ev => {
-    const start = new Date(ev.start?.dateTime || ev.start?.date);
-    const dateStr = start.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
+    const start = new Date(ev.start?.dateTime||ev.start?.date);
+    const dateStr = `${['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][start.getDay()]} ${start.getDate()} de ${months[start.getMonth()]}`;
     const timeStr = ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día';
-
     if (dateStr !== lastDate) {
-      html += `<div style="font-family:Cormorant Garamond,serif;font-size:16px;font-weight:500;color:var(--text-primary);padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;">${dateStr}</div>`;
+      html += `<div style="font-family:Cormorant Garamond,serif;font-size:17px;font-weight:500;padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;">${dateStr}</div>`;
       lastDate = dateStr;
     }
-
-    html += `<div onclick="showEventDetail('${ev.id}')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;">
+    html += `<div onclick="showEventDetail('${ev.id}')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='var(--white)'">
       <div style="width:4px;height:40px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
       <div style="flex:1;">
-        <div style="font-weight:500;font-size:14px;">${ev.summary||'Cita'}</div>
+        <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${timeStr}</div>
+        ${ev.description?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${ev.description}</div>`:''}
       </div>
+      <div style="font-size:12px;color:var(--gold);">Ver →</div>
     </div>`;
   });
-
   grid.innerHTML = html;
 }
 
+function getEventColor(colorId) {
+  const colors = {
+    '1':'#7986cb','2':'#33b679','3':'#8e24aa','4':'#e67c73',
+    '5':'#f6c026','6':'#f5511d','7':'#039be5','8':'#616161',
+    '9':'#3f51b5','10':'#0b8043','11':'#d60000'
+  };
+  return colors[colorId] || 'var(--obsidian)';
+}
+
 function showEventDetail(id) {
-  const ev = calEvents.find(e => e.id === id);
+  currentEventId = id;
+  const ev = gEvents.find(e => e.id === id);
   if (!ev) return;
-  const start = new Date(ev.start?.dateTime || ev.start?.date);
+  const start = new Date(ev.start?.dateTime||ev.start?.date);
   const end = ev.end?.dateTime ? new Date(ev.end.dateTime) : null;
-  const msg = `${ev.summary||'Cita'}\n${start.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'})}\n${ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día'}${end?' — '+end.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):''}${ev.description?'\n\n'+ev.description:''}`;
-  alert(msg);
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  document.getElementById('event-detail-title').textContent = ev.summary || 'Sin título';
+  document.getElementById('event-detail-body').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:20px;">📅</span>
+        <div>
+          <div style="font-weight:500;">${['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][start.getDay()]} ${start.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}</div>
+          <div style="font-size:13px;color:var(--text-muted);">${ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})+(end?' — '+end.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'') : 'Todo el día'}</div>
+        </div>
+      </div>
+      ${ev.description ? `<div style="display:flex;gap:12px;align-items:flex-start;"><span style="font-size:20px;">📝</span><div style="font-size:14px;color:var(--text-secondary);">${ev.description}</div></div>` : ''}
+      ${ev.location ? `<div style="display:flex;gap:12px;align-items:flex-start;"><span style="font-size:20px;">📍</span><div style="font-size:14px;color:var(--text-secondary);">${ev.location}</div></div>` : ''}
+    </div>`;
+  document.getElementById('modal-event-detail').classList.add('open');
+}
+
+function editCurrentEvent() {
+  if (!currentEventId) return;
+  window.open(`https://calendar.google.com/calendar/r/eventedit/${currentEventId}`, '_blank');
 }
 
 function openNewEventModal() {
-  // Set default date to today
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('ev-date').value = today;
-  // Populate patients
-  const select = document.getElementById('ev-patient');
-  select.innerHTML = '<option value="">Sin vincular</option>';
-  patients.forEach(p => select.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
+  const sel = document.getElementById('ev-patient');
+  sel.innerHTML = '<option value="">Sin vincular</option>';
+  patients.forEach(p => sel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
   document.getElementById('modal-new-event').classList.add('open');
 }
 
-async function saveNewEvent() {
+async function createGoogleEvent() {
   const title = document.getElementById('ev-title').value.trim();
   const date = document.getElementById('ev-date').value;
   const start = document.getElementById('ev-start').value;
   const end = document.getElementById('ev-end').value;
   const notes = document.getElementById('ev-notes').value.trim();
+  const patientId = document.getElementById('ev-patient').value;
 
   if (!title || !date || !start) { showToast('Título, fecha y hora son obligatorios', 'error'); return; }
 
-  // Open Google Calendar with prefilled data
-  const startISO = `${date}T${start}:00`;
-  const endISO = `${date}T${end}:00`;
-  const gcalUrl = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(title)}&dates=${startISO.replace(/[-:]/g,'')}/${endISO.replace(/[-:]/g,'')}&details=${encodeURIComponent(notes)}&add=${encodeURIComponent(GCAL_ID)}`;
-  window.open(gcalUrl, '_blank');
-  closeModal('modal-new-event');
-  showToast('Se abrió Google Calendar para confirmar la cita', 'success');
-  setTimeout(() => loadCalendarEvents(), 3000);
+  const btn = document.getElementById('btn-save-event');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  let description = notes;
+  if (patientId) {
+    const p = patients.find(p => p.id === patientId);
+    if (p) description = `Paciente: ${p.nombre} ${p.apellido} (#${p.expediente})\n${notes}`;
+  }
+
+  try {
+    const event = {
+      summary: title,
+      description,
+      start: { dateTime: `${date}T${start}:00`, timeZone: 'America/Mexico_City' },
+      end: { dateTime: `${date}T${end}:00`, timeZone: 'America/Mexico_City' }
+    };
+
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    });
+
+    if (res.status === 401) { disconnectGoogle(); return; }
+    const data = await res.json();
+    if (data.id) {
+      showToast('Cita creada en Google Calendar ✓', 'success');
+      closeModal('modal-new-event');
+      document.getElementById('ev-title').value = '';
+      document.getElementById('ev-notes').value = '';
+      await loadGoogleEvents();
+    } else {
+      throw new Error('Error creando evento');
+    }
+  } catch(e) {
+    showToast('Error al crear la cita', 'error');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'Guardar Cita';
 }
 
+// ============================================================
+// FINANZAS — LA CASCADA
+// ============================================================
+let incomeRecords = [];
+let treatments = [];
+let gastos = [];
+let currentUserProfile = null;
+
+async function loadUserProfile() {
+  if (!currentUser) return;
+  try {
+    const { data } = await db.from('user_profiles').select('*').eq('id', currentUser.id).single();
+    currentUserProfile = data;
+    applyRolePermissions();
+  } catch(e) { currentUserProfile = { rol: 'recepcion' }; applyRolePermissions(); }
+}
+
+function applyRolePermissions() {
+  const isAdmin = currentUserProfile?.rol === 'admin';
+  const isDoctor = currentUserProfile?.rol === 'doctor';
+
+  // Show/hide nav items based on role
+  const adminOnly = ['nav-income','nav-reports','nav-users','nav-section-admin'];
+  adminOnly.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAdmin ? '' : 'none';
+  });
+
+  // Update sidebar user info
+  const nameEl = document.querySelector('.sidebar-user-name');
+  const roleEl = document.querySelector('.sidebar-user-role');
+  const avatarEl = document.querySelector('.sidebar-avatar');
+  if (nameEl && currentUserProfile) nameEl.textContent = currentUserProfile.nombre || 'Usuario';
+  if (roleEl && currentUserProfile) {
+    const roles = { admin: 'Administrador', doctor: 'Doctor', recepcion: 'Recepción' };
+    roleEl.textContent = roles[currentUserProfile.rol] || currentUserProfile.rol;
+  }
+  if (avatarEl && currentUserProfile?.nombre) {
+    const parts = currentUserProfile.nombre.split(' ');
+    avatarEl.textContent = parts.map(p => p[0]).join('').substring(0,2).toUpperCase();
+  }
+}
+
+// ===== USUARIOS =====
+let usersList = [];
+
+async function loadUsers() {
+  try {
+    const { data, error } = await db.from('user_profiles').select('*').order('created_at');
+    if (error) throw error;
+    usersList = data || [];
+    renderUsersTable();
+  } catch(e) { console.error(e); }
+}
+
+function renderUsersTable() {
+  const container = document.getElementById('users-table-body');
+  if (!container) return;
+  if (!usersList.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Sin usuarios registrados</h3></div>';
+    return;
+  }
+
+  const roles = { admin: '🔐 Admin', doctor: '👨‍⚕️ Doctor', recepcion: '👤 Recepción' };
+  container.innerHTML = usersList.map(u => `
+    <div class="table-row" style="grid-template-columns:1fr 160px 120px 100px 80px">
+      <div class="td"><div style="font-weight:500;">${u.nombre}</div></div>
+      <div class="td muted">${u.email}</div>
+      <div class="td"><span class="badge ${u.rol === 'admin' ? 'badge-active' : 'badge-pending'}">${roles[u.rol] || u.rol}</span></div>
+      <div class="td"><span class="badge ${u.activo ? 'badge-active' : ''}">${u.activo ? 'Activo' : 'Inactivo'}</span></div>
+      <div class="td">
+        ${u.email !== currentUser?.email ? `<a class="card-link" onclick="toggleUserStatus('${u.id}',${!u.activo})">${u.activo ? 'Desactivar' : 'Activar'}</a>` : '<span style="font-size:12px;color:var(--text-muted);">Tú</span>'}
+      </div>
+    </div>`).join('');
+}
+
+function openNewUserModal() {
+  document.getElementById('usr-nombre').value = '';
+  document.getElementById('usr-email').value = '';
+  document.getElementById('usr-password').value = '';
+  document.getElementById('usr-rol').value = 'recepcion';
+  document.getElementById('modal-new-user').classList.add('open');
+}
+
+async function saveNewUser() {
+  const nombre = document.getElementById('usr-nombre').value.trim();
+  const email = document.getElementById('usr-email').value.trim();
+  const password = document.getElementById('usr-password').value;
+  const rol = document.getElementById('usr-rol').value;
+
+  if (!nombre || !email || !password) { showToast('Todos los campos son obligatorios', 'error'); return; }
+  if (password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres', 'error'); return; }
+
+  const btn = document.getElementById('btn-save-user');
+  btn.disabled = true; btn.textContent = 'Creando...';
+
+  try {
+    // Create auth user
+    const { data: authData, error: authError } = await db.auth.admin.createUser({
+      email, password, email_confirm: true
+    });
+
+    if (authError) throw authError;
+
+    // Create profile
+    const { error: profileError } = await db.from('user_profiles').insert([{
+      id: authData.user.id, nombre, email, rol
+    }]);
+
+    if (profileError) throw profileError;
+
+    showToast(`Usuario ${nombre} creado exitosamente ✓`, 'success');
+    closeModal('modal-new-user');
+    await loadUsers();
+  } catch(e) {
+    // If admin API not available, use signup
+    try {
+      const { data: signupData, error: signupError } = await db.auth.signUp({ email, password });
+      if (signupError) throw signupError;
+
+      if (signupData.user) {
+        await db.from('user_profiles').insert([{ id: signupData.user.id, nombre, email, rol }]);
+        showToast(`Usuario ${nombre} creado. Debe confirmar su correo.`, 'success');
+        closeModal('modal-new-user');
+        await loadUsers();
+      }
+    } catch(e2) {
+      showToast('Error al crear usuario: ' + (e2.message || 'Verifica los datos'), 'error');
+    }
+  }
+
+  btn.disabled = false; btn.textContent = 'Crear Usuario';
+}
+
+async function toggleUserStatus(id, newStatus) {
+  try {
+    await db.from('user_profiles').update({ activo: newStatus }).eq('id', id);
+    await loadUsers();
+    showToast(newStatus ? 'Usuario activado' : 'Usuario desactivado', 'success');
+  } catch(e) {
+    showToast('Error al actualizar usuario', 'error');
+  }
+}
+
+function showIncomeTab(tab, name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  ['registro','historial','catalogo','gastos','dashboard'].forEach(t => {
+    const el = document.getElementById('income-tab-' + t);
+    if (el) el.style.display = t === name ? 'block' : 'none';
+  });
+  if (name === 'historial') loadIncomeRecords();
+  if (name === 'catalogo') renderTreatmentsTable();
+  if (name === 'gastos') loadGastos();
+  if (name === 'dashboard') loadDashboard();
+}
+
+// ===== CASCADA =====
+function calcCascada() {
+  const bruto = parseFloat(document.getElementById('inc-precio').value) || 0;
+  const descuento = parseFloat(document.getElementById('inc-descuento').value) || 0;
+  const pago = document.getElementById('inc-pago').value;
+  const conLab = document.getElementById('inc-lab').value === 'si';
+
+  if (bruto === 0) {
+    document.getElementById('cascada-preview').innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><div style="font-size:32px;margin-bottom:12px;">💧</div><div>Ingresa un monto para ver el desglose</div></div>';
+    return;
+  }
+
+  const neto1 = bruto - descuento;
+  let comisionTPV = 0;
+  if (pago === 'tarjeta') {
+    const baseTPV = neto1 * 0.0075;
+    const ivaTPV = baseTPV * 0.16;
+    comisionTPV = baseTPV + ivaTPV;
+  }
+  const neto2 = neto1 - comisionTPV;
+  const impFederal = neto2 * 0.03;
+  const impEstatal = neto2 * 0.03;
+  const neto3 = neto2 - impFederal - impEstatal;
+  const laboratorio = conLab ? neto3 * 0.20 : 0;
+  const remanente = neto3 - laboratorio;
+  const clinica = remanente * 0.30;
+  const equipo = remanente * 0.20;
+  const doctor = remanente * 0.30;
+  const noAsignado = remanente * 0.20;
+
+  const fmt = (n) => '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const row = (label, value, color = 'var(--text-primary)', sub = '') => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:13px;color:var(--text-secondary);">${label}</div>
+        ${sub ? `<div style="font-size:11px;color:var(--text-muted);">${sub}</div>` : ''}
+      </div>
+      <div style="font-size:15px;font-weight:500;color:${color};">${value}</div>
+    </div>`;
+
+  document.getElementById('cascada-preview').innerHTML = `
+    <div style="font-family:Cormorant Garamond,serif;font-size:18px;font-weight:500;margin-bottom:16px;color:var(--obsidian);">Desglose del Cobro</div>
+    ${row('💵 Ingreso Bruto', fmt(bruto), 'var(--obsidian)')}
+    ${descuento > 0 ? row('🏷️ Descuento', '-' + fmt(descuento), 'var(--error)') : ''}
+    ${comisionTPV > 0 ? row('💳 Comisión TPV', '-' + fmt(comisionTPV), 'var(--error)', '0.75% + IVA 16%') : ''}
+    ${row('🏛️ Imp. Federal (3%)', '-' + fmt(impFederal), 'var(--error)')}
+    ${row('🏛️ Imp. Estatal (3%)', '-' + fmt(impEstatal), 'var(--error)')}
+    ${conLab ? row('🔬 Laboratorio (20%)', '-' + fmt(laboratorio), 'var(--warning)') : ''}
+    <div style="background:var(--cream);border-radius:6px;padding:12px;margin:12px 0;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">Distribución del Remanente</div>
+      ${row('🏥 Clínica (30%)', fmt(clinica), 'var(--success)')}
+      ${row('🔧 Equipo (20%)', fmt(equipo), 'var(--success)')}
+      ${row('👨‍⚕️ Doctor (30%)', fmt(doctor), 'var(--gold)')}
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--obsidian);">
+      <div style="font-family:Cormorant Garamond,serif;font-size:18px;font-weight:600;">Doctor recibe</div>
+      <div style="font-family:Cormorant Garamond,serif;font-size:24px;font-weight:600;color:var(--gold);">${fmt(doctor)}</div>
+    </div>`;
+
+  // Store calculated values for saving
+  window._cascadaResult = { bruto, descuento, comisionTPV, impFederal, impEstatal, laboratorio, clinica, equipo, doctor, neto3 };
+}
+
+function fillTreatmentPrice() {
+  const id = document.getElementById('inc-treatment').value;
+  const t = treatments.find(t => t.id === id);
+  if (t) {
+    document.getElementById('inc-precio').value = t.precio;
+    calcCascada();
+  }
+}
+
+async function saveIncome() {
+  const patientId = document.getElementById('inc-patient').value;
+  const treatmentId = document.getElementById('inc-treatment').value;
+  const bruto = parseFloat(document.getElementById('inc-precio').value) || 0;
+
+  if (!patientId || bruto === 0) { showToast('Selecciona paciente e ingresa monto', 'error'); return; }
+
+  const r = window._cascadaResult || {};
+  const record = {
+    patient_id: patientId || null,
+    treatment_id: treatmentId || null,
+    usuario_id: currentUser.id,
+    ingreso_bruto: r.bruto || bruto,
+    descuento: r.descuento || 0,
+    tipo_pago: document.getElementById('inc-pago').value,
+    comision_tpv: r.comisionTPV || 0,
+    impuesto_federal: r.impFederal || 0,
+    impuesto_estatal: r.impEstatal || 0,
+    laboratorio: r.laboratorio || 0,
+    remanente_clinica: r.clinica || 0,
+    remanente_equipo: r.equipo || 0,
+    remanente_doctor: r.doctor || 0,
+    neto_final: r.neto3 || 0,
+    notas: document.getElementById('inc-notas').value.trim()
+  };
+
+  try {
+    const { error } = await db.from('income').insert([record]);
+    if (error) throw error;
+    showToast('Cobro registrado exitosamente ✓', 'success');
+    document.getElementById('inc-precio').value = '';
+    document.getElementById('inc-descuento').value = '0';
+    document.getElementById('inc-notas').value = '';
+    document.getElementById('inc-patient').value = '';
+    document.getElementById('inc-treatment').value = '';
+    calcCascada();
+    updateStats();
+  } catch(e) { showToast('Error al guardar el cobro', 'error'); console.error(e); }
+}
+
+async function loadIncomeRecords() {
+  try {
+    const { data } = await db.from('income').select('*, patients(nombre,apellido), treatments(nombre)').order('created_at', { ascending: false });
+    incomeRecords = data || [];
+    renderIncomeTable();
+  } catch(e) { incomeRecords = []; }
+}
+
+function renderIncomeTable(filter = '', filterPago = '') {
+  const container = document.getElementById('income-table-body');
+  let filtered = incomeRecords;
+  if (filter) filtered = filtered.filter(r => `${r.patients?.nombre} ${r.patients?.apellido} ${r.treatments?.nombre}`.toLowerCase().includes(filter.toLowerCase()));
+  if (filterPago) filtered = filtered.filter(r => r.tipo_pago === filterPago);
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><h3>Sin cobros</h3></div>';
+    return;
+  }
+
+  const fmt = (n) => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const pagoIcon = { efectivo: '💵', tarjeta: '💳', transferencia: '📱' };
+
+  container.innerHTML = filtered.map(r => `
+    <div class="table-row" style="grid-template-columns:140px 1fr 120px 100px 120px 100px">
+      <div class="td muted">${formatDate(r.created_at)}</div>
+      <div class="td">
+        <div style="font-weight:500;">${r.patients?.nombre || '—'} ${r.patients?.apellido || ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${r.treatments?.nombre || 'Sin tratamiento'}</div>
+      </div>
+      <div class="td" style="font-weight:500;">${fmt(r.ingreso_bruto)}</div>
+      <div class="td">${pagoIcon[r.tipo_pago] || ''} ${r.tipo_pago}</div>
+      <div class="td" style="color:var(--gold);font-weight:500;">${fmt(r.remanente_doctor)}</div>
+      <div class="td"><a class="card-link" onclick="showIncomeDetail('${r.id}')">Ver →</a></div>
+    </div>`).join('');
+}
+
+function filterIncome() {
+  const q = document.getElementById('income-search').value;
+  const p = document.getElementById('income-filter-pago').value;
+  renderIncomeTable(q, p);
+}
+
+function showIncomeDetail(id) {
+  const r = incomeRecords.find(r => r.id === id);
+  if (!r) return;
+  const fmt = (n) => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const row = (label, value, color = '') => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:13px;color:var(--text-secondary);">${label}</span><span style="font-weight:500;${color ? 'color:' + color : ''}">${value}</span></div>`;
+
+  document.getElementById('income-detail-body').innerHTML = `
+    <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+      <div style="font-weight:600;">${r.patients?.nombre || ''} ${r.patients?.apellido || ''}</div>
+      <div style="font-size:13px;color:var(--text-muted);">${r.treatments?.nombre || ''} · ${formatDate(r.created_at)}</div>
+    </div>
+    ${row('Ingreso Bruto', fmt(r.ingreso_bruto))}
+    ${r.descuento > 0 ? row('Descuento', '-' + fmt(r.descuento), 'var(--error)') : ''}
+    ${r.comision_tpv > 0 ? row('Comisión TPV', '-' + fmt(r.comision_tpv), 'var(--error)') : ''}
+    ${row('Imp. Federal (3%)', '-' + fmt(r.impuesto_federal), 'var(--error)')}
+    ${row('Imp. Estatal (3%)', '-' + fmt(r.impuesto_estatal), 'var(--error)')}
+    ${r.laboratorio > 0 ? row('Laboratorio (20%)', '-' + fmt(r.laboratorio), 'var(--warning)') : ''}
+    ${row('Clínica (30%)', fmt(r.remanente_clinica), 'var(--success)')}
+    ${row('Equipo (20%)', fmt(r.remanente_equipo), 'var(--success)')}
+    ${row('Doctor (30%)', fmt(r.remanente_doctor), 'var(--gold)')}
+    ${r.notas ? `<div style="margin-top:12px;font-size:13px;color:var(--text-muted);">📝 ${r.notas}</div>` : ''}`;
+
+  document.getElementById('modal-income-detail').classList.add('open');
+}
+
+// ===== TRATAMIENTOS =====
+async function loadTreatments() {
+  try {
+    const { data } = await db.from('treatments').select('*').eq('activo', true).order('nombre');
+    treatments = data || [];
+    populateTreatmentSelects();
+    renderTreatmentsTable();
+  } catch(e) { treatments = []; }
+}
+
+function populateTreatmentSelects() {
+  const sel = document.getElementById('inc-treatment');
+  if (sel) {
+    sel.innerHTML = '<option value="">Seleccionar tratamiento...</option>';
+    treatments.forEach(t => sel.innerHTML += `<option value="${t.id}">${t.nombre} — $${t.precio}</option>`);
+  }
+}
+
+function renderTreatmentsTable() {
+  const container = document.getElementById('treatments-table-body');
+  if (!treatments.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🗂️</div><h3>Sin tratamientos</h3><button class="btn-gold" onclick="openNewTreatmentModal()">+ Nuevo Tratamiento</button></div>';
+    return;
+  }
+  const cats = { general:'General', cirugia:'Cirugía Oral', implantes:'Implantología', rehabilitacion:'Rehabilitación', estetica:'Estética', ortodoncia:'Ortodoncia', fotografia:'Fotografía', otro:'Otro' };
+  const fmt = (n) => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  container.innerHTML = treatments.map(t => `
+    <div class="table-row" style="grid-template-columns:1fr 140px 120px 80px 80px">
+      <div class="td" style="font-weight:500;">${t.nombre}</div>
+      <div class="td muted">${cats[t.categoria] || t.categoria}</div>
+      <div class="td" style="font-weight:500;color:var(--gold);">${fmt(t.precio)}</div>
+      <div class="td"><span class="badge badge-active">Activo</span></div>
+      <div class="td"><a class="card-link" onclick="deleteTreatment('${t.id}')">Eliminar</a></div>
+    </div>`).join('');
+}
+
+function openNewTreatmentModal() {
+  document.getElementById('tr-nombre').value = '';
+  document.getElementById('tr-precio').value = '';
+  document.getElementById('modal-new-treatment').classList.add('open');
+}
+
+async function saveTreatment() {
+  const nombre = document.getElementById('tr-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('tr-precio').value) || 0;
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  try {
+    const { error } = await db.from('treatments').insert([{ nombre, precio, categoria: document.getElementById('tr-categoria').value }]);
+    if (error) throw error;
+    showToast('Tratamiento guardado ✓', 'success');
+    closeModal('modal-new-treatment');
+    await loadTreatments();
+  } catch(e) { showToast('Error al guardar', 'error'); }
+}
+
+async function deleteTreatment(id) {
+  if (!confirm('¿Eliminar este tratamiento?')) return;
+  await db.from('treatments').update({ activo: false }).eq('id', id);
+  await loadTreatments();
+  showToast('Tratamiento eliminado', 'success');
+}
+
+// ===== GASTOS FIJOS =====
+function loadGastos() {
+  const stored = JSON.parse(localStorage.getItem('gastos_fijos') || '[]');
+  gastos = stored.length ? stored : [
+    { nombre: 'Renta', monto: 20000 },
+    { nombre: 'Asistente', monto: 8000 },
+    { nombre: 'Internet', monto: 500 },
+    { nombre: 'Luz', monto: 1500 }
+  ];
+  renderGastos();
+}
+
+function renderGastos() {
+  document.getElementById('gastos-list').innerHTML = gastos.map((g, i) => `
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+      <input type="text" value="${g.nombre}" onchange="gastos[${i}].nombre=this.value" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:4px;font-family:DM Sans,sans-serif;background:var(--cream);">
+      <input type="number" value="${g.monto}" onchange="gastos[${i}].monto=parseFloat(this.value)||0" style="width:120px;padding:10px 12px;border:1px solid var(--border);border-radius:4px;font-family:DM Sans,sans-serif;background:var(--cream);">
+      <button onclick="gastos.splice(${i},1);renderGastos()" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:18px;">✕</button>
+    </div>`).join('');
+}
+
+function addGasto() {
+  gastos.push({ nombre: 'Nuevo gasto', monto: 0 });
+  renderGastos();
+}
+
+function saveGastos() {
+  localStorage.setItem('gastos_fijos', JSON.stringify(gastos));
+  showToast('Gastos guardados ✓', 'success');
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard() {
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+    const { data } = await db.from('income').select('*').gte('created_at', start).lte('created_at', end);
+    const records = data || [];
+
+    const totalBruto = records.reduce((s, r) => s + (r.ingreso_bruto || 0), 0);
+    const totalDoctor = records.reduce((s, r) => s + (r.remanente_doctor || 0), 0);
+    const totalClinica = records.reduce((s, r) => s + (r.remanente_clinica || 0), 0);
+    const totalGastos = gastos.reduce((s, g) => s + g.monto, 0);
+    const utilidad = totalClinica - totalGastos;
+
+    const fmt = (n) => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    document.getElementById('dash-bruto').textContent = fmt(totalBruto);
+    document.getElementById('dash-doctor').textContent = fmt(totalDoctor);
+    document.getElementById('dash-gastos').textContent = fmt(totalGastos);
+    document.getElementById('dash-utilidad').textContent = fmt(utilidad);
+    document.getElementById('dash-utilidad').style.color = utilidad >= 0 ? 'var(--success)' : 'var(--error)';
+  } catch(e) { console.error(e); }
+}
+
+async function generateWeeklyCut() {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - dayOfWeek);
+  startOfWeek.setHours(0,0,0,0);
+
+  try {
+    const { data } = await db.from('income').select('*, patients(nombre,apellido), treatments(nombre)').gte('created_at', startOfWeek.toISOString());
+    const records = data || [];
+    const fmt = (n) => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    const totalBruto = records.reduce((s,r) => s+(r.ingreso_bruto||0), 0);
+    const totalDoctor = records.reduce((s,r) => s+(r.remanente_doctor||0), 0);
+    const totalClinica = records.reduce((s,r) => s+(r.remanente_clinica||0), 0);
+    const totalEquipo = records.reduce((s,r) => s+(r.remanente_equipo||0), 0);
+
+    document.getElementById('weekly-cut-body').innerHTML = `
+      <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+        <div style="font-family:Cormorant Garamond,serif;font-size:18px;margin-bottom:4px;">Corte del ${startOfWeek.toLocaleDateString('es-MX')} al ${now.toLocaleDateString('es-MX')}</div>
+        <div style="font-size:13px;color:var(--text-muted);">${records.length} cobros registrados</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">BRUTO</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;">${fmt(totalBruto)}</div></div>
+        <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">DOCTOR</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;color:var(--gold);">${fmt(totalDoctor)}</div></div>
+        <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">CLÍNICA</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;color:var(--success);">${fmt(totalClinica)}</div></div>
+        <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">EQUIPO</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;">${fmt(totalEquipo)}</div></div>
+      </div>
+      ${records.map(r => `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <div><span style="font-weight:500;">${r.patients?.nombre||''} ${r.patients?.apellido||''}</span> <span style="color:var(--text-muted);">— ${r.treatments?.nombre||'Sin tratamiento'}</span></div>
+          <div style="color:var(--gold);font-weight:500;">${fmt(r.remanente_doctor)}</div>
+        </div>`).join('')}`;
+  } catch(e) { showToast('Error generando corte', 'error'); }
+}
 
 // ============================================================
 // HISTORIAS CLÍNICAS
