@@ -2797,10 +2797,8 @@ function renderPatientsTable(filter = '') {
       <div class="td muted">${p.telefono || '—'}</div>
       <div class="td muted">${formatDate(p.created_at)}</div>
       <div class="td"><span class="badge badge-active">Activo</span></div>
-      <div class="td" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <a class="card-link" onclick="showPatientDetail('${p.id}')">Ver →</a>
-        <a class="card-link" style="color:var(--blue-mid);" onclick="openEditPatientModal('${p.id}')">Editar</a>
-        <a class="card-link" style="color:var(--error);" onclick="deletePatient('${p.id}','${p.nombre} ${p.apellido}')">Eliminar</a>
+      <div class="td">
+        <a class="card-link" onclick="showPatientDetail('${p.id}')">Ver expediente →</a>
       </div>
     </div>
   `).join('');
@@ -2926,7 +2924,7 @@ function showPatientDetail(id) {
   document.getElementById('patient-detail-content').innerHTML = `
     <div class="patient-detail-header">
       <div class="patient-detail-avatar">${getInitials(p.nombre, p.apellido)}</div>
-      <div class="patient-detail-info">
+      <div class="patient-detail-info" style="flex:1;">
         <h2>${p.nombre} ${p.apellido}</h2>
         <div class="patient-detail-meta">
           <div class="meta-item">Expediente: <strong>#${p.expediente}</strong></div>
@@ -2934,6 +2932,10 @@ function showPatientDetail(id) {
           ${p.sexo ? `<div class="meta-item">Sexo: <strong>${sexoMap[p.sexo]||p.sexo}</strong></div>` : ''}
           ${p.estado_civil ? `<div class="meta-item">Estado civil: <strong>${ecMap[p.estado_civil]||p.estado_civil}</strong></div>` : ''}
         </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-shrink:0;">
+        <button class="btn-new" onclick="openEditPatientModal('${p.id}')">✏️ Editar</button>
+        <button class="btn-new" style="color:var(--error);border-color:var(--error);" onclick="deletePatient('${p.id}','${p.nombre} ${p.apellido}')">🗑️ Eliminar</button>
       </div>
     </div>
 
