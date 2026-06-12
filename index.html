@@ -4426,10 +4426,6 @@ function renderDoctorCard(d) {
         <span class="doctor-row-label">Especialidad</span>
         <span class="doctor-row-val">${especialidades || '<span style="color:var(--text-muted)">—</span>'}</span>
       </div>
-      <div class="doctor-row" style="opacity:.7;font-size:12px;">
-        <span class="doctor-row-label" style="font-size:10px;">Nacimiento</span>
-        <span class="doctor-row-val" style="color:var(--text-muted);font-size:12px;">${d.fecha_nac || '—'}${edad ? ' · ' + edad : ''}</span>
-      </div>
       <div class="doctor-row">
         <span class="doctor-row-label">RFC</span>
         <span class="doctor-row-val" style="font-family:monospace;">${d.rfc || '—'}</span>
@@ -4438,6 +4434,10 @@ function renderDoctorCard(d) {
         <span class="doctor-row-label">Notas</span>
         <span class="doctor-row-val" style="color:var(--text-muted);">${d.notas}</span>
       </div>` : ''}
+      <div class="doctor-row" style="opacity:.55;border-bottom:none;padding-top:4px;">
+        <span class="doctor-row-label" style="font-size:10px;">Nacimiento</span>
+        <span class="doctor-row-val" style="color:var(--text-muted);font-size:11px;">${d.fecha_nac || '—'}${edad ? ' · ' + edad : ''}</span>
+      </div>
     </div>
     <div class="doctor-card-actions">
       <button class="doctor-action-btn" onclick="openDoctorModal('${d.id}')" title="Editar">✏️ Editar</button>
@@ -4908,6 +4908,42 @@ function getCumpleaniosHoy() {
   return lista;
 }
 
+function getCumpleaniosMes() {
+  // Todos los que cumplen este mes (excluyendo los de hoy)
+  const hoy = new Date();
+  const mesActual = hoy.getMonth() + 1;
+  const diaHoy   = hoy.getDate();
+  const lista = [];
+  const waSet = getWASet();
+
+  function parseMesDia(fechaStr) {
+    if (!fechaStr) return null;
+    if (fechaStr.includes('/') && fechaStr.indexOf('/') === 2) {
+      const [d, m] = fechaStr.split('/');
+      return { d: parseInt(d), m: parseInt(m) };
+    } else if (fechaStr.includes('-')) {
+      const parts = fechaStr.split('-');
+      return { d: parseInt(parts[2]), m: parseInt(parts[1]) };
+    }
+    return null;
+  }
+
+  (window.patients || []).forEach(p => {
+    const r = parseMesDia(p.fecha_nacimiento);
+    if (!r || r.m !== mesActual || r.d === diaHoy) return;
+    lista.push({ nombre: p.nombre + ' ' + p.apellido, dia: r.d, tipo: 'pac',
+      edad: calcEdadCumple(p.fecha_nacimiento), telefono: p.telefono || '' });
+  });
+  getDoctors().forEach(d => {
+    const r = parseMesDia(d.fecha_nac);
+    if (!r || r.m !== mesActual || r.d === diaHoy) return;
+    lista.push({ nombre: (d.titulo||'Dr.') + ' ' + d.nombre + ' ' + d.apellido,
+      dia: r.d, tipo: 'doc', edad: calcEdadCumple(d.fecha_nac), telefono: '' });
+  });
+
+  return lista.sort((a, b) => a.dia - b.dia);
+}
+
 function calcEdadCumple(fechaStr) {
   if (!fechaStr) return null;
   let b;
@@ -4983,9 +5019,31 @@ function openCumpleanosModal() {
       <div class="modal-body" style="padding:0 24px;">
         ${items}
       </div>
-      ${lista.length ? `<div class="modal-footer" style="justify-content:center;font-size:12px;color:var(--text-muted);">
+      ${lista.length ? `<div style="padding:6px 24px 0;text-align:center;font-size:11px;color:var(--text-muted);">
         ${lista.length} cumpleaños hoy
       </div>` : ''}
+
+      <!-- SECCIÓN DEL MES -->
+      ${(() => {
+        const mes = getCumpleaniosMes();
+        if (!mes.length) return '';
+        const mesNombre = new Date().toLocaleDateString('es-MX',{month:'long'});
+        const filas = mes.map(c => {
+          const icon = c.tipo === 'doc' ? '👨‍⚕️' : '👤';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:11px;font-weight:700;color:var(--blue-mid);width:22px;text-align:center;">${c.dia}</span>
+            <span style="font-size:13px;">${icon}</span>
+            <span style="font-size:12px;flex:1;">${c.nombre}${c.edad ? ' <span style="color:var(--text-muted);">· '+c.edad+' años</span>' : ''}</span>
+            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">${c.tipo==='doc'?'Doctor':'Paciente'}</span>
+          </div>`;
+        }).join('');
+        return `<div style="border-top:2px solid var(--border);margin-top:12px;padding:14px 24px 0;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px;">
+            🗓 Resto del mes de ${mesNombre}
+          </div>
+          <div style="max-height:200px;overflow-y:auto;">${filas}</div>
+        </div>`;
+      })()}
     </div>`;
 
   document.body.appendChild(m);
