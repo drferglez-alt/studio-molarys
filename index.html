@@ -2641,7 +2641,8 @@ async function loadPatients() {
     const { data, error } = await db
       .from('patients')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('expediente', { ascending: true })
+      .limit(1000);
 
     if (error) throw error;
     patients = data || [];
