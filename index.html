@@ -1123,6 +1123,43 @@
     flex-shrink: 0;
   }
 
+  /* Avatar con foto */
+  .patient-detail-avatar { position: relative; cursor: pointer; overflow: hidden; }
+  .patient-detail-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; position:absolute; inset:0; }
+  .avatar-upload-overlay {
+    position:absolute; inset:0; border-radius:50%;
+    background:rgba(0,0,0,0.45); color:#fff; font-size:11px; font-weight:600;
+    display:none; align-items:center; justify-content:center; text-align:center;
+    cursor:pointer; line-height:1.3;
+  }
+  .patient-detail-avatar:hover .avatar-upload-overlay { display:flex; }
+
+  /* Sección archivos clínicos */
+  .archivos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px; padding: 16px;
+  }
+  .archivo-card {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; background: var(--cream); cursor: pointer;
+    transition: box-shadow .15s, transform .1s;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .archivo-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-1px); }
+  .archivo-card-icon { font-size: 28px; text-align: center; }
+  .archivo-card-name { font-size: 12px; font-weight: 600; color: var(--text-primary); word-break: break-word; }
+  .archivo-card-type { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+  .archivo-card-actions { display:flex; gap:6px; margin-top:4px; }
+  .archivo-btn-open {
+    flex:1; background:var(--blue-deep); color:#fff; border:none;
+    border-radius:6px; padding:5px; font-size:11px; cursor:pointer;
+  }
+  .archivo-btn-del {
+    background:#fee2e2; color:#dc2626; border:none;
+    border-radius:6px; padding:5px 8px; font-size:11px; cursor:pointer;
+  }
+
   .patient-detail-info h2 {
     font-family: 'Cormorant Garamond', serif;
     font-size: 28px;
@@ -2979,7 +3016,10 @@ function renderDashboardPatients() {
   const recent = patients.slice(0, 5);
   container.innerHTML = recent.map(p => `
     <div class="patient-item" onclick="showModule('patients')">
-      <div class="patient-avatar">${getInitials(p.nombre, p.apellido)}</div>
+      <div class="patient-avatar" style="position:relative;overflow:hidden;">
+        ${(()=>{ const m=JSON.parse(localStorage.getItem('molarys_avatars')||'{}'); const u=m[p.id]; return u ? \`<img src="\${u}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" onerror="this.style.display=\'none\'">\` : ''; })()}
+        <span style="position:relative;z-index:1;">${getInitials(p.nombre, p.apellido)}</span>
+      </div>
       <div class="patient-info">
         <div class="patient-name">${p.nombre} ${p.apellido}</div>
         <div class="patient-detail">${p.telefono || 'Sin teléfono'} · ${p.email || 'Sin correo'}</div>
@@ -3262,7 +3302,11 @@ function showPatientDetail(id) {
     <div class="card" style="margin-bottom:20px;padding:28px 32px;">
       <div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;">
         <!-- Avatar -->
-        <div class="patient-detail-avatar">${getInitials(p.nombre, p.apellido)}</div>
+        <div class="patient-detail-avatar" id="patient-avatar-wrap" onclick="triggerAvatarUpload('${p.id}')" title="Click para cambiar foto">
+          ${getAvatarContent(p)}
+          <div class="avatar-upload-overlay">📷<br>Cambiar<br>foto</div>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="uploadAvatar(event,'${p.id}')">
 
         <!-- Info principal -->
         <div style="flex:1;min-width:200px;">
@@ -3359,6 +3403,25 @@ function showPatientDetail(id) {
       </div>
     </div>
 
+    <!-- ARCHIVOS CLÍNICOS -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">📁 Archivos Clínicos</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="openDriveFolder('${p.id}')">
+            🗂 Google Drive
+          </button>
+          <button class="btn-gold" style="padding:6px 14px;font-size:12px;" onclick="openAddArchivoModal('${p.id}')">+ Agregar link</button>
+        </div>
+      </div>
+      <div id="drive-folder-row-${p.id}" style="padding:12px 16px 0;">
+        ${getDriveFolderHTML(p.id)}
+      </div>
+      <div id="archivos-grid-${p.id}" class="archivos-grid">
+        <div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:16px;font-size:13px;">Sin archivos registrados</div>
+      </div>
+    </div>
+
     <!-- HISTORIAL DE PAGOS -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
@@ -3372,6 +3435,7 @@ function showPatientDetail(id) {
   loadPatientHistories(id);
   loadPatientPayments(id);
   loadPatientRFC(id);
+  loadPatientArchivos(id);
 }
 
 async function loadPatientHistories(patientId) {
@@ -3638,6 +3702,260 @@ async function deleteRFC(rfcId) {
 // ============================================================
 // PATIENT PAYMENTS
 // ============================================================
+// ══════════════════════════════════════════
+// FOTO DE PERFIL — Supabase Storage
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://wcykfilqrpvaclrtyjbh.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_tTdInog007Dq1WZyQGpHHg_q75CCBlF';
+
+function getAvatarContent(p) {
+  const map = JSON.parse(localStorage.getItem('molarys_avatars') || '{}');
+  const url = map[p.id];
+  if (url) {
+    return `<img src="${url}" alt="${p.nombre}" onerror="this.style.display='none'">
+            <span style="position:relative;z-index:1;">${getInitials(p.nombre, p.apellido)}</span>`;
+  }
+  return `<span>${getInitials(p.nombre, p.apellido)}</span>`;
+}
+
+function triggerAvatarUpload(patientId) {
+  const inp = document.getElementById('avatar-file-input');
+  if (inp) inp.click();
+}
+
+async function uploadAvatar(event, patientId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { showToast('La imagen debe ser menor a 3MB', 'error'); return; }
+
+  showToast('Subiendo foto...', 'info');
+  const ext = file.name.split('.').pop();
+  const path = `avatars/${patientId}.${ext}`;
+
+  try {
+    // Subir a Supabase Storage bucket "patient-files"
+    const formData = new FormData();
+    formData.append('', file);
+
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/patient-files/${path}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${(await db.auth.getSession()).data.session?.access_token}`,
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+
+    if (!res.ok) {
+      // Fallback: guardar como Data URL en localStorage (sin bucket)
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const map = JSON.parse(localStorage.getItem('molarys_avatars') || '{}');
+        map[patientId] = e.target.result;
+        localStorage.setItem('molarys_avatars', JSON.stringify(map));
+        // Actualizar avatar visualmente
+        const wrap = document.getElementById('patient-avatar-wrap');
+        if (wrap) {
+          const img = wrap.querySelector('img') || document.createElement('img');
+          img.src = e.target.result;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;';
+          if (!wrap.querySelector('img')) wrap.insertBefore(img, wrap.firstChild);
+        }
+        showToast('Foto guardada ✓', 'success');
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const pubUrl = `${SUPABASE_URL}/storage/v1/object/public/patient-files/${path}`;
+    const map = JSON.parse(localStorage.getItem('molarys_avatars') || '{}');
+    map[patientId] = pubUrl;
+    localStorage.setItem('molarys_avatars', JSON.stringify(map));
+
+    // Actualizar en BD también
+    await db.from('patients').update({ foto_perfil: pubUrl }).eq('id', patientId);
+
+    const wrap = document.getElementById('patient-avatar-wrap');
+    if (wrap) {
+      let img = wrap.querySelector('img');
+      if (!img) { img = document.createElement('img'); wrap.insertBefore(img, wrap.firstChild); }
+      img.src = pubUrl;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;';
+    }
+    showToast('Foto de perfil actualizada ✓', 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('Error al subir la foto', 'error');
+  }
+  event.target.value = '';
+}
+
+// ══════════════════════════════════════════
+// ARCHIVOS CLÍNICOS — Links + Drive
+// ══════════════════════════════════════════
+function getArchivoIcon(tipo) {
+  const icons = { foto:'📷', radiografia:'🦴', stl:'🦷', ply:'🦷', pdf:'📄', video:'🎬', otro:'📎' };
+  return icons[tipo] || '📎';
+}
+
+function getDriveFolderHTML(patientId) {
+  const map = JSON.parse(localStorage.getItem('molarys_drive_folders') || '{}');
+  const url = map[patientId];
+  if (url) {
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--cream);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
+      <span style="font-size:18px;">📂</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Carpeta Google Drive</div>
+        <a href="${url}" target="_blank" style="font-size:12px;color:var(--blue-mid);text-decoration:none;word-break:break-all;">${url}</a>
+      </div>
+      <button onclick="editDriveFolder('${patientId}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;">✏️</button>
+    </div>`;
+  }
+  return `<button onclick="editDriveFolder('${patientId}')" style="
+    background:none;border:2px dashed var(--border);border-radius:8px;
+    padding:10px 16px;font-size:12px;color:var(--text-muted);cursor:pointer;
+    width:100%;text-align:left;margin-bottom:4px;">
+    📂 Vincular carpeta de Google Drive de este paciente...
+  </button>`;
+}
+
+function editDriveFolder(patientId) {
+  const map = JSON.parse(localStorage.getItem('molarys_drive_folders') || '{}');
+  const current = map[patientId] || '';
+  const url = prompt('Pega el link de la carpeta de Google Drive para este paciente:', current);
+  if (url === null) return;
+  if (url.trim()) {
+    map[patientId] = url.trim();
+  } else {
+    delete map[patientId];
+  }
+  localStorage.setItem('molarys_drive_folders', JSON.stringify(map));
+  const row = document.getElementById(`drive-folder-row-${patientId}`);
+  if (row) row.innerHTML = getDriveFolderHTML(patientId);
+}
+
+function openDriveFolder(patientId) {
+  const map = JSON.parse(localStorage.getItem('molarys_drive_folders') || '{}');
+  const url = map[patientId];
+  if (url) { window.open(url, '_blank'); }
+  else { editDriveFolder(patientId); }
+}
+
+function getPatientArchivos(patientId) {
+  const all = JSON.parse(localStorage.getItem('molarys_archivos') || '{}');
+  return all[patientId] || [];
+}
+function savePatientArchivos(patientId, lista) {
+  const all = JSON.parse(localStorage.getItem('molarys_archivos') || '{}');
+  all[patientId] = lista;
+  localStorage.setItem('molarys_archivos', JSON.stringify(all));
+}
+
+function loadPatientArchivos(patientId) {
+  const grid = document.getElementById(`archivos-grid-${patientId}`);
+  if (!grid) return;
+  const archivos = getPatientArchivos(patientId);
+  if (archivos.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;font-size:13px;">Sin archivos registrados.<br><span style="font-size:11px;">Agrega links de Google Drive, fotos o radiografías.</span></div>`;
+    return;
+  }
+  grid.innerHTML = archivos.map((a, i) => `
+    <div class="archivo-card">
+      <div class="archivo-card-icon">${getArchivoIcon(a.tipo)}</div>
+      <div class="archivo-card-name">${a.nombre}</div>
+      <div class="archivo-card-type">${a.tipo.toUpperCase()}${a.fecha ? ' · ' + a.fecha : ''}</div>
+      ${a.notas ? `<div style="font-size:11px;color:var(--text-muted);">${a.notas}</div>` : ''}
+      <div class="archivo-card-actions">
+        <button class="archivo-btn-open" onclick="window.open('${a.url}','_blank')">🔗 Abrir</button>
+        <button class="archivo-btn-del" onclick="deleteArchivo('${patientId}',${i})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteArchivo(patientId, idx) {
+  if (!confirm('¿Eliminar este archivo?')) return;
+  const lista = getPatientArchivos(patientId);
+  lista.splice(idx, 1);
+  savePatientArchivos(patientId, lista);
+  loadPatientArchivos(patientId);
+}
+
+function openAddArchivoModal(patientId) {
+  let m = document.getElementById('modal-add-archivo');
+  if (m) m.remove();
+
+  m = document.createElement('div');
+  m.id = 'modal-add-archivo';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header">
+        <div class="modal-title">📎 Agregar archivo / link</div>
+        <button class="modal-close" onclick="document.getElementById('modal-add-archivo').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>Nombre del archivo *</label>
+          <input id="arch-nombre" type="text" placeholder="Ej: Radiografía panorámica inicial">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Tipo</label>
+            <select id="arch-tipo">
+              <option value="foto">📷 Fotografía</option>
+              <option value="radiografia">🦴 Radiografía</option>
+              <option value="stl">🦷 STL (escáner)</option>
+              <option value="ply">🦷 PLY (3D)</option>
+              <option value="pdf">📄 PDF / Documento</option>
+              <option value="video">🎬 Video</option>
+              <option value="otro">📎 Otro</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Fecha</label>
+            <input id="arch-fecha" type="date" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Link de Google Drive *</label>
+          <input id="arch-url" type="url" placeholder="https://drive.google.com/file/d/...">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">En Google Drive: clic derecho → Obtener enlace → Copiar enlace</div>
+        </div>
+        <div class="form-field">
+          <label>Notas (opcional)</label>
+          <input id="arch-notas" type="text" placeholder="Observaciones...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-add-archivo').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="saveArchivo('${patientId}')">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+  document.getElementById('arch-nombre').focus();
+}
+
+function saveArchivo(patientId) {
+  const nombre = document.getElementById('arch-nombre').value.trim();
+  const url    = document.getElementById('arch-url').value.trim();
+  if (!nombre || !url) { showToast('Nombre y link son obligatorios', 'error'); return; }
+
+  const archivo = {
+    nombre,
+    tipo:  document.getElementById('arch-tipo').value,
+    fecha: document.getElementById('arch-fecha').value,
+    url,
+    notas: document.getElementById('arch-notas').value.trim(),
+  };
+  const lista = getPatientArchivos(patientId);
+  lista.unshift(archivo); // más reciente primero
+  savePatientArchivos(patientId, lista);
+  loadPatientArchivos(patientId);
+  document.getElementById('modal-add-archivo').remove();
+  showToast('Archivo agregado ✓', 'success');
+}
+
 async function loadPatientPayments(patientId) {
   const container = document.getElementById('patient-payments-list');
   if (!container) return;
