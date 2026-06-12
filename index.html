@@ -3258,7 +3258,7 @@ function showModule(module) {
   currentModule = module;
 
   // Load data per module
-  if (module === 'catalog') renderCatalog();
+  if (module === 'catalog') { loadTreatments().then(() => renderCatalog()); }
   if (module === 'doctors') loadDoctors();
   if (module === 'agenda') setTimeout(() => loadGoogleEvents(), 100);
   if (module === 'users') loadUsers();
@@ -4469,19 +4469,20 @@ const CATALOG_CATS_SERV = [
 const CATALOG_CATS_PROD = ['Higiene', 'Medicamento', 'Material', 'Equipo', 'Otro'];
 
 function getCatalog() {
+  // Supabase treatments son la fuente principal
+  const fromSupabase = (window.treatments || []).map(t => ({
+    id: 'sup_' + t.id, supaId: t.id,
+    tipo: 'servicio', nombre: t.nombre,
+    categoria: t.categoria || 'General',
+    precio: t.precio || 0,
+    descripcion: t.descripcion || '',
+    activo: true
+  }));
+  // Agregar los creados localmente que aún no existen en Supabase
   const local = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
-  // Mezclar con treatments de Supabase (los que ya existen)
-  const supaIds = local.map(x => x.supaId).filter(Boolean);
-  const extras = (window.treatments || [])
-    .filter(t => !supaIds.includes(t.id))
-    .map(t => ({
-      id: 'sup_' + t.id, supaId: t.id,
-      tipo: 'servicio', nombre: t.nombre,
-      categoria: t.categoria || 'Otro',
-      precio: t.precio || 0,
-      descripcion: '', activo: true
-    }));
-  return [...local, ...extras];
+  const supaIds = fromSupabase.map(x => x.supaId);
+  const soloLocal = local.filter(x => !x.supaId || !supaIds.includes(x.supaId));
+  return [...fromSupabase, ...soloLocal];
 }
 
 function saveCatalogItem(item) {
