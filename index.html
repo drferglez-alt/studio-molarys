@@ -2729,14 +2729,24 @@ function filterPatients() {
 }
 
 function updateStats() {
-  document.getElementById('stat-patients').textContent = patients.length;
+  const sp = document.getElementById('stat-patients');
+  if (sp) sp.textContent = patients.length;
+  const sn = document.getElementById('stat-new');
+  if (sn) {
+    const now = new Date();
+    const thisMonth = patients.filter(p => {
+      const d = new Date(p.created_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    sn.textContent = thisMonth.length;
+  }
+  const si = document.getElementById('stat-income');
+  if (si) si.textContent = '$0';
+}
 
-  const now = new Date();
-  const thisMonth = patients.filter(p => {
-    const d = new Date(p.created_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-  document.getElementById('stat-new').textContent = thisMonth.length;
+
+function viewHistory(id) {
+  showModule('histories');
 }
 
 // ============================================================
@@ -3143,7 +3153,7 @@ function renderDashboardAgenda() {
     return new Date(s).toDateString() === today;
   }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
-  document.getElementById('stat-today').textContent = todayEvs.length;
+  const st = document.getElementById('stat-today'); if (st) st.textContent = todayEvs.length;
 
   if (!todayEvs.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas hoy</h3><p>No tienes citas programadas para hoy</p></div>';
