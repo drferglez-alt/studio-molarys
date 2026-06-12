@@ -809,6 +809,64 @@
   .patient-row-clickable:hover { background: var(--blue-xpale) !important; }
   .patient-row-clickable:hover .patient-exp { color: var(--blue-deep); }
 
+  /* ── Módulo Servicios & Productos ── */
+  .catalog-tabs {
+    display: flex; gap: 4px; background: var(--cream);
+    border-radius: 10px; padding: 4px; width: fit-content; margin-bottom: 20px;
+  }
+  .catalog-tab {
+    padding: 7px 20px; border-radius: 8px; border: none; background: none;
+    font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-secondary);
+    transition: all .15s;
+  }
+  .catalog-tab.active { background: #fff; color: var(--blue-deep); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .catalog-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;
+  }
+  .catalog-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; position: relative; transition: box-shadow .15s, transform .1s;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .catalog-card:hover { box-shadow: 0 4px 14px rgba(45,58,82,.1); transform: translateY(-1px); }
+  .catalog-card-cat {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--blue-mid);
+  }
+  .catalog-card-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .catalog-card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .catalog-card-price {
+    font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600;
+    color: var(--blue-deep); margin-top: 4px;
+  }
+  .catalog-card-actions {
+    display: flex; gap: 6px; margin-top: 4px;
+    opacity: 0; transition: opacity .15s;
+  }
+  .catalog-card:hover .catalog-card-actions { opacity: 1; }
+  .catalog-edit-btn {
+    flex: 1; background: var(--cream); border: none; border-radius: 7px;
+    padding: 6px; font-size: 12px; cursor: pointer; color: var(--blue-deep);
+    font-weight: 500; transition: background .1s;
+  }
+  .catalog-edit-btn:hover { background: var(--blue-pale); }
+  .catalog-del-btn {
+    background: #fee2e2; border: none; border-radius: 7px;
+    padding: 6px 10px; font-size: 12px; cursor: pointer; color: #dc2626;
+  }
+  .catalog-badge-prod {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(245,158,11,.12); color: #b45309;
+    border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 600;
+    text-transform: uppercase;
+  }
+  .catalog-badge-serv {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(91,123,168,.12); color: var(--blue-deep);
+    border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 600;
+    text-transform: uppercase;
+  }
+
   /* ── Modal Cumpleaños ── */
   .cumple-item {
     display: flex; align-items: center; gap: 14px;
@@ -1700,6 +1758,9 @@
         <a class="nav-item" onclick="showModule('doctors')" id="nav-doctors">
           <span class="nav-icon">👨‍⚕️</span> Doctores
         </a>
+        <a class="nav-item" onclick="showModule('catalog')" id="nav-catalog">
+          <span class="nav-icon">🏷️</span> Servicios & Productos
+        </a>
         <a class="nav-item" onclick="showModule('patients')" id="nav-patients">
           <span class="nav-icon">👤</span> Pacientes
         </a>
@@ -1780,6 +1841,11 @@
             <button class="dash-card" onclick="showModule('doctors')">
               <div class="dash-card-icon">👨‍⚕️</div>
               <div class="dash-card-label">Doctores</div>
+            </button>
+
+            <button class="dash-card" onclick="showModule('catalog')">
+              <div class="dash-card-icon">🏷️</div>
+              <div class="dash-card-label">Servicios & Productos</div>
             </button>
 
             <button class="dash-card" onclick="showModule('patients')">
@@ -2474,6 +2540,37 @@
         </div>
 
         <!-- USUARIOS -->
+        <!-- MÓDULO SERVICIOS & PRODUCTOS -->
+        <div class="module-page" id="module-catalog">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-family:Cormorant Garamond,serif;font-size:22px;">Servicios & Productos</div>
+              <div style="font-size:13px;color:var(--text-muted);">Lista de precios del consultorio</div>
+            </div>
+            <button class="btn-new" onclick="openCatalogItemModal()">+ Agregar</button>
+          </div>
+
+          <!-- Búsqueda + tabs -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+            <input type="text" class="search-input" id="catalog-search" placeholder="Buscar servicio o producto..."
+                   oninput="renderCatalog()" style="max-width:280px;">
+            <div class="catalog-tabs">
+              <button class="catalog-tab active" id="ctab-all"    onclick="setCatalogTab('all')">Todos</button>
+              <button class="catalog-tab"         id="ctab-serv"  onclick="setCatalogTab('servicio')">🦷 Servicios</button>
+              <button class="catalog-tab"         id="ctab-prod"  onclick="setCatalogTab('producto')">📦 Productos</button>
+            </div>
+          </div>
+
+          <div class="catalog-grid" id="catalog-grid">
+            <div class="empty-state" style="grid-column:1/-1;">
+              <div class="empty-state-icon">🏷️</div>
+              <h3>Sin servicios registrados</h3>
+              <p>Agrega tus servicios y lista de precios</p>
+              <button class="btn-gold" onclick="openCatalogItemModal()">+ Agregar servicio</button>
+            </div>
+          </div>
+        </div>
+
         <!-- MÓDULO DOCTORES -->
         <div class="module-page" id="module-doctors">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
@@ -3147,6 +3244,7 @@ function showModule(module) {
   // Update topbar
   const titles = {
     dashboard: 'Dashboard',
+    catalog: 'Servicios & Productos',
     doctors: 'Doctores',
     patients: 'Pacientes',
     histories: 'Historias Clínicas',
@@ -3160,6 +3258,7 @@ function showModule(module) {
   currentModule = module;
 
   // Load data per module
+  if (module === 'catalog') renderCatalog();
   if (module === 'doctors') loadDoctors();
   if (module === 'agenda') setTimeout(() => loadGoogleEvents(), 100);
   if (module === 'users') loadUsers();
@@ -4354,6 +4453,218 @@ function saveArchivo(patientId) {
   loadPatientArchivos(patientId);
   document.getElementById('modal-add-archivo').remove();
   showToast('Archivo agregado ✓', 'success');
+}
+
+// ══════════════════════════════════════════
+// MÓDULO SERVICIOS & PRODUCTOS
+// localStorage: molarys_catalog = [{id, tipo:'servicio'|'producto', nombre, categoria, precio, descripcion, activo}]
+// ══════════════════════════════════════════
+let _catalogTab = 'all';
+
+const CATALOG_CATS_SERV = [
+  'Diagnóstico', 'Limpieza', 'Restauraciones', 'Endodoncia',
+  'Cirugía Oral', 'Implantología', 'Ortodoncia', 'Estética',
+  'Rehabilitación', 'Fotografía', 'Otro'
+];
+const CATALOG_CATS_PROD = ['Higiene', 'Medicamento', 'Material', 'Equipo', 'Otro'];
+
+function getCatalog() {
+  const local = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
+  // Mezclar con treatments de Supabase (los que ya existen)
+  const supaIds = local.map(x => x.supaId).filter(Boolean);
+  const extras = (window.treatments || [])
+    .filter(t => !supaIds.includes(t.id))
+    .map(t => ({
+      id: 'sup_' + t.id, supaId: t.id,
+      tipo: 'servicio', nombre: t.nombre,
+      categoria: t.categoria || 'Otro',
+      precio: t.precio || 0,
+      descripcion: '', activo: true
+    }));
+  return [...local, ...extras];
+}
+
+function saveCatalogItem(item) {
+  const list = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
+  const idx = list.findIndex(x => x.id === item.id);
+  if (idx >= 0) list[idx] = item;
+  else list.push(item);
+  localStorage.setItem('molarys_catalog', JSON.stringify(list));
+}
+
+function deleteCatalogItem(id) {
+  const list = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
+  localStorage.setItem('molarys_catalog', JSON.stringify(list.filter(x => x.id !== id)));
+}
+
+function setCatalogTab(tab) {
+  _catalogTab = tab;
+  ['all','serv','prod'].forEach(t => {
+    const el = document.getElementById('ctab-' + t);
+    if (el) el.classList.toggle('active', (tab === 'all' && t === 'all') || tab === t.replace('serv','servicio').replace('prod','producto'));
+  });
+  document.getElementById('ctab-all')?.classList.toggle('active', tab === 'all');
+  document.getElementById('ctab-serv')?.classList.toggle('active', tab === 'servicio');
+  document.getElementById('ctab-prod')?.classList.toggle('active', tab === 'producto');
+  renderCatalog();
+}
+
+function renderCatalog() {
+  const grid = document.getElementById('catalog-grid');
+  if (!grid) return;
+  const q = (document.getElementById('catalog-search')?.value || '').toLowerCase();
+  const fmt = n => '$' + (parseFloat(n)||0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  let list = getCatalog().filter(x => x.activo !== false);
+  if (_catalogTab !== 'all') list = list.filter(x => x.tipo === _catalogTab);
+  if (q) list = list.filter(x => (x.nombre+x.categoria+x.descripcion).toLowerCase().includes(q));
+
+  // Agrupar por categoría
+  const grupos = {};
+  list.forEach(item => {
+    const cat = item.categoria || 'Otro';
+    if (!grupos[cat]) grupos[cat] = [];
+    grupos[cat].push(item);
+  });
+
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      <div class="empty-state-icon">🏷️</div>
+      <h3>${q ? 'Sin resultados' : 'Sin elementos'}</h3>
+      <p>${q ? 'Intenta con otro término' : 'Agrega tu primer servicio o producto'}</p>
+      ${!q ? '<button class="btn-gold" onclick="openCatalogItemModal()">+ Agregar</button>' : ''}
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = Object.entries(grupos).map(([cat, items]) => `
+    <div style="grid-column:1/-1;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+                  color:var(--text-muted);margin-bottom:12px;padding-bottom:6px;
+                  border-bottom:2px solid var(--border);">
+        ${cat} <span style="font-weight:400;opacity:.6;">(${items.length})</span>
+      </div>
+    </div>
+    ${items.map(item => `
+    <div class="catalog-card">
+      <span class="${item.tipo === 'producto' ? 'catalog-badge-prod' : 'catalog-badge-serv'}">
+        ${item.tipo === 'producto' ? '📦 Producto' : '🦷 Servicio'}
+      </span>
+      <div class="catalog-card-cat">${item.categoria}</div>
+      <div class="catalog-card-name">${item.nombre}</div>
+      ${item.descripcion ? `<div class="catalog-card-desc">${item.descripcion}</div>` : ''}
+      <div class="catalog-card-price">${fmt(item.precio)}</div>
+      <div class="catalog-card-actions">
+        <button class="catalog-edit-btn" onclick="openCatalogItemModal('${item.id}')">✏️ Editar</button>
+        <button class="catalog-del-btn" onclick="confirmDeleteCatalog('${item.id}')">🗑</button>
+      </div>
+    </div>`).join('')}
+  `).join('');
+}
+
+function confirmDeleteCatalog(id) {
+  const item = getCatalog().find(x => x.id === id);
+  if (!confirm(`¿Eliminar "${item?.nombre}"?`)) return;
+  deleteCatalogItem(id);
+  renderCatalog();
+  showToast('Eliminado ✓', 'success');
+}
+
+function openCatalogItemModal(editId) {
+  const list = getCatalog();
+  const item = editId ? list.find(x => x.id === editId) : null;
+
+  let m = document.getElementById('modal-catalog-item');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-catalog-item';
+  m.className = 'modal-overlay open';
+
+  const tipo = item?.tipo || 'servicio';
+  const cats = tipo === 'producto' ? CATALOG_CATS_PROD : CATALOG_CATS_SERV;
+  const catsOpts = cats.map(c => `<option value="${c}" ${(item?.categoria||'Otro')===c?'selected':''}>${c}</option>`).join('');
+
+  m.innerHTML = `
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header">
+        <div class="modal-title">${item ? '✏️ Editar' : '+ Nuevo Servicio / Producto'}</div>
+        <button class="modal-close" onclick="document.getElementById('modal-catalog-item').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>Tipo</label>
+          <div style="display:flex;gap:10px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+              <input type="radio" name="cat-tipo" value="servicio" ${tipo==='servicio'?'checked':''} onchange="refreshCatalogCats()"> 🦷 Servicio
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+              <input type="radio" name="cat-tipo" value="producto" ${tipo==='producto'?'checked':''} onchange="refreshCatalogCats()"> 📦 Producto
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex:2;">
+            <label>Nombre *</label>
+            <input id="cat-nombre" type="text" placeholder="Ej: Limpieza dental" value="${item?.nombre||''}">
+          </div>
+          <div class="form-field">
+            <label>Precio *</label>
+            <input id="cat-precio" type="number" min="0" placeholder="0.00" value="${item?.precio||''}">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Categoría</label>
+          <select id="cat-categoria">${catsOpts}</select>
+        </div>
+        <div class="form-field">
+          <label>Descripción <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
+          <textarea id="cat-desc" rows="2" placeholder="Breve descripción del servicio...">${item?.descripcion||''}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-catalog-item').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="saveCatalogItemModal('${editId||''}')">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target===m) m.remove(); };
+  document.getElementById('cat-nombre').focus();
+}
+
+function refreshCatalogCats() {
+  const tipo = document.querySelector('input[name="cat-tipo"]:checked')?.value || 'servicio';
+  const cats = tipo === 'producto' ? CATALOG_CATS_PROD : CATALOG_CATS_SERV;
+  const sel = document.getElementById('cat-categoria');
+  if (sel) sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function saveCatalogItemModal(editId) {
+  const nombre = document.getElementById('cat-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('cat-precio').value) || 0;
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+
+  const tipo = document.querySelector('input[name="cat-tipo"]:checked')?.value || 'servicio';
+  const item = {
+    id: editId || ('cat_' + Date.now()),
+    tipo, nombre,
+    precio,
+    categoria: document.getElementById('cat-categoria').value,
+    descripcion: document.getElementById('cat-desc').value.trim(),
+    activo: true
+  };
+
+  saveCatalogItem(item);
+
+  // También guardar en Supabase treatments si es servicio
+  if (tipo === 'servicio') {
+    db.from('treatments').upsert([{ nombre, precio, categoria: item.categoria }]).then(() => {
+      loadTreatments();
+    }).catch(() => {});
+  }
+
+  document.getElementById('modal-catalog-item').remove();
+  renderCatalog();
+  showToast(editId ? 'Actualizado ✓' : 'Agregado ✓', 'success');
 }
 
 // ══════════════════════════════════════════
