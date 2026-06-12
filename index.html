@@ -809,6 +809,46 @@
   .patient-row-clickable:hover { background: var(--blue-xpale) !important; }
   .patient-row-clickable:hover .patient-exp { color: var(--blue-deep); }
 
+  /* Notas de Evolución */
+  .evol-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .evol-table th {
+    background:var(--cream); color:var(--text-secondary); font-size:11px;
+    text-transform:uppercase; letter-spacing:.8px; font-weight:600;
+    padding:10px 14px; text-align:left; border-bottom:2px solid var(--border);
+  }
+  .evol-table td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .evol-table tr:last-child td { border-bottom:none; }
+  .evol-table tr:hover td { background:var(--blue-xpale); }
+  .evol-pago-si {
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(39,174,96,.12);color:#1a7a40;border:1px solid rgba(39,174,96,.3);
+    border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;
+  }
+  .evol-pago-no {
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(220,38,38,.08);color:#dc2626;border:1px solid rgba(220,38,38,.2);
+    border-radius:20px;padding:2px 10px;font-size:11px;font-weight:500;
+  }
+  .evol-pago-parcial {
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(180,83,9,.1);color:#b45309;border:1px solid rgba(180,83,9,.25);
+    border-radius:20px;padding:2px 10px;font-size:11px;font-weight:500;
+  }
+  .evol-del-btn {
+    background:none;border:none;color:var(--text-muted);cursor:pointer;
+    font-size:14px;padding:2px 6px;border-radius:4px;
+  }
+  .evol-del-btn:hover { background:#fee2e2;color:#dc2626; }
+
+  /* Print historial */
+  @media print {
+    .sidebar, .topbar, button, .modal-overlay, .nav-item { display:none !important; }
+    .main-content { margin:0!important; padding:0!important; }
+    body { background:#fff; }
+    .card { box-shadow:none!important; border:1px solid #ddd!important; }
+    .evol-del-btn { display:none; }
+  }
+
   /* Teléfono WhatsApp en tabla */
   .tel-wa {
     display: inline-flex; align-items: center; gap: 5px;
@@ -3560,6 +3600,34 @@ function showPatientDetail(id) {
       </div>
     </div>
 
+    <!-- NOTAS DE EVOLUCIÓN -->
+    <div class="card" style="margin-bottom:20px;" id="card-evolucion-${p.id}">
+      <div class="card-header">
+        <div class="card-title">📋 Notas de Evolución</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="printEvolucion('${p.id}','${p.nombre} ${p.apellido}','${p.expediente}')">🖨 Imprimir</button>
+          <button class="btn-gold" style="padding:6px 14px;font-size:12px;" onclick="openAddEvolucionModal('${p.id}')">+ Nueva nota</button>
+        </div>
+      </div>
+      <div id="evolucion-container-${p.id}" style="overflow-x:auto;">
+        <table class="evol-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Fecha</th>
+              <th style="width:90px;">Hora</th>
+              <th>Procedimiento / Nota clínica</th>
+              <th style="width:130px;">Pago</th>
+              <th style="width:110px;">Monto</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="evolucion-tbody-${p.id}">
+            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">Sin notas de evolución registradas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- HISTORIAL CLÍNICO -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
@@ -3626,6 +3694,7 @@ function showPatientDetail(id) {
   loadPatientPayments(id);
   loadPatientRFC(id);
   loadPatientArchivos(id);
+  loadEvolucion(id);
 }
 
 async function loadPatientHistories(patientId) {
@@ -4148,6 +4217,253 @@ function saveArchivo(patientId) {
   loadPatientArchivos(patientId);
   document.getElementById('modal-add-archivo').remove();
   showToast('Archivo agregado ✓', 'success');
+}
+
+// ══════════════════════════════════════════
+// NOTAS DE EVOLUCIÓN
+// Guardado en Supabase tabla patient_evolution
+// Fallback: localStorage
+// ══════════════════════════════════════════
+function getEvolLocalKey(patientId) { return 'molarys_evol_' + patientId; }
+
+function getEvolLocal(patientId) {
+  return JSON.parse(localStorage.getItem(getEvolLocalKey(patientId)) || '[]');
+}
+function saveEvolLocal(patientId, lista) {
+  localStorage.setItem(getEvolLocalKey(patientId), JSON.stringify(lista));
+}
+
+async function loadEvolucion(patientId) {
+  const tbody = document.getElementById('evolucion-tbody-' + patientId);
+  if (!tbody) return;
+
+  let notas = [];
+  try {
+    const { data, error } = await db.from('patient_evolution')
+      .select('*').eq('patient_id', patientId)
+      .order('fecha', { ascending: false }).order('created_at', { ascending: false });
+    if (!error && data) {
+      notas = data;
+      saveEvolLocal(patientId, data); // cache local
+    } else { notas = getEvolLocal(patientId); }
+  } catch(e) { notas = getEvolLocal(patientId); }
+
+  renderEvolTabla(patientId, notas);
+}
+
+function renderEvolTabla(patientId, notas) {
+  const tbody = document.getElementById('evolucion-tbody-' + patientId);
+  if (!tbody) return;
+  if (!notas.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">Sin notas de evolución registradas</td></tr>';
+    return;
+  }
+  const pagoHTML = (pago, monto) => {
+    if (pago === 'si')      return `<span class="evol-pago-si">💰 Pagó${monto ? ' $'+Number(monto).toLocaleString('es-MX') : ''}</span>`;
+    if (pago === 'parcial') return `<span class="evol-pago-parcial">⚠️ Parcial${monto ? ' $'+Number(monto).toLocaleString('es-MX') : ''}</span>`;
+    return '<span class="evol-pago-no">⏳ Pendiente</span>';
+  };
+  tbody.innerHTML = notas.map((n, i) => `
+    <tr>
+      <td style="font-weight:500;white-space:nowrap;">${n.fecha || '—'}</td>
+      <td style="color:var(--text-muted);white-space:nowrap;">${n.hora || '—'}</td>
+      <td style="line-height:1.5;">${(n.nota || '').replace(/\n/g,'<br>')}</td>
+      <td>${pagoHTML(n.pago, n.monto)}</td>
+      <td style="color:var(--text-muted);">${n.metodo_pago ? '· ' + n.metodo_pago : ''}</td>
+      <td>
+        <button class="evol-del-btn" onclick="deleteEvolucion('${patientId}','${n.id || i}')" title="Eliminar">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function deleteEvolucion(patientId, idOrIdx) {
+  if (!confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.')) return;
+  try {
+    await db.from('patient_evolution').delete().eq('id', idOrIdx);
+  } catch(e) {}
+  // También del local
+  const lista = getEvolLocal(patientId).filter((n, i) => n.id !== idOrIdx && String(i) !== String(idOrIdx));
+  saveEvolLocal(patientId, lista);
+  loadEvolucion(patientId);
+  showToast('Nota eliminada', 'success');
+}
+
+function openAddEvolucionModal(patientId) {
+  const p = patients.find(x => x.id === patientId);
+  const nombre = p ? p.nombre + ' ' + p.apellido : '';
+  const now = new Date();
+  const fechaHoy = now.toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const horaAhora = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+  const fechaISO = now.toISOString().split('T')[0];
+
+  let m = document.getElementById('modal-add-evolucion');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-add-evolucion';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-header">
+        <div class="modal-title">📋 Nueva Nota de Evolución</div>
+        <button class="modal-close" onclick="document.getElementById('modal-add-evolucion').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;"><strong>${nombre}</strong></p>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Fecha *</label>
+            <input id="evol-fecha" type="date" value="${fechaISO}">
+          </div>
+          <div class="form-field">
+            <label>Hora</label>
+            <input id="evol-hora" type="time" value="${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Procedimiento / Nota clínica *</label>
+          <textarea id="evol-nota" rows="5" placeholder="Ej: Extracción de pieza 46. Paciente sin complicaciones. Se aplicó anestesia local, cicatrización adecuada..." style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>¿Realizó pago?</label>
+            <select id="evol-pago">
+              <option value="no">⏳ No pagó / Pendiente</option>
+              <option value="si">💰 Sí pagó</option>
+              <option value="parcial">⚠️ Pago parcial</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Monto ($)</label>
+            <input id="evol-monto" type="number" placeholder="0.00" min="0">
+          </div>
+        </div>
+        <div class="form-field" id="evol-metodo-row">
+          <label>Método de pago</label>
+          <select id="evol-metodo">
+            <option value="">— Seleccionar —</option>
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Transferencia">📱 Transferencia</option>
+            <option value="Tarjeta débito">💳 Tarjeta débito</option>
+            <option value="Tarjeta crédito">💳 Tarjeta crédito</option>
+            <option value="Depósito">🏦 Depósito</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-add-evolucion').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="saveEvolucion('${patientId}')">Guardar nota</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+  document.getElementById('evol-nota').focus();
+}
+
+async function saveEvolucion(patientId) {
+  const fechaInput = document.getElementById('evol-fecha').value;
+  const hora  = document.getElementById('evol-hora').value;
+  const nota  = document.getElementById('evol-nota').value.trim();
+  const pago  = document.getElementById('evol-pago').value;
+  const monto = document.getElementById('evol-monto').value;
+  const metodo = document.getElementById('evol-metodo').value;
+
+  if (!fechaInput || !nota) { showToast('Fecha y nota son obligatorias', 'error'); return; }
+
+  // Formatear fecha para mostrar
+  const [y, mo, d] = fechaInput.split('-');
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fechaDisplay = `${d} ${meses[parseInt(mo)-1]} ${y}`;
+
+  const record = {
+    patient_id: patientId,
+    fecha: fechaDisplay,
+    fecha_iso: fechaInput,
+    hora: hora || null,
+    nota,
+    pago,
+    monto: monto ? parseFloat(monto) : null,
+    metodo_pago: metodo || null,
+  };
+
+  // Intentar guardar en Supabase
+  let savedId = null;
+  try {
+    const { data, error } = await db.from('patient_evolution').insert([record]).select();
+    if (!error && data) savedId = data[0].id;
+  } catch(e) { /* tabla no existe aún — usar localStorage */ }
+
+  // Guardar en localStorage también (cache y fallback)
+  const lista = getEvolLocal(patientId);
+  lista.unshift({ ...record, id: savedId || ('local_' + Date.now()) });
+  saveEvolLocal(patientId, lista);
+
+  document.getElementById('modal-add-evolucion').remove();
+  renderEvolTabla(patientId, lista);
+  showToast('Nota de evolución guardada ✓', 'success');
+}
+
+function printEvolucion(patientId, nombre, expediente) {
+  const notas = getEvolLocal(patientId);
+  const p = patients.find(x => x.id === patientId);
+  const fechaImp = new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'long',year:'numeric'});
+
+  const filas = notas.length ? notas.map(n => {
+    const pagoTxt = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Pago parcial' : 'Pendiente';
+    const montoTxt = n.monto ? ' — $' + Number(n.monto).toLocaleString('es-MX') : '';
+    const metodTxt = n.metodo_pago ? ' (' + n.metodo_pago + ')' : '';
+    return `<tr>
+      <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${n.fecha || ''}${n.hora ? '<br><span style="font-size:10px;color:#666;">'+n.hora+'</span>' : ''}</td>
+      <td style="padding:8px 10px;border:1px solid #ccc;line-height:1.5;">${(n.nota||'').replace(/\n/g,'<br>')}</td>
+      <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${pagoTxt}${montoTxt}${metodTxt}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:#999;">Sin notas</td></tr>';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Historial de Evolución — ${nombre}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 24px; }
+    h1 { font-size: 20px; margin-bottom: 2px; }
+    .sub { color: #555; font-size: 13px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f0f0f0; text-align: left; padding: 8px 10px; border: 1px solid #ccc; font-size: 11px; text-transform: uppercase; }
+    .footer { margin-top: 40px; font-size: 11px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+    @media print { button { display:none; } }
+  </style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+    <div>
+      <h1>STUDIO MOLARYS — Historial de Evolución</h1>
+      <div class="sub">Dr. Fernando González &nbsp;|&nbsp; Sistema Clínico</div>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#555;">
+      Impreso: ${fechaImp}<br>
+      Expediente: #${expediente}
+    </div>
+  </div>
+  <div style="background:#f7f7f7;border:1px solid #ddd;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px;">
+    <strong>Paciente:</strong> ${nombre} &nbsp;|&nbsp;
+    <strong>Exp.:</strong> #${expediente}
+    ${p && p.fecha_nacimiento ? ' &nbsp;|&nbsp; <strong>Edad:</strong> ' + calcAge(p.fecha_nacimiento) : ''}
+    ${p && p.telefono ? ' &nbsp;|&nbsp; <strong>Tel:</strong> ' + p.telefono : ''}
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:100px;">Fecha / Hora</th>
+      <th>Procedimiento / Nota clínica</th>
+      <th style="width:160px;">Pago</th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div class="footer">
+    Este documento es confidencial y de uso médico-legal exclusivo. &nbsp;|&nbsp; Total de notas: ${notas.length}
+  </div>
+  <div style="margin-top:20px;text-align:center;">
+    <button onclick="window.print()" style="padding:10px 24px;background:#2D3A52;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨 Imprimir</button>
+  </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
 }
 
 async function loadPatientPayments(patientId) {
