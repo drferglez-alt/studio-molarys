@@ -1572,6 +1572,12 @@
               <div class="dash-card-label">Corte de Caja</div>
             </button>
 
+            <button class="dash-card" onclick="openPendientesFactura()" style="position:relative;">
+              <div class="dash-card-icon">&#9203;</div>
+              <div class="dash-card-label">Facturas Pendientes</div>
+              <span id="badge-fact-pendientes" style="position:absolute;top:8px;right:8px;background:#e53935;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
+            </button>
+
           </div>
 
         </div>
@@ -4235,6 +4241,13 @@ async function saveRecibirPago() {
   btn.disabled = true; btn.textContent = 'Guardando...';
   const r = window._rpResult || {};
   const metodoPago = document.getElementById('rp-pago').value;
+
+  // ── Capturar nombre ANTES de cerrar el modal ──
+  const sel = document.getElementById('rp-patient');
+  const patientName = sel.options[sel.selectedIndex]?.text || '';
+  const monto = (r.bruto || bruto).toFixed(2);
+  const fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
+
   try {
     const { error } = await db.from('income').insert([{
       patient_id: patientId,
@@ -4255,86 +4268,246 @@ async function saveRecibirPago() {
       es_abono: rpIsAbono
     }]);
     if (error) throw error;
+
     showToast('Pago registrado exitosamente ✓', 'success');
     closeModal('modal-recibir-pago');
     updateStats();
 
-    // ── Preguntar si solicita factura ──
-    const patientName = document.getElementById('rp-patient').options[document.getElementById('rp-patient').selectedIndex]?.text || '';
-    const monto = (r.bruto || bruto).toFixed(2);
-    const fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'2-digit',year:'numeric'});
-
-    // Buscar RFC guardado del paciente para pre-llenar
+    // ── Buscar RFC del paciente para pre-llenar ──
     let razonSocial = '', correoFactura = '', regimenFiscal = '';
     try {
-      const { data: rfcData } = await db.from('patient_rfc').select('*').eq('patient_id', patientId).order('id').limit(1);
+      const { data: rfcData } = await db.from('patient_rfc')
+        .select('*').eq('patient_id', patientId).order('id').limit(1);
       if (rfcData && rfcData.length > 0) {
-        razonSocial = rfcData[0].razon_social || '';
-        correoFactura = rfcData[0].email_factura || '';
+        razonSocial  = rfcData[0].razon_social    || '';
+        correoFactura = rfcData[0].email_factura  || '';
         regimenFiscal = rfcData[0].regimen_fiscal || '';
       }
-    } catch(e) { /* sin RFC guardado */ }
+    } catch(e) { /* tabla aún no existe o sin RFC */ }
 
-    // Mapeo método de pago → opción del form
-    const metodosMap = { efectivo: 'EFECTIVO', tarjeta: 'TDD', transferencia: 'TRANSFERENCIA' };
+    // ── Construir URL pre-llenada ──
+    const metodosMap = { efectivo:'EFECTIVO', tarjeta:'TDD', transferencia:'TRANSFERENCIA' };
     const metodoPagoForm = metodosMap[metodoPago] || 'EFECTIVO';
-
-    // Construir URL pre-llenada del Google Form
-    const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdz26f2A9N19P3_3zOpCMkjMch9m0GOLLzJPzBTqSyVmcIRfA/viewform';
+    const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSdz26f2A9N19P3_3zOpCMkjMch9m0GOLLzJPzBTqSyVmcIRfA/viewform';
     const params = new URLSearchParams({
-      'entry.924035152': patientName,
+      'entry.924035152':  patientName,
       'entry.1891503596': razonSocial,
       'entry.1864276173': correoFactura,
-      'entry.659284804': monto,
+      'entry.659284804':  monto,
       'entry.1669863158': metodoPagoForm,
       'entry.1395379549': regimenFiscal,
-      'entry.265564419': fechaHoy
+      'entry.265564419':  fechaHoy
     });
-    const formUrlPrellenado = `${FORM_URL}?${params.toString()}`;
+    const formUrl = `${FORM_BASE}?${params.toString()}`;
 
-    // Mostrar modal de pregunta factura
-    openFacturaModal(formUrlPrellenado, patientName, monto);
+    // ── Abrir modal de factura ──
+    setTimeout(() => openFacturaModal(formUrl, patientName, monto, patientId), 300);
 
-  } catch(e) { showToast('Error al guardar el pago', 'error'); console.error(e); }
-  btn.disabled = false; btn.textContent = 'Registrar Pago';
-}
-
-function openFacturaModal(formUrl, paciente, monto) {
-  // Crear modal dinámico si no existe
-  let m = document.getElementById('modal-factura-pregunta');
-  if (!m) {
-    m = document.createElement('div');
-    m.id = 'modal-factura-pregunta';
-    m.className = 'modal-overlay';
-    m.innerHTML = `
-      <div class="modal" style="max-width:420px;text-align:center;">
-        <div class="modal-header" style="justify-content:center;border-bottom:none;padding-bottom:0;">
-          <div class="modal-title" style="font-size:18px;">🧾 ¿El paciente solicita factura?</div>
-        </div>
-        <div class="modal-body" style="padding-top:12px;">
-          <p id="factura-detalle" style="color:var(--text-secondary);font-size:14px;margin-bottom:20px;"></p>
-          <div style="display:flex;gap:12px;justify-content:center;">
-            <button id="btn-factura-si" class="btn-gold" style="min-width:140px;font-size:15px;padding:12px 20px;">
-              ✅ Sí, abrir form
-            </button>
-            <button id="btn-factura-no" class="btn-secondary" style="min-width:140px;font-size:15px;padding:12px 20px;">
-              ❌ No, gracias
-            </button>
-          </div>
-        </div>
-      </div>`;
-    document.body.appendChild(m);
+  } catch(e) {
+    showToast('Error al guardar el pago', 'error');
+    console.error(e);
   }
-  document.getElementById('factura-detalle').textContent = `${paciente} — $${parseFloat(monto).toLocaleString('es-MX', {minimumFractionDigits:2})}`;
-  document.getElementById('btn-factura-si').onclick = () => {
-    window.open(formUrl, '_blank');
-    m.classList.remove('open');
-  };
-  document.getElementById('btn-factura-no').onclick = () => { m.classList.remove('open'); };
-  m.classList.add('open');
-  // Cerrar al click en overlay
-  m.onclick = (e) => { if (e.target === m) m.classList.remove('open'); };
+  btn.disabled = false;
+  btn.textContent = 'Registrar Pago';
 }
+
+// ── Pendientes de factura (badge en dashboard) ──
+let _facturasPendientes = JSON.parse(localStorage.getItem('molarys_fact_pendientes') || '[]');
+
+function savePendientesFactura() {
+  localStorage.setItem('molarys_fact_pendientes', JSON.stringify(_facturasPendientes));
+  renderBadgePendientes();
+}
+
+function renderBadgePendientes() {
+  let badge = document.getElementById('badge-fact-pendientes');
+  if (!badge) {
+    // Inyectar badge en la tarjeta de Recibir Pago del dashboard
+    const card = document.querySelector('[onclick="openRecibirPagoModal()"]');
+    if (card) {
+      badge = document.createElement('span');
+      badge.id = 'badge-fact-pendientes';
+      badge.style.cssText = 'position:absolute;top:8px;right:8px;background:#e53935;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;';
+      card.style.position = 'relative';
+      card.appendChild(badge);
+    }
+  }
+  if (badge) {
+    const n = _facturasPendientes.length;
+    badge.textContent = n;
+    badge.style.display = n > 0 ? 'flex' : 'none';
+  }
+}
+
+function openFacturaModal(formUrl, paciente, monto, patientId) {
+  let m = document.getElementById('modal-factura-pregunta');
+  if (m) m.remove(); // refrescar siempre
+
+  m = document.createElement('div');
+  m.id = 'modal-factura-pregunta';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header">
+        <div class="modal-title">🧾 ¿El paciente solicita factura?</div>
+        <button class="modal-close" onclick="document.getElementById('modal-factura-pregunta').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">
+          <strong>${paciente}</strong> — $${parseFloat(monto).toLocaleString('es-MX',{minimumFractionDigits:2})}
+        </p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <button id="btn-fact-ahora" style="
+            background:var(--blue-deep);color:#fff;border:none;border-radius:8px;
+            padding:14px 20px;font-size:14px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;gap:10px;justify-content:center;">
+            ✅ Sí — Llenar formulario ahora
+          </button>
+
+          <button id="btn-fact-despues" style="
+            background:#fff7e6;color:#b45309;border:2px solid #f59e0b;border-radius:8px;
+            padding:14px 20px;font-size:14px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;gap:10px;justify-content:center;">
+            ⏳ Sí — Lo envía después (marcar pendiente)
+          </button>
+
+          <button id="btn-fact-no" style="
+            background:#f5f5f5;color:var(--text-secondary);border:none;border-radius:8px;
+            padding:12px 20px;font-size:13px;cursor:pointer;">
+            ❌ No solicita factura
+          </button>
+
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+
+  // Opción 1: llenar ahora → abrir iframe dentro de un modal grande
+  document.getElementById('btn-fact-ahora').onclick = () => {
+    m.remove();
+    openFormIframe(formUrl, paciente);
+  };
+
+  // Opción 2: marcar pendiente
+  document.getElementById('btn-fact-despues').onclick = () => {
+    _facturasPendientes.push({
+      paciente, monto, patientId,
+      fecha: new Date().toLocaleDateString('es-MX'),
+      formUrl
+    });
+    savePendientesFactura();
+    showToast(`⏳ Factura pendiente guardada para ${paciente}`, 'warning');
+    m.remove();
+    // Mostrar lista de pendientes
+    setTimeout(() => openPendientesFactura(), 400);
+  };
+
+  // Opción 3: no factura
+  document.getElementById('btn-fact-no').onclick = () => m.remove();
+
+  // Cerrar al click en overlay
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+}
+
+function openFormIframe(formUrl, paciente) {
+  let m = document.getElementById('modal-form-iframe');
+  if (m) m.remove();
+
+  m = document.createElement('div');
+  m.id = 'modal-form-iframe';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:720px;width:95vw;height:90vh;display:flex;flex-direction:column;">
+      <div class="modal-header" style="flex-shrink:0;">
+        <div class="modal-title">🧾 Formulario de Facturación — ${paciente}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="window.open('${formUrl}','_blank')" style="
+            background:var(--blue-mid);color:#fff;border:none;border-radius:6px;
+            padding:6px 12px;font-size:12px;cursor:pointer;">
+            ↗ Abrir en nueva pestaña
+          </button>
+          <button class="modal-close" onclick="document.getElementById('modal-form-iframe').remove()">✕</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow:hidden;border-radius:0 0 8px 8px;">
+        <iframe
+          src="${formUrl}"
+          style="width:100%;height:100%;border:none;"
+          allow="clipboard-write">
+        </iframe>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+}
+
+function openPendientesFactura() {
+  let m = document.getElementById('modal-pendientes-fact');
+  if (m) m.remove();
+
+  if (_facturasPendientes.length === 0) {
+    showToast('No hay facturas pendientes', 'success');
+    return;
+  }
+
+  const rows = _facturasPendientes.map((p, i) => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 8px;font-weight:500;">${p.paciente}</td>
+      <td style="padding:10px 8px;">$${parseFloat(p.monto).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+      <td style="padding:10px 8px;color:var(--text-secondary);">${p.fecha}</td>
+      <td style="padding:10px 8px;">
+        <button onclick="openFormIframe('${p.formUrl}','${p.paciente}')" style="
+          background:var(--blue-deep);color:#fff;border:none;border-radius:5px;
+          padding:5px 10px;font-size:12px;cursor:pointer;margin-right:4px;">
+          📋 Llenar
+        </button>
+        <button onclick="removePendienteFactura(${i})" style="
+          background:#fee2e2;color:#dc2626;border:none;border-radius:5px;
+          padding:5px 10px;font-size:12px;cursor:pointer;">
+          ✓ Resolver
+        </button>
+      </td>
+    </tr>`).join('');
+
+  m = document.createElement('div');
+  m.id = 'modal-pendientes-fact';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:620px;">
+      <div class="modal-header">
+        <div class="modal-title">⏳ Facturas Pendientes (${_facturasPendientes.length})</div>
+        <button class="modal-close" onclick="document.getElementById('modal-pendientes-fact').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:var(--cream);font-size:12px;text-transform:uppercase;color:var(--text-secondary);">
+              <th style="padding:10px 8px;text-align:left;">Paciente</th>
+              <th style="padding:10px 8px;text-align:left;">Monto</th>
+              <th style="padding:10px 8px;text-align:left;">Fecha</th>
+              <th style="padding:10px 8px;text-align:left;">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-pendientes">${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+}
+
+function removePendienteFactura(idx) {
+  _facturasPendientes.splice(idx, 1);
+  savePendientesFactura();
+  // Refrescar la lista
+  const m = document.getElementById('modal-pendientes-fact');
+  if (m) { m.remove(); if (_facturasPendientes.length > 0) openPendientesFactura(); }
+  showToast('Factura marcada como resuelta ✓', 'success');
+}
+
+// Inicializar badge al cargar
+document.addEventListener('DOMContentLoaded', () => setTimeout(renderBadgePendientes, 1500));
 
 // ── Corte de Caja ──
 async function openCorteCajaModal() {
