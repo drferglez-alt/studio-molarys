@@ -433,30 +433,36 @@
 
   .btn-new:hover { background: var(--blue-deep); color: var(--white); border-color: var(--blue-deep); }
 
-  /* Botones de acción rápida en dashboard */
+  /* Botones de accion rapida en dashboard */
   .btn-accion {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px 14px;
     background: var(--white);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     font-family: 'DM Sans', sans-serif;
     cursor: pointer;
-    transition: all 0.15s;
-    text-align: left;
-    min-width: 180px;
+    transition: all 0.18s;
+    text-align: center;
+    width: 100%;
   }
 
   .btn-accion:hover {
     background: var(--blue-deep);
     color: var(--white);
     border-color: var(--blue-deep);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(45,58,82,0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(45,58,82,0.18);
   }
+
+  .btn-accion-icon { font-size: 22px; line-height: 1; }
+  .btn-accion-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .btn-accion-sub { font-size: 11px; opacity: 0.65; }
 
   .page-content { padding: 32px; }
 
@@ -1482,34 +1488,30 @@
           </div>
 
           <!-- Acciones Rápidas -->
-          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px;">
             <button class="btn-accion" onclick="openNewPatientModal()">
-              <span style="font-size:18px;">👤</span>
-              <div>
-                <div style="font-weight:500;font-size:13px;">Nuevo Paciente</div>
-                <div style="font-size:11px;opacity:0.7;">Registrar expediente</div>
-              </div>
+              <span class="btn-accion-icon">&#128100;</span>
+              <div><div class="btn-accion-title">Nuevo Paciente</div><div class="btn-accion-sub">Registrar expediente</div></div>
             </button>
             <button class="btn-accion" onclick="window.open('https://calendar.google.com','_blank')">
-              <span style="font-size:18px;">📅</span>
-              <div>
-                <div style="font-weight:500;font-size:13px;">Agendar Cita</div>
-                <div style="font-size:11px;opacity:0.7;">Abrir Google Calendar</div>
-              </div>
+              <span class="btn-accion-icon">&#128197;</span>
+              <div><div class="btn-accion-title">Agendar Cita</div><div class="btn-accion-sub">Google Calendar</div></div>
             </button>
             <button class="btn-accion" onclick="openRecibirPagoModal()">
-              <span style="font-size:18px;">💳</span>
-              <div>
-                <div style="font-weight:500;font-size:13px;">Recibir Pago</div>
-                <div style="font-size:11px;opacity:0.7;">Registrar cobro</div>
-              </div>
+              <span class="btn-accion-icon">&#128179;</span>
+              <div><div class="btn-accion-title">Recibir Pago</div><div class="btn-accion-sub">Registrar cobro</div></div>
+            </button>
+            <button class="btn-accion" onclick="openJustificanteModal()">
+              <span class="btn-accion-icon">&#128196;</span>
+              <div><div class="btn-accion-title">Crear Justificante</div><div class="btn-accion-sub">Documento consulta</div></div>
+            </button>
+            <button class="btn-accion" onclick="openRecetaModal()">
+              <span class="btn-accion-icon">&#128138;</span>
+              <div><div class="btn-accion-title">Crear Receta</div><div class="btn-accion-sub">Medicamentos</div></div>
             </button>
             <button class="btn-accion admin-only" onclick="openCorteCajaModal()" style="display:none;">
-              <span style="font-size:18px;">🧾</span>
-              <div>
-                <div style="font-weight:500;font-size:13px;">Corte de Caja</div>
-                <div style="font-size:11px;opacity:0.7;">Cierre del día</div>
-              </div>
+              <span class="btn-accion-icon">&#129534;</span>
+              <div><div class="btn-accion-title">Corte de Caja</div><div class="btn-accion-sub">Cierre del dia</div></div>
             </button>
           </div>
 
@@ -2289,6 +2291,92 @@
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('modal-corte-caja')">Cerrar</button>
       <button class="btn-gold" onclick="imprimirCorte()">Imprimir / Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL JUSTIFICANTE -->
+<div class="modal-overlay" id="modal-justificante">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">Crear Justificante</div>
+      <button class="modal-close" onclick="closeModal('modal-justificante')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Paciente *</label>
+        <select id="just-patient" onchange="fillJustificanteData()">
+          <option value="">Seleccionar paciente...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Fecha</label>
+          <input type="date" id="just-fecha">
+        </div>
+        <div class="form-field">
+          <label>Hora de consulta</label>
+          <input type="time" id="just-hora" value="10:00">
+        </div>
+      </div>
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Motivo / Diagnostico</label>
+        <textarea id="just-motivo" placeholder="Ej. Consulta de revision dental, extraccion..."></textarea>
+      </div>
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Indicaciones</label>
+        <textarea id="just-indicaciones" placeholder="Reposo, medicacion, cuidados..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Dias de reposo</label>
+          <input type="number" id="just-dias" placeholder="0" min="0">
+        </div>
+        <div class="form-field">
+          <label>Valido hasta</label>
+          <input type="date" id="just-valido">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-justificante')">Cancelar</button>
+      <button class="btn-gold" onclick="generarJustificante()">Generar e Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RECETA -->
+<div class="modal-overlay" id="modal-receta">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <div class="modal-title">Crear Receta</div>
+      <button class="modal-close" onclick="closeModal('modal-receta')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Paciente *</label>
+        <select id="rec-patient">
+          <option value="">Seleccionar paciente...</option>
+        </select>
+      </div>
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Diagnostico</label>
+        <input type="text" id="rec-diagnostico" placeholder="Ej. Post extraccion dental...">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-secondary);font-weight:500;margin-bottom:8px;">Medicamentos</label>
+        <div id="rec-medicamentos-list"></div>
+        <button onclick="addMedicamento()" class="btn-secondary" style="margin-top:10px;width:100%;font-size:13px;">+ Agregar medicamento</button>
+      </div>
+      <div class="form-field">
+        <label>Indicaciones generales</label>
+        <textarea id="rec-indicaciones" placeholder="Cuidados post tratamiento, dieta, reposo..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-receta')">Cancelar</button>
+      <button class="btn-gold" onclick="generarReceta()">Generar e Imprimir</button>
     </div>
   </div>
 </div>
@@ -3127,6 +3215,185 @@ function renderDashboardAgenda() {
       + (ev.description ? '<div class="agenda-proc">' + ev.description + '</div>' : '')
       + '</div></div>';
   }).join('');
+}
+
+
+
+// ============================================================
+// JUSTIFICANTE
+// ============================================================
+const MEDICAMENTOS_CATALOGO = [
+  { nombre: 'Amoxicilina 500mg', dosis: '1 capsula cada 8 hrs', dias: '7 dias' },
+  { nombre: 'Ibuprofeno 400mg', dosis: '1 tableta cada 8 hrs', dias: '5 dias' },
+  { nombre: 'Ketorolaco 10mg', dosis: '1 tableta cada 8 hrs', dias: '3 dias' },
+  { nombre: 'Clindamicina 300mg', dosis: '1 capsula cada 8 hrs', dias: '7 dias' },
+  { nombre: 'Metronidazol 500mg', dosis: '1 tableta cada 8 hrs', dias: '7 dias' },
+  { nombre: 'Paracetamol 500mg', dosis: '1-2 tabletas cada 6 hrs', dias: '5 dias' },
+  { nombre: 'Naproxeno 250mg', dosis: '1 tableta cada 12 hrs', dias: '5 dias' },
+  { nombre: 'Dexametasona 4mg', dosis: '1 tableta cada 12 hrs', dias: '3 dias' },
+  { nombre: 'Ciprofloxacino 500mg', dosis: '1 tableta cada 12 hrs', dias: '7 dias' },
+  { nombre: 'Clorexidina enjuague', dosis: 'Enjuague 30 seg 2 veces al dia', dias: '10 dias' },
+];
+
+function openJustificanteModal() {
+  const sel = document.getElementById('just-patient');
+  sel.innerHTML = '<option value="">Seleccionar paciente...</option>';
+  patients.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nombre} ${p.apellido}</option>`);
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('just-fecha').value = today;
+  document.getElementById('just-valido').value = today;
+  document.getElementById('just-motivo').value = '';
+  document.getElementById('just-indicaciones').value = '';
+  document.getElementById('just-dias').value = '';
+  document.getElementById('modal-justificante').classList.add('open');
+}
+
+function fillJustificanteData() {}
+
+function generarJustificante() {
+  const pid = document.getElementById('just-patient').value;
+  const p = patients.find(x => x.id === pid);
+  if (!p) { showToast('Selecciona un paciente', 'error'); return; }
+
+  const fecha = document.getElementById('just-fecha').value;
+  const hora = document.getElementById('just-hora').value;
+  const motivo = document.getElementById('just-motivo').value || 'Consulta dental';
+  const indicaciones = document.getElementById('just-indicaciones').value;
+  const dias = document.getElementById('just-dias').value;
+  const valido = document.getElementById('just-valido').value;
+  const fechaFmt = fecha ? new Date(fecha + 'T12:00').toLocaleDateString('es-MX', {day:'numeric', month:'long', year:'numeric'}) : '';
+  const validoFmt = valido ? new Date(valido + 'T12:00').toLocaleDateString('es-MX', {day:'numeric', month:'long', year:'numeric'}) : '';
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Justificante — ${p.nombre} ${p.apellido}</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2D3A52; padding-bottom: 16px; margin-bottom: 24px; }
+      .clinic-name { font-size: 22px; font-weight: 700; color: #2D3A52; }
+      .clinic-sub { font-size: 12px; color: #666; margin-top: 4px; }
+      .doc-title { font-size: 18px; font-weight: 700; text-align: center; color: #2D3A52; margin: 24px 0 20px; text-transform: uppercase; letter-spacing: 2px; }
+      .field { margin-bottom: 14px; }
+      .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 600; margin-bottom: 3px; }
+      .value { font-size: 14px; color: #1a1a1a; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+      .firma-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 60px; }
+      .firma-line { border-top: 1px solid #1a1a1a; padding-top: 8px; text-align: center; font-size: 12px; }
+      @media print { body { margin: 20px; } }
+    </style></head><body>
+    <div class="header">
+      <div>
+        <div class="clinic-name">Molarys Clinica Dental</div>
+        <div class="clinic-sub">Dr. Fernando Gonzalez &nbsp;|&nbsp; Ced. Prof. 13335676</div>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#666;">
+        <div>${fechaFmt}</div>
+        <div>Hora: ${hora}</div>
+      </div>
+    </div>
+    <div class="doc-title">Justificante de Consulta</div>
+    <div class="field"><div class="label">Paciente</div><div class="value">${p.nombre} ${p.apellido}</div></div>
+    <div class="field"><div class="label">Motivo / Diagnostico</div><div class="value">${motivo}</div></div>
+    ${dias ? `<div class="field"><div class="label">Dias de reposo indicados</div><div class="value">${dias} dia(s)</div></div>` : ''}
+    ${indicaciones ? `<div class="field"><div class="label">Indicaciones</div><div class="value">${indicaciones}</div></div>` : ''}
+    ${validoFmt ? `<div class="field"><div class="label">Documento valido hasta</div><div class="value">${validoFmt}</div></div>` : ''}
+    <div class="firma-grid">
+      <div class="firma-line">Firma del Paciente</div>
+      <div class="firma-line">Dr. Fernando Gonzalez<br>Cirujano Dentista</div>
+    </div>
+    <script>window.print();<\/script></body></html>`);
+  win.document.close();
+  closeModal('modal-justificante');
+}
+
+// ============================================================
+// RECETA
+// ============================================================
+let recMeds = [];
+
+function openRecetaModal() {
+  const sel = document.getElementById('rec-patient');
+  sel.innerHTML = '<option value="">Seleccionar paciente...</option>';
+  patients.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nombre} ${p.apellido}</option>`);
+  document.getElementById('rec-diagnostico').value = '';
+  document.getElementById('rec-indicaciones').value = '';
+  recMeds = [{ cat: 0, dosis: MEDICAMENTOS_CATALOGO[0].dosis, dias: MEDICAMENTOS_CATALOGO[0].dias }];
+  renderRecMeds();
+  document.getElementById('modal-receta').classList.add('open');
+}
+
+function renderRecMeds() {
+  const container = document.getElementById('rec-medicamentos-list');
+  container.innerHTML = recMeds.map((m, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;align-items:center;margin-bottom:10px;background:var(--cream);padding:10px;border-radius:6px;">
+      <select onchange="recMeds[${i}].cat=parseInt(this.value);recMeds[${i}].dosis=MEDICAMENTOS_CATALOGO[this.value].dosis;recMeds[${i}].dias=MEDICAMENTOS_CATALOGO[this.value].dias;renderRecMeds()" style="padding:8px;border:1px solid var(--border);border-radius:4px;font-family:DM Sans,sans-serif;font-size:12px;background:var(--white);">
+        ${MEDICAMENTOS_CATALOGO.map((med, j) => `<option value="${j}" ${m.cat===j?'selected':''}>${med.nombre}</option>`).join('')}
+      </select>
+      <input type="text" value="${m.dosis}" onchange="recMeds[${i}].dosis=this.value" placeholder="Dosis" style="padding:8px;border:1px solid var(--border);border-radius:4px;font-family:DM Sans,sans-serif;font-size:12px;">
+      <input type="text" value="${m.dias}" onchange="recMeds[${i}].dias=this.value" placeholder="Duracion" style="padding:8px;border:1px solid var(--border);border-radius:4px;font-family:DM Sans,sans-serif;font-size:12px;">
+      <button onclick="recMeds.splice(${i},1);renderRecMeds()" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;padding:4px;">&#10005;</button>
+    </div>`).join('');
+}
+
+function addMedicamento() {
+  recMeds.push({ cat: 0, dosis: MEDICAMENTOS_CATALOGO[0].dosis, dias: MEDICAMENTOS_CATALOGO[0].dias });
+  renderRecMeds();
+}
+
+function generarReceta() {
+  const pid = document.getElementById('rec-patient').value;
+  const p = patients.find(x => x.id === pid);
+  if (!p) { showToast('Selecciona un paciente', 'error'); return; }
+
+  const diagnostico = document.getElementById('rec-diagnostico').value;
+  const indicaciones = document.getElementById('rec-indicaciones').value;
+  const fechaFmt = new Date().toLocaleDateString('es-MX', {day:'numeric', month:'long', year:'numeric'});
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Receta — ${p.nombre} ${p.apellido}</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2D3A52; padding-bottom: 16px; margin-bottom: 24px; }
+      .clinic-name { font-size: 22px; font-weight: 700; color: #2D3A52; }
+      .clinic-sub { font-size: 12px; color: #666; margin-top: 4px; }
+      .doc-title { font-size: 18px; font-weight: 700; text-align: center; color: #2D3A52; margin: 0 0 20px; text-transform: uppercase; letter-spacing: 2px; }
+      .patient-box { background: #f0f5fa; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 40px; }
+      .patient-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+      .patient-box .value { font-size: 14px; font-weight: 600; }
+      table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+      th { background: #2D3A52; color: white; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+      td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+      tr:nth-child(even) td { background: #f9fbfd; }
+      .Rx { font-size: 32px; font-weight: 700; color: #2D3A52; margin-bottom: 8px; }
+      .firma-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 60px; }
+      .firma-line { border-top: 1px solid #1a1a1a; padding-top: 8px; text-align: center; font-size: 12px; }
+      @media print { body { margin: 20px; } }
+    </style></head><body>
+    <div class="header">
+      <div>
+        <div class="clinic-name">Molarys Clinica Dental</div>
+        <div class="clinic-sub">Dr. Fernando Gonzalez &nbsp;|&nbsp; Ced. Prof. 13335676</div>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#666;">${fechaFmt}</div>
+    </div>
+    <div class="doc-title">Receta Medica</div>
+    <div class="patient-box">
+      <div><div class="label">Paciente</div><div class="value">${p.nombre} ${p.apellido}</div></div>
+      ${diagnostico ? `<div><div class="label">Diagnostico</div><div class="value">${diagnostico}</div></div>` : ''}
+    </div>
+    <div class="Rx">&#8478;</div>
+    <table>
+      <tr><th>Medicamento</th><th>Dosis</th><th>Duracion</th></tr>
+      ${recMeds.map(m => `<tr><td><strong>${MEDICAMENTOS_CATALOGO[m.cat].nombre}</strong></td><td>${m.dosis}</td><td>${m.dias}</td></tr>`).join('')}
+    </table>
+    ${indicaciones ? `<div style="margin-top:16px;padding:12px 16px;background:#f0f5fa;border-radius:6px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:4px;">Indicaciones</div><div style="font-size:13px;">${indicaciones}</div></div>` : ''}
+    <div class="firma-grid">
+      <div class="firma-line">Firma del Paciente</div>
+      <div class="firma-line">Dr. Fernando Gonzalez<br>Cirujano Dentista &mdash; Ced. 13335676</div>
+    </div>
+    <script>window.print();<\/script></body></html>`);
+  win.document.close();
+  closeModal('modal-receta');
 }
 
 
