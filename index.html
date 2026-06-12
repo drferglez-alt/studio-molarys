@@ -861,9 +861,12 @@
     font-weight: 500; margin: 2px 4px 2px 0;
   }
   .doctor-card-actions {
-    position: absolute; top: 14px; right: 14px;
-    display: flex; gap: 6px;
+    display: flex; gap: 6px; justify-content: flex-end;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+    opacity: 0; transition: opacity .15s;
   }
+  .doctor-card:hover .doctor-card-actions { opacity: 1; }
   .doctor-action-btn {
     background: none; border: none; font-size: 15px;
     cursor: pointer; padding: 4px 7px; border-radius: 6px;
@@ -4350,17 +4353,18 @@ function renderDoctorCard(d) {
   ).join('');
 
   const edad = d.fecha_nac ? (() => {
-    const b = new Date(d.fecha_nac);
+    // Soporta DD/MM/AAAA o YYYY-MM-DD
+    let b;
+    if (d.fecha_nac.includes('/')) {
+      const [dd,mm,yyyy] = d.fecha_nac.split('/');
+      b = new Date(`${yyyy}-${mm}-${dd}`);
+    } else { b = new Date(d.fecha_nac); }
     const age = Math.floor((new Date() - b) / (365.25*24*3600*1000));
-    return `${age} años`;
+    return isNaN(age) ? '' : `${age} años`;
   })() : '—';
 
   return `
   <div class="doctor-card" id="dcard-${d.id}">
-    <div class="doctor-card-actions">
-      <button class="doctor-action-btn" onclick="openDoctorModal('${d.id}')" title="Editar">✏️</button>
-      <button class="doctor-action-btn" onclick="deleteDoctor('${d.id}')" title="Eliminar">🗑</button>
-    </div>
     <div class="doctor-card-header">
       <div class="doctor-avatar-wrap" onclick="triggerDoctorAvatar('${d.id}')" title="Cambiar foto">
         ${d.foto ? `<img src="${d.foto}" onerror="this.style.display='none'">` : ''}
@@ -4392,7 +4396,19 @@ function renderDoctorCard(d) {
         <span class="doctor-row-val" style="color:var(--text-muted);">${d.notas}</span>
       </div>` : ''}
     </div>
+    <div class="doctor-card-actions">
+      <button class="doctor-action-btn" onclick="openDoctorModal('${d.id}')" title="Editar">✏️ Editar</button>
+      <button class="doctor-action-btn" onclick="deleteDoctor('${d.id}')" title="Eliminar">🗑 Eliminar</button>
+    </div>
   </div>`;
+}
+
+function fmtFechaNac(el) {
+  // Autoformato DD/MM/AAAA mientras escribe
+  let v = el.value.replace(/\D/g, '').substring(0, 8);
+  if (v.length >= 5) v = v.substring(0,2) + '/' + v.substring(2,4) + '/' + v.substring(4);
+  else if (v.length >= 3) v = v.substring(0,2) + '/' + v.substring(2);
+  el.value = v;
 }
 
 function triggerDoctorAvatar(id) {
@@ -4477,7 +4493,7 @@ function openDoctorModal(editId) {
         <div class="form-row">
           <div class="form-field">
             <label>Fecha de nacimiento</label>
-            <input id="doc-fecha-nac" type="date" value="${d?.fecha_nac||''}">
+            <input id="doc-fecha-nac" type="text" placeholder="DD/MM/AAAA" maxlength="10" value="${d?.fecha_nac||''}" oninput="fmtFechaNac(this)">
           </div>
           <div class="form-field">
             <label>RFC</label>
