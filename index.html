@@ -440,7 +440,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    padding: 20px 14px;
+    padding: 20px 24px;
     background: var(--white);
     color: var(--text-primary);
     border: 1px solid var(--border);
@@ -449,7 +449,7 @@
     cursor: pointer;
     transition: all 0.18s;
     text-align: center;
-    width: 100%;
+    width: 160px;
   }
 
   .btn-accion:hover {
@@ -1459,7 +1459,7 @@
           </div>
 
           <!-- Acciones Rápidas -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px;">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px;justify-content:center;">
             <button class="btn-accion" onclick="openNewPatientModal()">
               <span class="btn-accion-icon">&#128100;</span>
               <div><div class="btn-accion-title">Nuevo Paciente</div><div class="btn-accion-sub">Registrar expediente</div></div>
