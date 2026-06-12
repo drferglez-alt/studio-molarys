@@ -809,6 +809,43 @@
   .patient-row-clickable:hover { background: var(--blue-xpale) !important; }
   .patient-row-clickable:hover .patient-exp { color: var(--blue-deep); }
 
+  /* ── Modal Cumpleaños ── */
+  .cumple-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .cumple-item:last-child { border-bottom: none; }
+  .cumple-avatar {
+    width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #f9c74f, #f3722c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; position: relative; overflow: hidden;
+  }
+  .cumple-avatar img {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 50%; position: absolute; inset: 0;
+  }
+  .cumple-info { flex: 1; min-width: 0; }
+  .cumple-nombre { font-weight: 600; font-size: 14px; }
+  .cumple-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .cumple-badge {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 20px; letter-spacing: .5px;
+  }
+  .cumple-badge.pac { background: rgba(91,123,168,.12); color: var(--blue-deep); }
+  .cumple-badge.doc { background: rgba(39,174,96,.12); color: #1a7a40; }
+  .cumple-wa-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #25D366; color: #fff; border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    text-decoration: none; white-space: nowrap; flex-shrink: 0;
+    transition: background .15s;
+  }
+  .cumple-wa-btn:hover { background: #1da851; }
+  .cumple-empty {
+    text-align: center; padding: 32px 20px; color: var(--text-muted); font-size: 14px;
+  }
+
   /* ── Módulo Doctores ── */
   .doctors-grid {
     display: grid;
@@ -1789,6 +1826,12 @@
               <div class="dash-card-icon">&#9203;</div>
               <div class="dash-card-label">Facturas Pendientes</div>
               <span id="badge-fact-pendientes" style="position:absolute;top:8px;right:8px;background:#e53935;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
+            </button>
+
+            <button class="dash-card" onclick="openCumpleanosModal()" style="position:relative;">
+              <div class="dash-card-icon">🎂</div>
+              <div class="dash-card-label">Cumpleaños</div>
+              <span id="badge-cumple" style="position:absolute;top:8px;right:8px;background:#f59e0b;color:#fff;border-radius:50%;min-width:20px;height:20px;padding:0 4px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
             </button>
 
           </div>
@@ -4383,9 +4426,9 @@ function renderDoctorCard(d) {
         <span class="doctor-row-label">Especialidad</span>
         <span class="doctor-row-val">${especialidades || '<span style="color:var(--text-muted)">—</span>'}</span>
       </div>
-      <div class="doctor-row">
-        <span class="doctor-row-label">Nacimiento</span>
-        <span class="doctor-row-val">${d.fecha_nac ? new Date(d.fecha_nac).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) + ' · ' + edad : '—'}</span>
+      <div class="doctor-row" style="opacity:.7;font-size:12px;">
+        <span class="doctor-row-label" style="font-size:10px;">Nacimiento</span>
+        <span class="doctor-row-val" style="color:var(--text-muted);font-size:12px;">${d.fecha_nac || '—'}${edad ? ' · ' + edad : ''}</span>
       </div>
       <div class="doctor-row">
         <span class="doctor-row-label">RFC</span>
@@ -4811,6 +4854,218 @@ function printEvolucion(patientId, nombre, expediente) {
   w.document.write(html);
   w.document.close();
 }
+
+// ══════════════════════════════════════════
+// CUMPLEAÑOS — Pacientes + Doctores
+// ══════════════════════════════════════════
+function isBirthdayToday(fechaStr) {
+  if (!fechaStr) return false;
+  const hoy = new Date();
+  let d, m;
+  // Soporta DD/MM/AAAA, YYYY-MM-DD, YYYY/MM/DD
+  if (fechaStr.includes('/') && fechaStr.indexOf('/') === 2) {
+    [d, m] = fechaStr.split('/');
+  } else if (fechaStr.includes('-')) {
+    const parts = fechaStr.split('-');
+    m = parts[1]; d = parts[2]?.substring(0,2);
+  } else { return false; }
+  return parseInt(d) === hoy.getDate() && parseInt(m) === (hoy.getMonth()+1);
+}
+
+function getCumpleaniosHoy() {
+  const lista = [];
+  const waSet = getWASet();
+
+  // Pacientes
+  (window.patients || []).forEach(p => {
+    if (!isBirthdayToday(p.fecha_nacimiento)) return;
+    const avatarMap = JSON.parse(localStorage.getItem('molarys_avatars') || '{}');
+    lista.push({
+      id: p.id, tipo: 'pac',
+      nombre: p.nombre + ' ' + p.apellido,
+      sub: 'Paciente · Exp. #' + (p.expediente||''),
+      telefono: p.telefono || '',
+      tieneWA: waSet.has(p.id),
+      foto: avatarMap[p.id] || null,
+      edad: calcEdadCumple(p.fecha_nacimiento),
+    });
+  });
+
+  // Doctores
+  getDoctors().forEach(d => {
+    if (!isBirthdayToday(d.fecha_nac)) return;
+    lista.push({
+      id: d.id, tipo: 'doc',
+      nombre: (d.titulo||'Dr.') + ' ' + d.nombre + ' ' + d.apellido,
+      sub: (d.especialidades||[]).map(e=>e.nombre).join(' · ') || 'Doctor',
+      telefono: '',
+      tieneWA: false,
+      foto: d.foto || null,
+      edad: calcEdadCumple(d.fecha_nac),
+    });
+  });
+
+  return lista;
+}
+
+function calcEdadCumple(fechaStr) {
+  if (!fechaStr) return null;
+  let b;
+  if (fechaStr.includes('/') && fechaStr.indexOf('/') === 2) {
+    const [dd,mm,yyyy] = fechaStr.split('/');
+    b = new Date(`${yyyy}-${mm}-${dd}`);
+  } else { b = new Date(fechaStr); }
+  const age = new Date().getFullYear() - b.getFullYear();
+  return isNaN(age) ? null : age;
+}
+
+function renderBadgeCumple() {
+  const badge = document.getElementById('badge-cumple');
+  if (!badge) return;
+  const n = getCumpleaniosHoy().length;
+  badge.textContent = n;
+  badge.style.display = n > 0 ? 'flex' : 'none';
+}
+
+// Plantillas de WhatsApp
+const WA_TEMPLATES = [
+  { label: '🎂 Saludo clásico',
+    texto: (nombre, edad) => `¡Hola ${nombre}! 🎂 En Studio Molarys queremos desearte un feliz cumpleaños${edad?' en tus '+edad+'!':'!'} Esperamos que tengas un día increíble. 🥳` },
+  { label: '🦷 Con toque dental',
+    texto: (nombre, edad) => `¡Feliz cumpleaños ${nombre}! 🎉 De parte de todo el equipo de Studio Molarys, te deseamos un día lleno de sonrisas${edad?' en tus '+edad+' años!':'!'} 😁✨` },
+  { label: '💐 Formal',
+    texto: (nombre, edad) => `Estimado/a ${nombre}, el equipo de Studio Molarys le hace llegar sus más sinceras felicitaciones en este día tan especial${edad?', en sus '+edad+' años':''}.  Le deseamos salud y muchas bendiciones. 🙏` },
+];
+
+function openCumpleanosModal() {
+  const lista = getCumpleaniosHoy();
+  let m = document.getElementById('modal-cumpleanos');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-cumpleanos';
+  m.className = 'modal-overlay open';
+
+  const hoyFmt = new Date().toLocaleDateString('es-MX', {day:'numeric', month:'long'});
+
+  const items = lista.length ? lista.map(c => {
+    const num = c.telefono.replace(/\D/g,'');
+    const hasPhone = !!num;
+    const initials = c.nombre.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase();
+    const avatarHTML = c.foto
+      ? `<img src="${c.foto}" onerror="this.style.display='none'"><span style="position:relative;z-index:1;">${initials}</span>`
+      : initials;
+
+    return `
+    <div class="cumple-item">
+      <div class="cumple-avatar">${avatarHTML}</div>
+      <div class="cumple-info">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="cumple-nombre">${c.nombre}</span>
+          <span class="cumple-badge ${c.tipo}">${c.tipo==='pac'?'Paciente':'Doctor'}</span>
+          ${c.edad ? `<span style="font-size:11px;color:var(--text-muted);">${c.edad} años 🎉</span>` : ''}
+        </div>
+        <div class="cumple-sub">${c.sub}${c.telefono?' · '+c.telefono:''}</div>
+      </div>
+      ${hasPhone ? `
+        <button class="cumple-wa-btn" onclick="openWATemplate('${c.id}','${c.nombre.replace(/'/g,'\'')}','${num}',${c.edad||'null'})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.948-1.42A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.073-1.117l-.292-.174-3.033.87.838-3.11-.19-.302A7.95 7.95 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+          Enviar WA
+        </button>` : `<span style="font-size:12px;color:var(--text-muted);text-align:right;">Sin teléfono</span>`}
+    </div>`;
+  }).join('') : `<div class="cumple-empty">🎂<br><br>Nadie cumple años hoy.<br><span style="font-size:12px;">¡Disfruta el día!</span></div>`;
+
+  m.innerHTML = `
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <div class="modal-title">🎂 Cumpleaños de hoy — ${hoyFmt}</div>
+        <button class="modal-close" onclick="document.getElementById('modal-cumpleanos').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0 24px;">
+        ${items}
+      </div>
+      ${lista.length ? `<div class="modal-footer" style="justify-content:center;font-size:12px;color:var(--text-muted);">
+        ${lista.length} cumpleaños hoy
+      </div>` : ''}
+    </div>`;
+
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target===m) m.remove(); };
+}
+
+function openWATemplate(id, nombre, num, edad) {
+  let mt = document.getElementById('modal-wa-template');
+  if (mt) mt.remove();
+  mt = document.createElement('div');
+  mt.id = 'modal-wa-template';
+  mt.className = 'modal-overlay open';
+  mt.style.zIndex = '9999';
+
+  const opts = WA_TEMPLATES.map((t,i) => `
+    <div onclick="selectWATemplate(${i},'${nombre.replace(/'/g,"\'")}',${edad||'null'})"
+         style="border:2px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;
+                margin-bottom:10px;transition:border-color .15s;"
+         id="wa-tpl-${i}" class="wa-tpl-opt">
+      <div style="font-size:12px;font-weight:600;color:var(--blue-deep);margin-bottom:6px;">${t.label}</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">${t.texto(nombre, edad)}</div>
+    </div>`).join('');
+
+  mt.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <div class="modal-title">💬 Plantilla de felicitación</div>
+        <button class="modal-close" onclick="document.getElementById('modal-wa-template').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Elige una plantilla para <strong>${nombre}</strong>:</p>
+        ${opts}
+        <div style="margin-top:16px;">
+          <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;">O escribe un mensaje personalizado:</label>
+          <textarea id="wa-custom-msg" rows="3" style="width:100%;resize:vertical;"
+            placeholder="Escribe aquí tu mensaje...">${WA_TEMPLATES[0].texto(nombre, edad)}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-wa-template').remove()">Cancelar</button>
+        <a id="wa-send-btn" href="#" target="_blank"
+           style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;
+                  border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;text-decoration:none;"
+           onclick="document.getElementById('modal-wa-template').remove()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.948-1.42A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.073-1.117l-.292-.174-3.033.87.838-3.11-.19-.302A7.95 7.95 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+          Enviar por WhatsApp
+        </a>
+      </div>
+    </div>`;
+  document.body.appendChild(mt);
+  mt.onclick = e => { if (e.target===mt) mt.remove(); };
+
+  // Actualizar link al escribir mensaje personalizado
+  const textarea = mt.querySelector('#wa-custom-msg');
+  const sendBtn = mt.querySelector('#wa-send-btn');
+  function updateLink() {
+    const msg = textarea.value.trim();
+    sendBtn.href = 'https://wa.me/52' + num + '?text=' + encodeURIComponent(msg);
+  }
+  textarea.addEventListener('input', updateLink);
+  updateLink();
+  selectWATemplate(0, nombre, edad, num); // preseleccionar primera plantilla
+}
+
+function selectWATemplate(idx, nombre, edad, num) {
+  // Highlight seleccionada
+  document.querySelectorAll('.wa-tpl-opt').forEach((el, i) => {
+    el.style.borderColor = i === idx ? 'var(--blue-mid)' : 'var(--border)';
+    el.style.background  = i === idx ? 'var(--blue-xpale)' : '';
+  });
+  const texto = WA_TEMPLATES[idx].texto(nombre, edad);
+  const ta = document.getElementById('wa-custom-msg');
+  if (ta) ta.value = texto;
+  // Actualizar link
+  const sendBtn = document.getElementById('wa-send-btn');
+  if (sendBtn && num) sendBtn.href = 'https://wa.me/52' + num + '?text=' + encodeURIComponent(texto);
+}
+
+// Inicializar badge al cargar
+document.addEventListener('DOMContentLoaded', () => setTimeout(renderBadgeCumple, 2000));
 
 async function loadPatientPayments(patientId) {
   const container = document.getElementById('patient-payments-list');
