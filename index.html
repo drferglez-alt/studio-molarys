@@ -3017,7 +3017,7 @@ function renderDashboardPatients() {
   container.innerHTML = recent.map(p => `
     <div class="patient-item" onclick="showModule('patients')">
       <div class="patient-avatar" style="position:relative;overflow:hidden;">
-        ${(()=>{ const m=JSON.parse(localStorage.getItem('molarys_avatars')||'{}'); const u=m[p.id]; return u ? \`<img src="\${u}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" onerror="this.style.display=\'none\'">\` : ''; })()}
+        ${getAvatarImg(p.id)}
         <span style="position:relative;z-index:1;">${getInitials(p.nombre, p.apellido)}</span>
       </div>
       <div class="patient-info">
@@ -3705,8 +3705,12 @@ async function deleteRFC(rfcId) {
 // ══════════════════════════════════════════
 // FOTO DE PERFIL — Supabase Storage
 // ══════════════════════════════════════════
-const SUPABASE_URL = 'https://wcykfilqrpvaclrtyjbh.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_tTdInog007Dq1WZyQGpHHg_q75CCBlF';
+function getAvatarImg(patientId) {
+  const map = JSON.parse(localStorage.getItem('molarys_avatars') || '{}');
+  const url = map[patientId];
+  if (!url) return '';
+  return `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" onerror="this.style.display='none'">`;
+}
 
 function getAvatarContent(p) {
   const map = JSON.parse(localStorage.getItem('molarys_avatars') || '{}');
