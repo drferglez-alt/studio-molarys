@@ -4370,7 +4370,7 @@ function renderDoctorCard(d) {
       <input type="file" id="doc-avatar-input-${d.id}" accept="image/*" style="display:none"
              onchange="uploadDoctorAvatar(event,'${d.id}')">
       <div>
-        <div class="doctor-name">Dr. ${d.nombre} ${d.apellido}</div>
+        <div class="doctor-name">${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}</div>
         <div class="doctor-esp">${(d.especialidades||[]).map(e=>e.nombre).join(' · ') || 'Sin especialidad'}</div>
       </div>
     </div>
@@ -4446,6 +4446,13 @@ function openDoctorModal(editId) {
       </div>
       <div class="modal-body">
         <div class="form-row">
+          <div class="form-field" style="flex:0 0 120px;">
+            <label>Título</label>
+            <select id="doc-titulo">
+              <option value="Dr." ${(d?.titulo||'Dr.')==='Dr.' ? 'selected':''}>Dr.</option>
+              <option value="Dra." ${d?.titulo==='Dra.' ? 'selected':''}>Dra.</option>
+            </select>
+          </div>
           <div class="form-field">
             <label>Nombre *</label>
             <input id="doc-nombre" type="text" placeholder="Nombre(s)" value="${d?.nombre||''}">
@@ -4538,11 +4545,12 @@ function saveDoctor(editId) {
     .filter(e => e.nombre.trim())
     .map(e => ({ nombre: e.nombre.trim(), cedula: e.cedula.trim() }));
 
+  const titulo = document.getElementById('doc-titulo').value;
   const list = getDoctors();
   if (editId) {
     const idx = list.findIndex(x => x.id === editId);
     if (idx >= 0) {
-      list[idx] = { ...list[idx], nombre, apellido, especialidades,
+      list[idx] = { ...list[idx], titulo, nombre, apellido, especialidades,
         fecha_nac: document.getElementById('doc-fecha-nac').value,
         rfc: document.getElementById('doc-rfc').value.trim(),
         notas: document.getElementById('doc-notas').value.trim() };
@@ -4550,7 +4558,7 @@ function saveDoctor(editId) {
   } else {
     list.push({
       id: 'doc_' + Date.now(),
-      nombre, apellido, especialidades,
+      titulo, nombre, apellido, especialidades,
       fecha_nac: document.getElementById('doc-fecha-nac').value,
       rfc: document.getElementById('doc-rfc').value.trim(),
       notas: document.getElementById('doc-notas').value.trim(),
