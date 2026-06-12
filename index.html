@@ -3,27 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Studio Molarys — Sistema de Gestión Clínica</title>
+<title>Molarys Clínica Dental — Sistema de Gestión Clínica</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --cream: #F5F0E8;
-    --cream-dark: #EDE5D4;
-    --obsidian: #0F0F0D;
-    --charcoal: #1C1C19;
-    --gold: #C9A84C;
-    --gold-light: #E2C97E;
-    --gold-pale: #F0E4C0;
-    --sage: #7A8C72;
-    --text-primary: #1C1C19;
-    --text-secondary: #5A5A52;
-    --text-muted: #9A9A8E;
-    --border: #DDD5C0;
+    --cream: #F4F7FB;
+    --cream-dark: #E8EEF6;
+    --obsidian: #2D3A52;
+    --charcoal: #1E293B;
+    --gold: #5B7BA8;
+    --gold-light: #7A9AC2;
+    --gold-pale: #D6E3F0;
+    --sage: #7A8C9A;
+    --text-primary: #2D3A52;
+    --text-secondary: #4A5A72;
+    --text-muted: #7A8CA0;
+    --border: #C8D8E8;
     --white: #FFFFFF;
     --error: #C0392B;
     --success: #27AE60;
     --warning: #E67E22;
+    /* Molarys brand */
+    --blue-deep: #2D3A52;
+    --blue-mid: #5B7BA8;
+    --blue-light: #7A9AC2;
+    --blue-pale: #D6E3F0;
+    --blue-xpale: #F0F5FA;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -61,7 +67,7 @@
     left: -200px;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(91,123,168,0.18) 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -72,7 +78,7 @@
     right: -100px;
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(91,123,168,0.10) 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -97,7 +103,7 @@
   }
 
   .login-brand h1 span {
-    color: var(--gold);
+    color: var(--blue-mid);
     font-style: italic;
   }
 
@@ -122,7 +128,7 @@
     font-style: italic;
     color: rgba(255,255,255,0.6);
     line-height: 1.5;
-    border-left: 2px solid var(--gold);
+    border-left: 2px solid var(--blue-mid);
     padding-left: 20px;
   }
 
@@ -193,8 +199,8 @@
   }
 
   .form-group input:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+    border-color: var(--blue-mid);
+    box-shadow: 0 0 0 3px rgba(91,123,168,0.12);
   }
 
   .btn-primary {
@@ -263,7 +269,7 @@
     line-height: 1.2;
   }
 
-  .sidebar-brand-name span { color: var(--gold); font-style: italic; }
+  .sidebar-brand-name span { color: var(--blue-mid); font-style: italic; }
 
   .sidebar-brand-sub {
     font-size: 10px;
@@ -304,14 +310,14 @@
 
   .nav-item:hover {
     color: rgba(255,255,255,0.9);
-    background: rgba(255,255,255,0.04);
-    border-left-color: rgba(201,168,76,0.4);
+    background: rgba(91,123,168,0.08);
+    border-left-color: rgba(91,123,168,0.5);
   }
 
   .nav-item.active {
-    color: var(--gold-light);
-    background: rgba(201,168,76,0.08);
-    border-left-color: var(--gold);
+    color: #A8C4E0;
+    background: rgba(91,123,168,0.15);
+    border-left-color: var(--blue-light);
   }
 
   .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
@@ -330,14 +336,14 @@
   .sidebar-avatar {
     width: 36px;
     height: 36px;
-    background: var(--gold);
+    background: var(--blue-mid);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 14px;
     font-weight: 600;
-    color: var(--obsidian);
+    color: var(--white);
     flex-shrink: 0;
   }
 
@@ -445,7 +451,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: var(--gold);
+    background: var(--blue-mid);
     opacity: 0;
     transition: opacity 0.2s;
   }
@@ -516,7 +522,7 @@
 
   .card-link {
     font-size: 12px;
-    color: var(--gold);
+    color: var(--blue-mid);
     text-decoration: none;
     cursor: pointer;
   }
@@ -569,9 +575,9 @@
 
   .patient-exp {
     font-size: 11px;
-    color: var(--gold);
+    color: var(--blue-mid);
     font-weight: 500;
-    background: var(--gold-pale);
+    background: var(--blue-pale);
     padding: 2px 8px;
     border-radius: 20px;
   }
@@ -599,7 +605,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--gold);
+    background: var(--blue-mid);
     margin-top: 5px;
     flex-shrink: 0;
   }
@@ -668,7 +674,7 @@
     transition: border-color 0.2s;
   }
 
-  .search-input:focus { border-color: var(--gold); }
+  .search-input:focus { border-color: var(--blue-mid); }
 
   .patients-table {
     background: var(--white);
@@ -800,18 +806,18 @@
 
   .btn-gold {
     padding: 10px 24px;
-    background: var(--gold);
+    background: var(--blue-mid);
     border: none;
     border-radius: 4px;
     font-size: 13px;
     font-family: 'DM Sans', sans-serif;
     font-weight: 500;
-    color: var(--obsidian);
+    color: var(--white);
     cursor: pointer;
     transition: background 0.15s;
   }
 
-  .btn-gold:hover { background: var(--gold-light); }
+  .btn-gold:hover { background: var(--blue-light); }
 
   /* Form grid */
   .form-row {
@@ -852,7 +858,7 @@
   .form-field input:focus,
   .form-field select:focus,
   .form-field textarea:focus {
-    border-color: var(--gold);
+    border-color: var(--blue-mid);
     background: var(--white);
   }
 
@@ -913,7 +919,7 @@
     position: absolute;
     top: -80px; right: -80px;
     width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(201,168,76,0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(91,123,168,0.20) 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -925,7 +931,7 @@
     margin-bottom: 6px;
   }
 
-  .welcome-text h2 span { color: var(--gold); font-style: italic; }
+  .welcome-text h2 span { color: var(--blue-mid); font-style: italic; }
 
   .welcome-text p {
     font-size: 13px;
@@ -943,7 +949,7 @@
     font-family: 'Cormorant Garamond', serif;
     font-size: 52px;
     font-weight: 300;
-    color: var(--gold);
+    color: var(--blue-light);
     line-height: 1;
   }
 
@@ -992,14 +998,14 @@
   .patient-detail-avatar {
     width: 72px;
     height: 72px;
-    background: var(--obsidian);
+    background: var(--blue-deep);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'Cormorant Garamond', serif;
     font-size: 28px;
-    color: var(--gold);
+    color: var(--blue-light);
     flex-shrink: 0;
   }
 
@@ -1052,7 +1058,7 @@
 
   .tab.active {
     color: var(--text-primary);
-    border-bottom-color: var(--gold);
+    border-bottom-color: var(--blue-mid);
     background: var(--white);
     font-weight: 500;
   }
@@ -1078,10 +1084,10 @@
     font-family: 'Cormorant Garamond', serif;
     font-size: 18px;
     font-weight: 500;
-    color: var(--obsidian);
+    color: var(--blue-deep);
     margin: 28px 0 16px;
     padding-bottom: 8px;
-    border-bottom: 2px solid var(--obsidian);
+    border-bottom: 2px solid var(--blue-deep);
     letter-spacing: 0.5px;
   }
 
@@ -1127,15 +1133,15 @@
   }
 
   .hc-yn-btn.active-si {
-    background: var(--obsidian);
-    color: var(--gold);
-    border-color: var(--obsidian);
+    background: var(--blue-deep);
+    color: var(--blue-light);
+    border-color: var(--blue-deep);
   }
 
   .hc-yn-btn.active-no {
-    background: var(--obsidian);
+    background: var(--blue-deep);
     color: var(--white);
-    border-color: var(--obsidian);
+    border-color: var(--blue-deep);
   }
 
   /* ===== MOBILE / TABLET ===== */
@@ -1221,8 +1227,8 @@
     transition: background 0.2s;
   }
 
-  .progress-step.done { background: var(--gold); }
-  .progress-step.active { background: var(--obsidian); }
+  .progress-step.done { background: var(--blue-mid); }
+  .progress-step.active { background: var(--blue-deep); }
 
   .agenda-view-btn {
     padding: 8px 18px;
@@ -1237,7 +1243,7 @@
   }
   .agenda-view-btn:last-child { border-right: none; }
   .agenda-view-btn:hover { background: var(--cream); color: var(--text-primary); }
-  .agenda-view-btn.active { background: var(--obsidian); color: var(--gold); }
+  .agenda-view-btn.active { background: var(--blue-deep); color: white; }
 
   .mobile-nav-btns {
     display: flex;
@@ -1260,7 +1266,7 @@
     margin-top: 4px;
   }
 
-  .hc-detail:focus { border-color: var(--gold); }
+  .hc-detail:focus { border-color: var(--blue-mid); }
 
   .hc-check {
     display: flex;
@@ -1277,7 +1283,7 @@
   }
 
   .hc-check:hover { background: var(--cream-dark); }
-  .hc-check input { accent-color: var(--gold); }
+  .hc-check input { accent-color: var(--blue-mid); }
 </style>
 </head>
 <body>
@@ -1286,8 +1292,12 @@
 <div id="login-screen">
   <div class="login-left">
     <div class="login-brand">
-      <span class="login-brand-tooth">🦷</span>
-      <h1>Studio<br><span>Molarys</span></h1>
+      <div style="width:64px;height:64px;margin-bottom:20px;">
+        <svg width="64" height="64" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="rgba(91,123,168,0.5)"/>
+        </svg>
+      </div>
+      <h1>Molarys<br><span>Clínica Dental</span></h1>
       <p>Dr. Fernando González</p>
     </div>
     <div class="login-quote">
@@ -1324,8 +1334,15 @@
     <!-- Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-brand">
-        <div class="sidebar-brand-name">Studio <span>Molarys</span></div>
-        <div class="sidebar-brand-sub">Sistema Clínico</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="28" height="28" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="rgba(91,123,168,0.7)"/>
+          </svg>
+          <div>
+            <div class="sidebar-brand-name">Molarys <span>Clínica Dental</span></div>
+            <div class="sidebar-brand-sub">Sistema Clínico</div>
+          </div>
+        </div>
       </div>
       <div class="sidebar-nav">
         <div class="nav-section">Principal</div>
@@ -1490,123 +1507,75 @@
           </div>
         </div>
 
-        <!-- AGENDA -->
+        <!-- AGENDA — espejo Google Calendar -->
         <div class="module-page" id="module-agenda">
-          <!-- Not connected state -->
-          <div id="agenda-connect-state">
-            <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;padding:60px 40px;text-align:center;max-width:500px;margin:0 auto;">
-              <div style="font-size:48px;margin-bottom:20px;">📅</div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;margin-bottom:12px;">Conecta tu Google Calendar</div>
-              <div style="font-size:14px;color:var(--text-muted);margin-bottom:32px;line-height:1.6;">Inicia sesión con Google una sola vez para ver, crear y editar tus citas directamente desde Studio Molarys.</div>
-              <button onclick="connectGoogle()" style="display:inline-flex;align-items:center;gap:12px;padding:14px 28px;background:var(--white);border:2px solid var(--border);border-radius:6px;font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                Conectar con Google Calendar
-              </button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--text-primary);">Agenda</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizado con Google Calendar · drferglez@gmail.com</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+                <button class="agenda-view-btn active" onclick="setCalendarView(this,'month')">Mes</button>
+                <button class="agenda-view-btn" onclick="setCalendarView(this,'week')">Semana</button>
+                <button class="agenda-view-btn" onclick="setCalendarView(this,'day')">Día</button>
+                <button class="agenda-view-btn" onclick="setCalendarView(this,'list')">Lista</button>
+              </div>
+              <button class="btn-new" onclick="loadGoogleEvents()">↻ Actualizar</button>
             </div>
           </div>
 
-          <!-- Connected state -->
-          <div id="agenda-calendar-state" style="display:none;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-              <div>
-                <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;">Agenda</div>
-                <div style="font-size:13px;color:var(--text-muted);margin-top:2px;" id="agenda-account-label"></div>
-              </div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
-                  <button class="agenda-view-btn active" onclick="setCalendarView(this,'month')">Mes</button>
-                  <button class="agenda-view-btn" onclick="setCalendarView(this,'week')">Semana</button>
-                  <button class="agenda-view-btn" onclick="setCalendarView(this,'day')">Día</button>
-                  <button class="agenda-view-btn" onclick="setCalendarView(this,'list')">Lista</button>
-                </div>
-                <button class="btn-new" onclick="openNewEventModal()">+ Nueva Cita</button>
-                <button onclick="disconnectGoogle()" style="background:none;border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">Desconectar</button>
-              </div>
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
+              <button onclick="calNavigate(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">‹</button>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-title">---</div>
+              <button onclick="calNavigate(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">›</button>
             </div>
 
-            <!-- Month nav -->
-            <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
-                <button onclick="calNavigate(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">‹</button>
-                <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-title">---</div>
-                <button onclick="calNavigate(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">›</button>
-              </div>
+            <div id="cal-loading" style="display:none;padding:60px;text-align:center;color:var(--text-muted);">
+              <div class="loading" style="border-top-color:var(--blue-mid);border-color:var(--border);width:24px;height:24px;margin:0 auto 12px;"></div>
+              <div>Cargando citas...</div>
+            </div>
+            <div id="cal-error" style="display:none;padding:40px;text-align:center;">
+              <div style="font-size:32px;margin-bottom:12px;">⊕</div>
+              <div style="color:var(--error);font-size:14px;" id="cal-error-msg">Error al cargar el calendario</div>
+              <button onclick="loadGoogleEvents()" style="margin-top:16px;padding:8px 20px;background:var(--blue-mid);color:white;border:none;border-radius:4px;cursor:pointer;font-family:DM Sans,sans-serif;">Reintentar</button>
+            </div>
 
-              <!-- Month view -->
-              <div id="view-month-cal">
-                <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">DOM</div>
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">LUN</div>
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MAR</div>
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MIÉ</div>
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">JUE</div>
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">VIE</div>
-                  <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">SÁB</div>
-                </div>
-                <div id="month-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
+            <div id="view-month-cal">
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">DOM</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">LUN</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MAR</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MIÉ</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">JUE</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">VIE</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">SÁB</div>
               </div>
-
-              <!-- Week view -->
-              <div id="view-week-cal" style="display:none;overflow-x:auto;">
-                <div id="week-grid-cal"></div>
-              </div>
-
-              <!-- Day view -->
-              <div id="view-day-cal" style="display:none;">
-                <div id="day-grid-cal" style="padding:16px;"></div>
-              </div>
-
-              <!-- List view -->
-              <div id="view-list-cal" style="display:none;">
-                <div id="list-grid-cal" style="padding:24px;"></div>
-              </div>
+              <div id="month-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
+            </div>
+            <div id="view-week-cal" style="display:none;overflow-x:auto;">
+              <div id="week-grid-cal"></div>
+            </div>
+            <div id="view-day-cal" style="display:none;">
+              <div id="day-grid-cal" style="padding:16px;"></div>
+            </div>
+            <div id="view-list-cal" style="display:none;">
+              <div id="list-grid-cal" style="padding:24px;"></div>
             </div>
           </div>
-        </div>
 
-        <!-- EVENT DETAIL MODAL -->
-        <div class="modal-overlay" id="modal-event-detail">
-          <div class="modal" style="max-width:480px;">
-            <div class="modal-header">
-              <div class="modal-title" id="event-detail-title">Cita</div>
-              <button class="modal-close" onclick="closeModal('modal-event-detail')">✕</button>
-            </div>
-            <div class="modal-body" id="event-detail-body"></div>
-            <div class="modal-footer">
-              <button class="btn-secondary" onclick="closeModal('modal-event-detail')">Cerrar</button>
-              <button class="btn-gold" onclick="editCurrentEvent()" id="btn-edit-event">Editar en Google</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- NEW EVENT MODAL -->
-        <div class="modal-overlay" id="modal-new-event">
-          <div class="modal" style="max-width:500px;">
-            <div class="modal-header">
-              <div class="modal-title">Nueva Cita</div>
-              <button class="modal-close" onclick="closeModal('modal-new-event')">✕</button>
-            </div>
-            <div class="modal-body">
-              <div class="form-row single">
-                <div class="form-field"><label>Título *</label><input type="text" id="ev-title" placeholder="Ej. Consulta — Juan Pérez"></div>
+          <div class="modal-overlay" id="modal-event-detail">
+            <div class="modal" style="max-width:480px;">
+              <div class="modal-header">
+                <div class="modal-title" id="event-detail-title">Cita</div>
+                <button class="modal-close" onclick="closeModal('modal-event-detail')">✕</button>
               </div>
-              <div class="form-row">
-                <div class="form-field"><label>Fecha *</label><input type="date" id="ev-date"></div>
-                <div class="form-field"><label>Hora inicio *</label><input type="time" id="ev-start" value="09:00"></div>
+              <div class="modal-body" id="event-detail-body"></div>
+              <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-event-detail')">Cerrar</button>
+                <button class="btn-gold" onclick="editCurrentEvent()">Editar en Google</button>
               </div>
-              <div class="form-row">
-                <div class="form-field"><label>Hora fin</label><input type="time" id="ev-end" value="10:00"></div>
-                <div class="form-field"><label>Paciente</label>
-                  <select id="ev-patient"><option value="">Sin vincular</option></select>
-                </div>
-              </div>
-              <div class="form-row single">
-                <div class="form-field"><label>Notas</label><textarea id="ev-notes" placeholder="Tratamiento, indicaciones..."></textarea></div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn-secondary" onclick="closeModal('modal-new-event')">Cancelar</button>
-              <button class="btn-gold" onclick="createGoogleEvent()" id="btn-save-event">Guardar Cita</button>
             </div>
           </div>
         </div>
@@ -1657,7 +1626,7 @@
 
               <!-- Aviso de privacidad -->
               <div style="background:var(--obsidian);color:rgba(255,255,255,0.8);padding:12px 16px;border-radius:4px;font-size:11px;line-height:1.6;margin-bottom:24px;">
-                Los <strong style="color:var(--gold)">DATOS SENSIBLES PERSONALES</strong> que nos proporcione son tratados con absoluta CONFIDENCIALIDAD; garantizando su protección en apego a lo dispuesto por los artículos 15 y 16 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.
+                Los <strong style="color:var(--blue-mid)">DATOS SENSIBLES PERSONALES</strong> que nos proporcione son tratados con absoluta CONFIDENCIALIDAD; garantizando su protección en apego a lo dispuesto por los artículos 15 y 16 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.
               </div>
 
               <!-- Selección de paciente -->
@@ -1858,7 +1827,7 @@
               </div>
 
               <!-- Paciente mujer -->
-              <div class="hc-section-title" style="color:var(--gold)">Paciente Mujer</div>
+              <div class="hc-section-title" style="color:var(--blue-mid)">Paciente Mujer</div>
               <div class="hc-yn-grid">
                 <div class="hc-yn-item">
                   <div class="hc-yn-q">¿Toma anticonceptivos?</div>
@@ -2478,7 +2447,8 @@ function showApp() {
   loadHistories();
   loadTreatments();
   loadUserProfile();
-  checkGoogleAuth();
+  // Load calendar automatically (API Key — no auth needed)
+  loadGoogleEvents();
   // Populate patient select for income
   setTimeout(() => {
     const sel = document.getElementById('inc-patient');
@@ -2514,7 +2484,7 @@ function showModule(module) {
   currentModule = module;
 
   // Load data per module
-  if (module === 'agenda') setTimeout(() => checkGoogleAuth(), 100);
+  if (module === 'agenda') setTimeout(() => loadGoogleEvents(), 100);
   if (module === 'users') loadUsers();
   if (module === 'income') {
     // Populate selects
@@ -2748,75 +2718,50 @@ document.addEventListener('keydown', e => {
 });
 
 // ============================================================
-// AGENDA — Google Calendar OAuth
+// AGENDA — Google Calendar API Key (espejo de solo lectura)
 // ============================================================
-const GCAL_CLIENT_ID = '78075134021-b15ltrfdlm5j7gruclf7bdacjqa2uf12.apps.googleusercontent.com';
-const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
-let gAccessToken = null;
+const GCAL_API_KEY = 'AIzaSyBvZF49rjR6w8blJSk911BVXQuM0m0t7Lg';
+const GCAL_CALENDAR_ID = 'drferglez%40gmail.com';
 let calDate = new Date();
 let calViewMode = 'month';
 let gEvents = [];
 let currentEventId = null;
 
-function connectGoogle() {
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${GCAL_CLIENT_ID}` +
-    `&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}` +
-    `&response_type=token` +
-    `&scope=${encodeURIComponent(GCAL_SCOPES)}` +
-    `&prompt=consent`;
-  window.location.href = authUrl;
-}
-
-function disconnectGoogle() {
-  gAccessToken = null;
-  localStorage.removeItem('gcal_token');
-  localStorage.removeItem('gcal_expiry');
-  document.getElementById('agenda-connect-state').style.display = 'block';
-  document.getElementById('agenda-calendar-state').style.display = 'none';
-}
-
-function checkGoogleAuth() {
-  // Check URL hash for token (after OAuth redirect)
-  const hash = window.location.hash;
-  if (hash.includes('access_token')) {
-    const params = new URLSearchParams(hash.substring(1));
-    gAccessToken = params.get('access_token');
-    const expiresIn = params.get('expires_in');
-    const expiry = Date.now() + (expiresIn * 1000);
-    localStorage.setItem('gcal_token', gAccessToken);
-    localStorage.setItem('gcal_expiry', expiry);
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } else {
-    // Check stored token
-    const stored = localStorage.getItem('gcal_token');
-    const expiry = localStorage.getItem('gcal_expiry');
-    if (stored && expiry && Date.now() < parseInt(expiry)) {
-      gAccessToken = stored;
-    }
-  }
-
-  if (gAccessToken) {
-    document.getElementById('agenda-connect-state').style.display = 'none';
-    document.getElementById('agenda-calendar-state').style.display = 'block';
-    loadGoogleEvents();
-  }
-}
-
 async function loadGoogleEvents() {
-  if (!gAccessToken) return;
+  const loading = document.getElementById('cal-loading');
+  const errorEl = document.getElementById('cal-error');
+  if (loading) loading.style.display = 'block';
+  if (errorEl) errorEl.style.display = 'none';
+  // hide cal views while loading
+  ['month','week','day','list'].forEach(v => {
+    const el = document.getElementById('view-' + v + '-cal');
+    if (el) el.style.display = 'none';
+  });
+
   try {
-    const start = new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1).toISOString();
-    const end = new Date(calDate.getFullYear(), calDate.getMonth() + 2, 0).toISOString();
-    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=500`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${gAccessToken}` } });
-    if (res.status === 401) { disconnectGoogle(); return; }
+    const now = calDate;
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${GCAL_CALENDAR_ID}/events?key=${GCAL_API_KEY}&timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&orderBy=startTime&maxResults=500`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Error ' + res.status);
+    }
     const data = await res.json();
     gEvents = data.items || [];
+    if (loading) loading.style.display = 'none';
     renderGoogleCalendar();
+    // Update dashboard agenda
+    renderDashboardAgenda();
   } catch(e) {
     console.error('Calendar error:', e);
+    if (loading) loading.style.display = 'none';
+    if (errorEl) {
+      errorEl.style.display = 'block';
+      const msgEl = document.getElementById('cal-error-msg');
+      if (msgEl) msgEl.textContent = 'Error al cargar: ' + e.message;
+    }
   }
 }
 
@@ -2825,7 +2770,8 @@ function setCalendarView(btn, view) {
   document.querySelectorAll('.agenda-view-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   ['month','week','day','list'].forEach(v => {
-    document.getElementById(`view-${v}-cal`).style.display = v === view ? 'block' : 'none';
+    const el = document.getElementById('view-' + v + '-cal');
+    if (el) el.style.display = v === view ? 'block' : 'none';
   });
   renderGoogleCalendar();
 }
@@ -2839,18 +2785,24 @@ function calNavigate(dir) {
 
 function renderGoogleCalendar() {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const title = document.getElementById('cal-title');
+  if (!title) return;
+
+  // Show correct view
+  ['month','week','day','list'].forEach(v => {
+    const el = document.getElementById('view-' + v + '-cal');
+    if (el) el.style.display = v === calViewMode ? 'block' : 'none';
+  });
 
   if (calViewMode === 'month') {
-    title.textContent = `${months[calDate.getMonth()]} ${calDate.getFullYear()}`;
+    title.textContent = months[calDate.getMonth()] + ' ' + calDate.getFullYear();
     renderMonthGrid();
   } else if (calViewMode === 'week') {
     const startW = new Date(calDate);
     startW.setDate(calDate.getDate() - calDate.getDay());
     const endW = new Date(startW);
     endW.setDate(startW.getDate() + 6);
-    title.textContent = `${startW.getDate()} ${months[startW.getMonth()]} — ${endW.getDate()} ${months[endW.getMonth()]}`;
+    title.textContent = startW.getDate() + ' ' + months[startW.getMonth()] + ' — ' + endW.getDate() + ' ' + months[endW.getMonth()];
     renderWeekGrid();
   } else if (calViewMode === 'day') {
     title.textContent = calDate.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
@@ -2859,8 +2811,6 @@ function renderGoogleCalendar() {
     title.textContent = 'Próximas citas';
     renderListGrid();
   }
-
-  document.getElementById('agenda-account-label').textContent = '✓ Conectado con Google Calendar';
 }
 
 function getEventsForDate(date) {
@@ -2873,6 +2823,7 @@ function getEventsForDate(date) {
 
 function renderMonthGrid() {
   const grid = document.getElementById('month-grid');
+  if (!grid) return;
   const year = calDate.getFullYear();
   const month = calDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
@@ -2891,14 +2842,14 @@ function renderMonthGrid() {
     const col = (firstDay + d - 1) % 7;
     const isWeekend = col === 0 || col === 6;
 
-    html += `<div style="min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:${isWeekend ? '#fafafa' : 'var(--white)'};" onclick="calDate=new Date(${year},${month},${d});setCalendarView(document.querySelector('.agenda-view-btn.active'),'day')">
-      <div style="font-size:13px;font-weight:500;color:${isToday?'var(--white)':'var(--text-primary)'};background:${isToday?'var(--obsidian)':'transparent'};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${d}</div>
+    html += `<div style="min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:${isWeekend ? 'var(--cream)' : 'var(--white)'};" onclick="calDate=new Date(${year},${month},${d});setCalendarView(document.querySelector('.agenda-view-btn.active'),'day')">
+      <div style="font-size:13px;font-weight:500;color:${isToday?'var(--white)':'var(--text-primary)'};background:${isToday?'var(--blue-deep)':'transparent'};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${d}</div>
       ${evs.slice(0,3).map(ev => {
         const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
-        const color = ev.colorId ? getEventColor(ev.colorId) : 'var(--obsidian)';
-        return `<div onclick="event.stopPropagation();showEventDetail('${ev.id}')" style="background:${color};color:white;font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${time ? time+' ':''}${ev.summary||'Sin título'}</div>`;
+        const color = ev.colorId ? getEventColor(ev.colorId) : 'var(--blue-mid)';
+        return `<div onclick="event.stopPropagation();showEventDetail('${ev.id}')" style="background:${color};color:white;font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${time ? time + ' ' : ''}${ev.summary || 'Sin título'}</div>`;
       }).join('')}
-      ${evs.length > 3 ? `<div style="font-size:10px;color:var(--text-muted);">+${evs.length-3} más</div>` : ''}
+      ${evs.length > 3 ? '<div style="font-size:10px;color:var(--text-muted);">+' + (evs.length-3) + ' más</div>' : ''}
     </div>`;
   }
   grid.innerHTML = html;
@@ -2906,33 +2857,35 @@ function renderMonthGrid() {
 
 function renderWeekGrid() {
   const grid = document.getElementById('week-grid-cal');
+  if (!grid) return;
   const startW = new Date(calDate);
   startW.setDate(calDate.getDate() - calDate.getDay());
   const weekDays = Array.from({length:7}, (_,i) => { const d = new Date(startW); d.setDate(startW.getDate()+i); return d; });
   const hours = Array.from({length:14}, (_,i) => i+7);
   const today = new Date().toDateString();
 
-  let html = `<div style="display:grid;grid-template-columns:52px repeat(7,1fr);min-width:600px;">
-    <div style="border-bottom:1px solid var(--border);"></div>
-    ${weekDays.map(d => `<div style="text-align:center;padding:10px 4px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);background:${d.toDateString()===today?'var(--obsidian)':'var(--cream)'};color:${d.toDateString()===today?'var(--gold)':'var(--text-secondary)'};">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;">${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]}</div>
-      <div style="font-size:20px;font-family:Cormorant Garamond,serif;font-weight:300;">${d.getDate()}</div>
-    </div>`).join('')}
-    ${hours.map(h => `
-      <div style="padding:4px 8px;font-size:11px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);height:56px;">${h}:00</div>
-      ${weekDays.map(d => {
-        const evs = getEventsForDate(d).filter(ev => ev.start?.dateTime && new Date(ev.start.dateTime).getHours()===h);
-        return `<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);height:56px;padding:2px;">
-          ${evs.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;height:100%;">${ev.summary||'Cita'}</div>`).join('')}
-        </div>`;
-      }).join('')}
-    `).join('')}
-  </div>`;
+  let html = '<div style="display:grid;grid-template-columns:52px repeat(7,1fr);min-width:600px;">'
+    + '<div style="border-bottom:1px solid var(--border);"></div>'
+    + weekDays.map(d => '<div style="text-align:center;padding:10px 4px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);background:' + (d.toDateString()===today?'var(--blue-deep)':'var(--cream)') + ';color:' + (d.toDateString()===today?'white':'var(--text-secondary)') + ';">'
+      + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;">' + ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()] + '</div>'
+      + '<div style="font-size:20px;font-family:Cormorant Garamond,serif;font-weight:300;">' + d.getDate() + '</div></div>').join('');
+
+  hours.forEach(h => {
+    html += '<div style="padding:4px 8px;font-size:11px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);height:56px;">' + h + ':00</div>';
+    weekDays.forEach(d => {
+      const evs = getEventsForDate(d).filter(ev => ev.start?.dateTime && new Date(ev.start.dateTime).getHours()===h);
+      html += '<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);height:56px;padding:2px;">'
+        + evs.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--blue-mid);color:white;font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;height:100%;">${ev.summary||'Cita'}</div>`).join('')
+        + '</div>';
+    });
+  });
+  html += '</div>';
   grid.innerHTML = html;
 }
 
 function renderDayGrid() {
   const grid = document.getElementById('day-grid-cal');
+  if (!grid) return;
   const hours = Array.from({length:14}, (_,i) => i+7);
   const dayEvs = getEventsForDate(calDate);
   const allDay = dayEvs.filter(ev => ev.start?.date && !ev.start?.dateTime);
@@ -2940,40 +2893,44 @@ function renderDayGrid() {
 
   let html = '';
   if (allDay.length) {
-    html += `<div style="padding:8px 16px;background:var(--cream);border-bottom:1px solid var(--border);">
-      ${allDay.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;margin-bottom:4px;">${ev.summary||'Sin título'} — Todo el día</div>`).join('')}
-    </div>`;
+    html += '<div style="padding:8px 16px;background:var(--cream);border-bottom:1px solid var(--border);">';
+    allDay.forEach(ev => {
+      html += `<div onclick="showEventDetail('${ev.id}')" style="background:var(--blue-mid);color:white;padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;margin-bottom:4px;">${ev.summary||'Sin título'} — Todo el día</div>`;
+    });
+    html += '</div>';
   }
 
-  html += `<div style="display:grid;grid-template-columns:56px 1fr;">
-    ${hours.map(h => {
-      const evs = timed.filter(ev => new Date(ev.start.dateTime).getHours()===h);
-      return `<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:64px;">${h}:00</div>
-        <div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:64px;padding:4px 8px;">
-          ${evs.map(ev => {
-            const start = new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-            const end = ev.end?.dateTime ? new Date(ev.end.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
-            return `<div onclick="showEventDetail('${ev.id}')" style="background:var(--obsidian);color:var(--gold);padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;">
-              <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
-              <div style="font-size:12px;opacity:0.7;margin-top:2px;">${start}${end?' — '+end:''}</div>
-              ${ev.description?`<div style="font-size:11px;opacity:0.6;margin-top:4px;">${ev.description}</div>`:''}
-            </div>`;
-          }).join('')}
-        </div>`;
-    }).join('')}
-  </div>`;
+  html += '<div style="display:grid;grid-template-columns:56px 1fr;">';
+  hours.forEach(h => {
+    const evs = timed.filter(ev => new Date(ev.start.dateTime).getHours()===h);
+    html += `<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:64px;">${h}:00</div>`;
+    html += '<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:64px;padding:4px 8px;">';
+    evs.forEach(ev => {
+      const start = new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      const end = ev.end?.dateTime ? new Date(ev.end.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
+      html += `<div onclick="showEventDetail('${ev.id}')" style="background:var(--blue-deep);color:white;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;border-left:3px solid var(--blue-light);">
+        <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:2px;">${start}${end?' — '+end:''}</div>
+        ${ev.description ? '<div style="font-size:11px;opacity:0.6;margin-top:4px;">'+ev.description+'</div>' : ''}
+      </div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
   grid.innerHTML = html;
 }
 
+
 function renderListGrid() {
   const grid = document.getElementById('list-grid-cal');
+  if (!grid) return;
   const now = new Date();
   const upcoming = gEvents
     .filter(ev => new Date(ev.start?.dateTime||ev.start?.date) >= now)
     .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
   if (!upcoming.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas próximas</h3></div>';
+    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas próximas</h3><p>No hay citas programadas próximamente</p></div>';
     return;
   }
 
@@ -2982,24 +2939,25 @@ function renderListGrid() {
   let lastDate = '';
   upcoming.forEach(ev => {
     const start = new Date(ev.start?.dateTime||ev.start?.date);
-    const dateStr = `${['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][start.getDay()]} ${start.getDate()} de ${months[start.getMonth()]}`;
+    const dateStr = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][start.getDay()] + ' ' + start.getDate() + ' de ' + months[start.getMonth()];
     const timeStr = ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día';
     if (dateStr !== lastDate) {
-      html += `<div style="font-family:Cormorant Garamond,serif;font-size:17px;font-weight:500;padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;">${dateStr}</div>`;
+      html += `<div style="font-family:Cormorant Garamond,serif;font-size:17px;font-weight:500;padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;color:var(--blue-deep);">${dateStr}</div>`;
       lastDate = dateStr;
     }
-    html += `<div onclick="showEventDetail('${ev.id}')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='var(--white)'">
-      <div style="width:4px;height:40px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
+    html += `<div onclick="showEventDetail('${ev.id}')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--blue-xpale)'" onmouseout="this.style.background='var(--white)'">
+      <div style="width:4px;height:40px;background:var(--blue-mid);border-radius:2px;flex-shrink:0;"></div>
       <div style="flex:1;">
         <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${timeStr}</div>
-        ${ev.description?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${ev.description}</div>`:''}
+        ${ev.description ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">'+ev.description+'</div>' : ''}
       </div>
-      <div style="font-size:12px;color:var(--gold);">Ver →</div>
+      <div style="font-size:12px;color:var(--blue-mid);">Ver →</div>
     </div>`;
   });
   grid.innerHTML = html;
 }
+
 
 function getEventColor(colorId) {
   const colors = {
@@ -3007,7 +2965,7 @@ function getEventColor(colorId) {
     '5':'#f6c026','6':'#f5511d','7':'#039be5','8':'#616161',
     '9':'#3f51b5','10':'#0b8043','11':'#d60000'
   };
-  return colors[colorId] || 'var(--obsidian)';
+  return colors[colorId] || 'var(--blue-mid)';
 }
 
 function showEventDetail(id) {
@@ -3028,75 +2986,43 @@ function showEventDetail(id) {
           <div style="font-size:13px;color:var(--text-muted);">${ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})+(end?' — '+end.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'') : 'Todo el día'}</div>
         </div>
       </div>
-      ${ev.description ? `<div style="display:flex;gap:12px;align-items:flex-start;"><span style="font-size:20px;">📝</span><div style="font-size:14px;color:var(--text-secondary);">${ev.description}</div></div>` : ''}
-      ${ev.location ? `<div style="display:flex;gap:12px;align-items:flex-start;"><span style="font-size:20px;">📍</span><div style="font-size:14px;color:var(--text-secondary);">${ev.location}</div></div>` : ''}
+      ${ev.description ? '<div style="display:flex;gap:12px;align-items:flex-start;"><span style="font-size:20px;">📝</span><div style="font-size:14px;color:var(--text-secondary);">' + ev.description + '</div></div>' : ''}
+      ${ev.location ? '<div style="display:flex;gap:12px;align-items:flex-start;"><span style="font-size:20px;">📍</span><div style="font-size:14px;color:var(--text-secondary);">' + ev.location + '</div></div>' : ''}
     </div>`;
   document.getElementById('modal-event-detail').classList.add('open');
 }
 
 function editCurrentEvent() {
   if (!currentEventId) return;
-  window.open(`https://calendar.google.com/calendar/r/eventedit/${currentEventId}`, '_blank');
+  window.open('https://calendar.google.com/calendar/r/eventedit/' + currentEventId, '_blank');
 }
 
-function openNewEventModal() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('ev-date').value = today;
-  const sel = document.getElementById('ev-patient');
-  sel.innerHTML = '<option value="">Sin vincular</option>';
-  patients.forEach(p => sel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
-  document.getElementById('modal-new-event').classList.add('open');
-}
+function renderDashboardAgenda() {
+  const container = document.getElementById('dashboard-agenda-list');
+  if (!container) return;
+  const today = new Date().toDateString();
+  const todayEvs = gEvents.filter(ev => {
+    const s = ev.start?.dateTime || ev.start?.date;
+    return new Date(s).toDateString() === today;
+  }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
-async function createGoogleEvent() {
-  const title = document.getElementById('ev-title').value.trim();
-  const date = document.getElementById('ev-date').value;
-  const start = document.getElementById('ev-start').value;
-  const end = document.getElementById('ev-end').value;
-  const notes = document.getElementById('ev-notes').value.trim();
-  const patientId = document.getElementById('ev-patient').value;
+  document.getElementById('stat-today').textContent = todayEvs.length;
 
-  if (!title || !date || !start) { showToast('Título, fecha y hora son obligatorios', 'error'); return; }
-
-  const btn = document.getElementById('btn-save-event');
-  btn.disabled = true; btn.textContent = 'Guardando...';
-
-  let description = notes;
-  if (patientId) {
-    const p = patients.find(p => p.id === patientId);
-    if (p) description = `Paciente: ${p.nombre} ${p.apellido} (#${p.expediente})\n${notes}`;
+  if (!todayEvs.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin citas hoy</h3><p>No tienes citas programadas para hoy</p></div>';
+    return;
   }
 
-  try {
-    const event = {
-      summary: title,
-      description,
-      start: { dateTime: `${date}T${start}:00`, timeZone: 'America/Mexico_City' },
-      end: { dateTime: `${date}T${end}:00`, timeZone: 'America/Mexico_City' }
-    };
-
-    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(event)
-    });
-
-    if (res.status === 401) { disconnectGoogle(); return; }
-    const data = await res.json();
-    if (data.id) {
-      showToast('Cita creada en Google Calendar ✓', 'success');
-      closeModal('modal-new-event');
-      document.getElementById('ev-title').value = '';
-      document.getElementById('ev-notes').value = '';
-      await loadGoogleEvents();
-    } else {
-      throw new Error('Error creando evento');
-    }
-  } catch(e) {
-    showToast('Error al crear la cita', 'error');
-    console.error(e);
-  }
-  btn.disabled = false; btn.textContent = 'Guardar Cita';
+  container.innerHTML = todayEvs.map(ev => {
+    const start = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día';
+    return '<div class="agenda-item">'
+      + '<div class="agenda-time">' + start + '</div>'
+      + '<div class="agenda-dot"></div>'
+      + '<div class="agenda-info">'
+      + '<div class="agenda-patient">' + (ev.summary||'Sin título') + '</div>'
+      + (ev.description ? '<div class="agenda-proc">' + ev.description + '</div>' : '')
+      + '</div></div>';
+  }).join('');
 }
 
 // ============================================================
@@ -3309,11 +3235,11 @@ function calcCascada() {
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">Distribución del Remanente</div>
       ${row('🏥 Clínica (30%)', fmt(clinica), 'var(--success)')}
       ${row('🔧 Equipo (20%)', fmt(equipo), 'var(--success)')}
-      ${row('👨‍⚕️ Doctor (30%)', fmt(doctor), 'var(--gold)')}
+      ${row('👨‍⚕️ Doctor (30%)', fmt(doctor), 'var(--blue-mid)')}
     </div>
     <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--obsidian);">
       <div style="font-family:Cormorant Garamond,serif;font-size:18px;font-weight:600;">Doctor recibe</div>
-      <div style="font-family:Cormorant Garamond,serif;font-size:24px;font-weight:600;color:var(--gold);">${fmt(doctor)}</div>
+      <div style="font-family:Cormorant Garamond,serif;font-size:24px;font-weight:600;color:var(--blue-mid);">${fmt(doctor)}</div>
     </div>`;
 
   // Store calculated values for saving
@@ -3400,7 +3326,7 @@ function renderIncomeTable(filter = '', filterPago = '') {
       </div>
       <div class="td" style="font-weight:500;">${fmt(r.ingreso_bruto)}</div>
       <div class="td">${pagoIcon[r.tipo_pago] || ''} ${r.tipo_pago}</div>
-      <div class="td" style="color:var(--gold);font-weight:500;">${fmt(r.remanente_doctor)}</div>
+      <div class="td" style="color:var(--blue-mid);font-weight:500;">${fmt(r.remanente_doctor)}</div>
       <div class="td"><a class="card-link" onclick="showIncomeDetail('${r.id}')">Ver →</a></div>
     </div>`).join('');
 }
@@ -3430,7 +3356,7 @@ function showIncomeDetail(id) {
     ${r.laboratorio > 0 ? row('Laboratorio (20%)', '-' + fmt(r.laboratorio), 'var(--warning)') : ''}
     ${row('Clínica (30%)', fmt(r.remanente_clinica), 'var(--success)')}
     ${row('Equipo (20%)', fmt(r.remanente_equipo), 'var(--success)')}
-    ${row('Doctor (30%)', fmt(r.remanente_doctor), 'var(--gold)')}
+    ${row('Doctor (30%)', fmt(r.remanente_doctor), 'var(--blue-mid)')}
     ${r.notas ? `<div style="margin-top:12px;font-size:13px;color:var(--text-muted);">📝 ${r.notas}</div>` : ''}`;
 
   document.getElementById('modal-income-detail').classList.add('open');
@@ -3466,7 +3392,7 @@ function renderTreatmentsTable() {
     <div class="table-row" style="grid-template-columns:1fr 140px 120px 80px 80px">
       <div class="td" style="font-weight:500;">${t.nombre}</div>
       <div class="td muted">${cats[t.categoria] || t.categoria}</div>
-      <div class="td" style="font-weight:500;color:var(--gold);">${fmt(t.precio)}</div>
+      <div class="td" style="font-weight:500;color:var(--blue-mid);">${fmt(t.precio)}</div>
       <div class="td"><span class="badge badge-active">Activo</span></div>
       <div class="td"><a class="card-link" onclick="deleteTreatment('${t.id}')">Eliminar</a></div>
     </div>`).join('');
@@ -3577,14 +3503,14 @@ async function generateWeeklyCut() {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
         <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">BRUTO</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;">${fmt(totalBruto)}</div></div>
-        <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">DOCTOR</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;color:var(--gold);">${fmt(totalDoctor)}</div></div>
+        <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">DOCTOR</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;color:var(--blue-mid);">${fmt(totalDoctor)}</div></div>
         <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">CLÍNICA</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;color:var(--success);">${fmt(totalClinica)}</div></div>
         <div style="text-align:center;padding:16px;background:var(--cream);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">EQUIPO</div><div style="font-family:Cormorant Garamond,serif;font-size:22px;">${fmt(totalEquipo)}</div></div>
       </div>
       ${records.map(r => `
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">
           <div><span style="font-weight:500;">${r.patients?.nombre||''} ${r.patients?.apellido||''}</span> <span style="color:var(--text-muted);">— ${r.treatments?.nombre||'Sin tratamiento'}</span></div>
-          <div style="color:var(--gold);font-weight:500;">${fmt(r.remanente_doctor)}</div>
+          <div style="color:var(--blue-mid);font-weight:500;">${fmt(r.remanente_doctor)}</div>
         </div>`).join('')}`;
   } catch(e) { showToast('Error generando corte', 'error'); }
 }
