@@ -1507,76 +1507,26 @@
           </div>
         </div>
 
-        <!-- AGENDA — espejo Google Calendar -->
+        <!-- AGENDA — iframe Google Calendar -->
         <div class="module-page" id="module-agenda">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--text-primary);">Agenda</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizado con Google Calendar · drferglez@gmail.com</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Google Calendar · drferglez@gmail.com</div>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-              <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
-                <button class="agenda-view-btn active" onclick="setCalendarView(this,'month')">Mes</button>
-                <button class="agenda-view-btn" onclick="setCalendarView(this,'week')">Semana</button>
-                <button class="agenda-view-btn" onclick="setCalendarView(this,'day')">Día</button>
-                <button class="agenda-view-btn" onclick="setCalendarView(this,'list')">Lista</button>
-              </div>
-              <button class="btn-new" onclick="loadGoogleEvents()">↻ Actualizar</button>
-            </div>
+            <a href="https://calendar.google.com" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--white);border:1px solid var(--border);border-radius:4px;font-size:13px;color:var(--text-secondary);text-decoration:none;">
+              &#8599; Abrir Google Calendar
+            </a>
           </div>
-
           <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
-              <button onclick="calNavigate(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">‹</button>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-title">---</div>
-              <button onclick="calNavigate(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">›</button>
-            </div>
-
-            <div id="cal-loading" style="display:none;padding:60px;text-align:center;color:var(--text-muted);">
-              <div class="loading" style="border-top-color:var(--blue-mid);border-color:var(--border);width:24px;height:24px;margin:0 auto 12px;"></div>
-              <div>Cargando citas...</div>
-            </div>
-            <div id="cal-error" style="display:none;padding:40px;text-align:center;">
-              <div style="font-size:32px;margin-bottom:12px;">⊕</div>
-              <div style="color:var(--error);font-size:14px;" id="cal-error-msg">Error al cargar el calendario</div>
-              <button onclick="loadGoogleEvents()" style="margin-top:16px;padding:8px 20px;background:var(--blue-mid);color:white;border:none;border-radius:4px;cursor:pointer;font-family:DM Sans,sans-serif;">Reintentar</button>
-            </div>
-
-            <div id="view-month-cal">
-              <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);">
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">DOM</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">LUN</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MAR</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MIÉ</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">JUE</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">VIE</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">SÁB</div>
-              </div>
-              <div id="month-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
-            </div>
-            <div id="view-week-cal" style="display:none;overflow-x:auto;">
-              <div id="week-grid-cal"></div>
-            </div>
-            <div id="view-day-cal" style="display:none;">
-              <div id="day-grid-cal" style="padding:16px;"></div>
-            </div>
-            <div id="view-list-cal" style="display:none;">
-              <div id="list-grid-cal" style="padding:24px;"></div>
-            </div>
-          </div>
-
-          <div class="modal-overlay" id="modal-event-detail">
-            <div class="modal" style="max-width:480px;">
-              <div class="modal-header">
-                <div class="modal-title" id="event-detail-title">Cita</div>
-                <button class="modal-close" onclick="closeModal('modal-event-detail')">✕</button>
-              </div>
-              <div class="modal-body" id="event-detail-body"></div>
-              <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('modal-event-detail')">Cerrar</button>
-                <button class="btn-gold" onclick="editCurrentEvent()">Editar en Google</button>
-              </div>
-            </div>
+            <iframe
+              src="https://calendar.google.com/calendar/embed?src=drferglez%40gmail.com&ctz=America%2FMexico_City&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=es&mode=WEEK"
+              style="border:0;display:block;"
+              width="100%"
+              height="580"
+              frameborder="0"
+              scrolling="no">
+            </iframe>
           </div>
         </div>
 
