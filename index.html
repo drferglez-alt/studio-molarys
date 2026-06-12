@@ -804,6 +804,40 @@
   .badge-active { background: rgba(39,174,96,0.1); color: var(--success); }
   .badge-pending { background: rgba(230,126,34,0.1); color: var(--warning); }
 
+  /* Badge estado paciente — clickeable */
+  .badge-estado {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: opacity .15s; user-select: none;
+    border: 1px solid transparent;
+  }
+  .badge-estado:hover { opacity: .75; }
+  .badge-estado.activo    { background: rgba(39,174,96,0.12); color: #1a7a40; border-color: rgba(39,174,96,0.3); }
+  .badge-estado.inactivo  { background: rgba(180,60,60,0.1);  color: #b43c3c; border-color: rgba(180,60,60,0.25); }
+  .badge-estado.custom    { background: rgba(91,123,168,0.12); color: var(--blue-deep); border-color: rgba(91,123,168,0.3); }
+
+  /* Menú desplegable de estado */
+  .estado-menu {
+    position: fixed; z-index: 9999;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    padding: 6px 0; min-width: 200px; font-size: 13px;
+  }
+  .estado-menu-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; cursor: pointer; color: var(--text-primary);
+    transition: background .1s;
+  }
+  .estado-menu-item:hover { background: var(--blue-xpale); }
+  .estado-menu-item.selected { font-weight: 600; color: var(--blue-deep); }
+  .estado-menu-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+  .estado-menu-custom input {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; outline: none; margin-top: 4px;
+    font-family: inherit;
+  }
+  .estado-menu-custom input:focus { border-color: var(--blue-mid); }
+
   /* Modal */
   .modal-overlay {
     position: fixed;
@@ -2984,12 +3018,112 @@ function renderPatientsTable(filter = '') {
       </div>
       <div class="td muted">${p.telefono || '—'}</div>
       <div class="td muted">${formatDate(p.created_at)}</div>
-      <div class="td"><span class="badge badge-active">Activo</span></div>
+      <div class="td">
+        ${renderEstadoBadge(p)}
+      </div>
       <div class="td">
         <a class="card-link" onclick="showPatientDetail('${p.id}')">Ver expediente →</a>
       </div>
     </div>
   `).join('');
+}
+
+// ── Estado de paciente (badge clickeable) ──
+// Guardado en localStorage: { [patientId]: { label, tipo } }
+function getPatientEstados() {
+  return JSON.parse(localStorage.getItem('molarys_estados') || '{}');
+}
+function savePatientEstado(patientId, label, tipo) {
+  const map = getPatientEstados();
+  map[patientId] = { label, tipo };
+  localStorage.setItem('molarys_estados', JSON.stringify(map));
+}
+
+const ESTADOS_PRESET = [
+  { label: 'Activo',       tipo: 'activo',   icon: '🟢' },
+  { label: 'Inactivo',     tipo: 'inactivo', icon: '🔴' },
+  { label: 'Endodoncia',   tipo: 'custom',   icon: '🦷' },
+  { label: 'Ortodoncia',   tipo: 'custom',   icon: '😬' },
+  { label: 'Implante',     tipo: 'custom',   icon: '🔩' },
+  { label: 'Rehabilitación', tipo: 'custom', icon: '⚕️' },
+];
+
+function renderEstadoBadge(p) {
+  const map = getPatientEstados();
+  const est = map[p.id] || { label: 'Activo', tipo: 'activo' };
+  const icon = est.tipo === 'activo' ? '🟢' : est.tipo === 'inactivo' ? '🔴' : '🏷️';
+  return `<span class="badge-estado ${est.tipo}" onclick="openEstadoMenu(event,'${p.id}')" title="Click para cambiar estado">${icon} ${est.label} ▾</span>`;
+}
+
+let _estadoMenuOpen = null;
+
+function openEstadoMenu(e, patientId) {
+  e.stopPropagation();
+  closeEstadoMenu();
+
+  const map = getPatientEstados();
+  const current = map[patientId] || { label: 'Activo', tipo: 'activo' };
+
+  const menu = document.createElement('div');
+  menu.className = 'estado-menu';
+  menu.id = 'estado-menu-popup';
+
+  // Opciones preset
+  const presetHTML = ESTADOS_PRESET.map(opt => `
+    <div class="estado-menu-item ${current.label === opt.label ? 'selected' : ''}"
+         onclick="setEstado('${patientId}','${opt.label}','${opt.tipo}')">
+      ${opt.icon} ${opt.label}
+      ${current.label === opt.label ? ' ✓' : ''}
+    </div>`).join('');
+
+  menu.innerHTML = `
+    ${presetHTML}
+    <hr class="estado-menu-divider">
+    <div class="estado-menu-item estado-menu-custom" style="flex-direction:column;align-items:flex-start;">
+      <span style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">Etiqueta personalizada</span>
+      <div style="display:flex;gap:6px;width:100%;margin-top:4px;">
+        <input id="estado-custom-input" type="text" placeholder="Ej: Clínica X, VIP..." maxlength="30"
+               value="${current.tipo === 'custom' && !ESTADOS_PRESET.find(x=>x.label===current.label) ? current.label : ''}"
+               onclick="event.stopPropagation()"
+               onkeydown="if(event.key==='Enter'){setEstadoCustom('${patientId}');event.stopPropagation();}">
+        <button onclick="setEstadoCustom('${patientId}')" style="
+          background:var(--blue-deep);color:#fff;border:none;border-radius:6px;
+          padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">OK</button>
+      </div>
+    </div>`;
+
+  // Posicionar junto al badge
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.style.top  = (rect.bottom + 4) + 'px';
+  menu.style.left = rect.left + 'px';
+
+  document.body.appendChild(menu);
+  _estadoMenuOpen = patientId;
+
+  // Enfocar input custom si ya es custom
+  if (current.tipo === 'custom') {
+    setTimeout(() => document.getElementById('estado-custom-input')?.focus(), 50);
+  }
+
+  // Cerrar al click fuera
+  setTimeout(() => document.addEventListener('click', closeEstadoMenu, { once: true }), 10);
+}
+
+function closeEstadoMenu() {
+  document.getElementById('estado-menu-popup')?.remove();
+  _estadoMenuOpen = null;
+}
+
+function setEstado(patientId, label, tipo) {
+  savePatientEstado(patientId, label, tipo);
+  closeEstadoMenu();
+  renderPatientsTable(document.getElementById('patient-search')?.value || '');
+}
+
+function setEstadoCustom(patientId) {
+  const val = document.getElementById('estado-custom-input')?.value.trim();
+  if (!val) return;
+  setEstado(patientId, val, 'custom');
 }
 
 function filterPatients() {
