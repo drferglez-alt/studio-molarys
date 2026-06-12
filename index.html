@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --cream: #F4F7FB;
+    --cream: #F6F8FB;
     --cream-dark: #E8EEF6;
     --obsidian: #2D3A52;
     --charcoal: #1E293B;
@@ -16,10 +16,10 @@
     --gold-light: #7A9AC2;
     --gold-pale: #D6E3F0;
     --sage: #7A8C9A;
-    --text-primary: #2D3A52;
-    --text-secondary: #4A5A72;
-    --text-muted: #7A8CA0;
-    --border: #C8D8E8;
+    --text-primary: #1A2538;
+    --text-secondary: #2D3A52;
+    --text-muted: #5A6A80;
+    --border: #C4D4E4;
     --white: #FFFFFF;
     --error: #C0392B;
     --success: #27AE60;
@@ -29,7 +29,13 @@
     --blue-mid: #5B7BA8;
     --blue-light: #7A9AC2;
     --blue-pale: #D6E3F0;
-    --blue-xpale: #F0F5FA;
+    --blue-xpale: #EEF4FA;
+    /* Action buttons — light default, dark hover */
+    --btn-bg: #FFFFFF;
+    --btn-text: #2D3A52;
+    --btn-border: #B0C4D8;
+    --btn-hover-bg: #2D3A52;
+    --btn-hover-text: #FFFFFF;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -414,18 +420,43 @@
     align-items: center;
     gap: 8px;
     padding: 9px 18px;
-    background: var(--obsidian);
-    color: var(--white);
-    border: none;
+    background: var(--white);
+    color: var(--blue-deep);
+    border: 1px solid var(--btn-border);
     border-radius: 4px;
     font-size: 13px;
     font-family: 'DM Sans', sans-serif;
-    font-weight: 400;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: all 0.15s;
   }
 
-  .btn-new:hover { background: var(--charcoal); }
+  .btn-new:hover { background: var(--blue-deep); color: var(--white); border-color: var(--blue-deep); }
+
+  /* Botones de acción rápida en dashboard */
+  .btn-accion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--white);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    min-width: 180px;
+  }
+
+  .btn-accion:hover {
+    background: var(--blue-deep);
+    color: var(--white);
+    border-color: var(--blue-deep);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45,58,82,0.15);
+  }
 
   .page-content { padding: 32px; }
 
@@ -1423,8 +1454,8 @@
             </div>
           </div>
 
-          <div class="stats-grid">
-            <div class="stat-card">
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card" onclick="showModule('patients')" style="cursor:pointer;">
               <div class="stat-label">Total Pacientes</div>
               <div class="stat-value" id="stat-patients">0</div>
               <div class="stat-sub">registrados en el sistema</div>
@@ -1436,18 +1467,50 @@
               <div class="stat-sub">programadas para hoy</div>
               <div class="stat-icon">📅</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card admin-only" style="display:none;">
               <div class="stat-label">Ingresos del Mes</div>
               <div class="stat-value" id="stat-income">$0</div>
               <div class="stat-sub">facturado este mes</div>
               <div class="stat-icon">💰</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card admin-only" style="display:none;">
               <div class="stat-label">Nuevos Pacientes</div>
               <div class="stat-value" id="stat-new">0</div>
               <div class="stat-sub">este mes</div>
               <div class="stat-icon">✨</div>
             </div>
+          </div>
+
+          <!-- Acciones Rápidas -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;">
+            <button class="btn-accion" onclick="openNewPatientModal()">
+              <span style="font-size:18px;">👤</span>
+              <div>
+                <div style="font-weight:500;font-size:13px;">Nuevo Paciente</div>
+                <div style="font-size:11px;opacity:0.7;">Registrar expediente</div>
+              </div>
+            </button>
+            <button class="btn-accion" onclick="window.open('https://calendar.google.com','_blank')">
+              <span style="font-size:18px;">📅</span>
+              <div>
+                <div style="font-weight:500;font-size:13px;">Agendar Cita</div>
+                <div style="font-size:11px;opacity:0.7;">Abrir Google Calendar</div>
+              </div>
+            </button>
+            <button class="btn-accion" onclick="openRecibirPagoModal()">
+              <span style="font-size:18px;">💳</span>
+              <div>
+                <div style="font-weight:500;font-size:13px;">Recibir Pago</div>
+                <div style="font-size:11px;opacity:0.7;">Registrar cobro</div>
+              </div>
+            </button>
+            <button class="btn-accion admin-only" onclick="openCorteCajaModal()" style="display:none;">
+              <span style="font-size:18px;">🧾</span>
+              <div>
+                <div style="font-weight:500;font-size:13px;">Corte de Caja</div>
+                <div style="font-size:11px;opacity:0.7;">Cierre del día</div>
+              </div>
+            </button>
           </div>
 
           <div class="content-grid">
@@ -2135,6 +2198,97 @@
         </div>
 
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL RECIBIR PAGO -->
+<div class="modal-overlay" id="modal-recibir-pago">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">💳 Recibir Pago</div>
+      <button class="modal-close" onclick="closeModal('modal-recibir-pago')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Paciente *</label>
+        <select id="rp-patient" onchange="checkPresupuestoPaciente()">
+          <option value="">Seleccionar paciente...</option>
+        </select>
+      </div>
+
+      <!-- Presupuesto activo (si existe) -->
+      <div id="rp-presupuesto-block" style="display:none;background:var(--blue-xpale);border:1px solid var(--blue-pale);border-radius:6px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--blue-deep);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Presupuesto Activo</div>
+        <div id="rp-presupuesto-info" style="font-size:13px;color:var(--text-secondary);"></div>
+        <div style="margin-top:12px;">
+          <label style="font-size:12px;font-weight:500;color:var(--text-secondary);display:block;margin-bottom:8px;">¿Este pago es abono al presupuesto?</label>
+          <div style="display:flex;gap:8px;">
+            <button id="rp-btn-si" class="hc-yn-btn" onclick="setAbonoMode(true)">SÍ — Es abono</button>
+            <button id="rp-btn-no" class="hc-yn-btn active-no" onclick="setAbonoMode(false)">NO — Cobro independiente</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label>Tratamiento *</label>
+          <select id="rp-treatment" onchange="fillRPPrice()">
+            <option value="">Seleccionar...</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Monto ($) *</label>
+          <input type="number" id="rp-monto" placeholder="0.00" oninput="calcRPCascada()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Forma de Pago</label>
+          <select id="rp-pago" onchange="calcRPCascada()">
+            <option value="efectivo">💵 Efectivo</option>
+            <option value="tarjeta">💳 Tarjeta</option>
+            <option value="transferencia">📱 Transferencia</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Descuento ($)</label>
+          <input type="number" id="rp-descuento" placeholder="0.00" value="0" oninput="calcRPCascada()">
+        </div>
+      </div>
+      <div class="form-field" style="margin-bottom:16px;">
+        <label>Notas</label>
+        <textarea id="rp-notas" placeholder="Observaciones del cobro..."></textarea>
+      </div>
+
+      <!-- Resumen rápido -->
+      <div id="rp-resumen" style="display:none;background:var(--cream);border-radius:6px;padding:14px;font-size:13px;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-recibir-pago')">Cancelar</button>
+      <button class="btn-gold" onclick="saveRecibirPago()" id="btn-save-rp">Registrar Pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CORTE DE CAJA -->
+<div class="modal-overlay" id="modal-corte-caja">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">🧾 Corte de Caja</div>
+      <button class="modal-close" onclick="closeModal('modal-corte-caja')">✕</button>
+    </div>
+    <div class="modal-body" id="corte-caja-body">
+      <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+        <div style="font-size:32px;margin-bottom:12px;">🧾</div>
+        <div>Generando corte del día...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-corte-caja')">Cerrar</button>
+      <button class="btn-gold" onclick="imprimirCorte()">Imprimir / Guardar</button>
     </div>
   </div>
 </div>
@@ -2975,6 +3129,171 @@ function renderDashboardAgenda() {
   }).join('');
 }
 
+
+// ============================================================
+// ACCIONES RÁPIDAS — Recibir Pago & Corte de Caja
+// ============================================================
+let rpIsAbono = false;
+
+function openRecibirPagoModal() {
+  // Populate patients
+  const sel = document.getElementById('rp-patient');
+  sel.innerHTML = '<option value="">Seleccionar paciente...</option>';
+  patients.forEach(p => sel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
+  // Populate treatments
+  const tsel = document.getElementById('rp-treatment');
+  tsel.innerHTML = '<option value="">Seleccionar...</option>';
+  treatments.forEach(t => tsel.innerHTML += `<option value="${t.id}" data-precio="${t.precio}">${t.nombre} — $${t.precio}</option>`);
+  // Reset
+  document.getElementById('rp-presupuesto-block').style.display = 'none';
+  document.getElementById('rp-resumen').style.display = 'none';
+  document.getElementById('rp-monto').value = '';
+  document.getElementById('rp-descuento').value = '0';
+  document.getElementById('rp-notas').value = '';
+  rpIsAbono = false;
+  document.getElementById('modal-recibir-pago').classList.add('open');
+}
+
+function checkPresupuestoPaciente() {
+  const pid = document.getElementById('rp-patient').value;
+  const block = document.getElementById('rp-presupuesto-block');
+  if (!pid) { block.style.display = 'none'; return; }
+  // For now show placeholder — presupuestos module coming later
+  block.style.display = 'none';
+}
+
+function setAbonoMode(isAbono) {
+  rpIsAbono = isAbono;
+  document.getElementById('rp-btn-si').className = isAbono ? 'hc-yn-btn active-si' : 'hc-yn-btn';
+  document.getElementById('rp-btn-no').className = isAbono ? 'hc-yn-btn' : 'hc-yn-btn active-no';
+}
+
+function fillRPPrice() {
+  const sel = document.getElementById('rp-treatment');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.precio) {
+    document.getElementById('rp-monto').value = opt.dataset.precio;
+    calcRPCascada();
+  }
+}
+
+function calcRPCascada() {
+  const bruto = parseFloat(document.getElementById('rp-monto').value) || 0;
+  const descuento = parseFloat(document.getElementById('rp-descuento').value) || 0;
+  const pago = document.getElementById('rp-pago').value;
+  const resumen = document.getElementById('rp-resumen');
+  if (bruto === 0) { resumen.style.display = 'none'; return; }
+
+  const neto1 = bruto - descuento;
+  let tpv = 0;
+  if (pago === 'tarjeta') tpv = neto1 * 0.0075 * 1.16;
+  const neto2 = neto1 - tpv;
+  const impF = neto2 * 0.03;
+  const impE = neto2 * 0.03;
+  const neto3 = neto2 - impF - impE;
+  const doctor = neto3 * 0.30;
+  const fmt = n => '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  resumen.style.display = 'block';
+  resumen.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Bruto</span><span style="font-weight:500;">${fmt(bruto)}</span></div>
+    ${descuento>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Descuento</span><span style="color:var(--error);">-${fmt(descuento)}</span></div>`:''}
+    ${tpv>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Comisión TPV</span><span style="color:var(--error);">-${fmt(tpv)}</span></div>`:''}
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Impuestos (6%)</span><span style="color:var(--error);">-${fmt(impF+impE)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);"><span style="font-weight:600;color:var(--blue-deep);">Doctor recibe</span><span style="font-weight:600;color:var(--blue-mid);font-size:15px;">${fmt(doctor)}</span></div>`;
+  window._rpResult = { bruto, descuento, tpv, impF, impE, doctor, neto3 };
+}
+
+async function saveRecibirPago() {
+  const patientId = document.getElementById('rp-patient').value;
+  const treatmentId = document.getElementById('rp-treatment').value;
+  const bruto = parseFloat(document.getElementById('rp-monto').value) || 0;
+  if (!patientId || bruto === 0) { showToast('Selecciona paciente e ingresa monto', 'error'); return; }
+
+  const btn = document.getElementById('btn-save-rp');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const r = window._rpResult || {};
+  try {
+    const { error } = await db.from('income').insert([{
+      patient_id: patientId,
+      treatment_id: treatmentId || null,
+      usuario_id: currentUser.id,
+      ingreso_bruto: r.bruto || bruto,
+      descuento: r.descuento || 0,
+      tipo_pago: document.getElementById('rp-pago').value,
+      comision_tpv: r.tpv || 0,
+      impuesto_federal: r.impF || 0,
+      impuesto_estatal: r.impE || 0,
+      laboratorio: 0,
+      remanente_clinica: r.neto3 ? r.neto3*0.30 : 0,
+      remanente_equipo: r.neto3 ? r.neto3*0.20 : 0,
+      remanente_doctor: r.doctor || 0,
+      neto_final: r.neto3 || 0,
+      notas: document.getElementById('rp-notas').value.trim(),
+      es_abono: rpIsAbono
+    }]);
+    if (error) throw error;
+    showToast('Pago registrado exitosamente ✓', 'success');
+    closeModal('modal-recibir-pago');
+    updateStats();
+  } catch(e) { showToast('Error al guardar el pago', 'error'); console.error(e); }
+  btn.disabled = false; btn.textContent = 'Registrar Pago';
+}
+
+// ── Corte de Caja ──
+async function openCorteCajaModal() {
+  document.getElementById('modal-corte-caja').classList.add('open');
+  const body = document.getElementById('corte-caja-body');
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1).toISOString();
+  try {
+    const { data } = await db.from('income')
+      .select('*, patients(nombre,apellido), treatments(nombre)')
+      .gte('created_at', start).lt('created_at', end)
+      .order('created_at');
+    const records = data || [];
+    const fmt = n => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const totalBruto = records.reduce((s,r) => s+(r.ingreso_bruto||0), 0);
+    const totalDoctor = records.reduce((s,r) => s+(r.remanente_doctor||0), 0);
+    const efectivo = records.filter(r=>r.tipo_pago==='efectivo').reduce((s,r)=>s+(r.ingreso_bruto||0),0);
+    const tarjeta = records.filter(r=>r.tipo_pago==='tarjeta').reduce((s,r)=>s+(r.ingreso_bruto||0),0);
+    const transferencia = records.filter(r=>r.tipo_pago==='transferencia').reduce((s,r)=>s+(r.ingreso_bruto||0),0);
+
+    body.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px;">Corte del Día</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--blue-deep);">${today.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>
+      <div style="background:var(--cream);border-radius:8px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Total cobros</span><span style="font-weight:600;">${records.length}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💵 Efectivo</span><span style="font-weight:500;">${fmt(efectivo)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💳 Tarjeta</span><span style="font-weight:500;">${fmt(tarjeta)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📱 Transferencia</span><span style="font-weight:500;">${fmt(transferencia)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0 0;"><span style="font-weight:600;font-size:15px;">Total del día</span><span style="font-weight:700;font-size:18px;color:var(--blue-mid);">${fmt(totalBruto)}</span></div>
+      </div>
+      ${records.length ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-weight:500;">Detalle de cobros</div>
+      ${records.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div><div style="font-size:13px;font-weight:500;">${r.patients?.nombre||''} ${r.patients?.apellido||''}</div><div style="font-size:11px;color:var(--text-muted);">${r.treatments?.nombre||'Sin tratamiento'} · ${r.tipo_pago}</div></div>
+        <div style="font-weight:600;color:var(--blue-deep);">${fmt(r.ingreso_bruto)}</div>
+      </div>`).join('')}` : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Sin cobros registrados hoy</div>'}`;
+  } catch(e) {
+    body.innerHTML = '<div style="color:var(--error);text-align:center;padding:20px;">Error al cargar el corte</div>';
+  }
+}
+
+function imprimirCorte() {
+  window.print();
+}
+
+// ── Role-based visibility ──
+function applyAdminVisibility(isAdmin) {
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+}
+
+
 // ============================================================
 // FINANZAS — LA CASCADA
 // ============================================================
@@ -2995,6 +3314,7 @@ async function loadUserProfile() {
 function applyRolePermissions() {
   const isAdmin = currentUserProfile?.rol === 'admin';
   const isDoctor = currentUserProfile?.rol === 'doctor';
+  applyAdminVisibility(isAdmin);
 
   // Show/hide nav items based on role
   const adminOnly = ['nav-income','nav-reports','nav-users','nav-section-admin'];
