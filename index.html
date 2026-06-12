@@ -4908,42 +4908,6 @@ function getCumpleaniosHoy() {
   return lista;
 }
 
-function getCumpleaniosMes() {
-  // Todos los que cumplen este mes (excluyendo los de hoy)
-  const hoy = new Date();
-  const mesActual = hoy.getMonth() + 1;
-  const diaHoy   = hoy.getDate();
-  const lista = [];
-  const waSet = getWASet();
-
-  function parseMesDia(fechaStr) {
-    if (!fechaStr) return null;
-    if (fechaStr.includes('/') && fechaStr.indexOf('/') === 2) {
-      const [d, m] = fechaStr.split('/');
-      return { d: parseInt(d), m: parseInt(m) };
-    } else if (fechaStr.includes('-')) {
-      const parts = fechaStr.split('-');
-      return { d: parseInt(parts[2]), m: parseInt(parts[1]) };
-    }
-    return null;
-  }
-
-  (window.patients || []).forEach(p => {
-    const r = parseMesDia(p.fecha_nacimiento);
-    if (!r || r.m !== mesActual || r.d === diaHoy) return;
-    lista.push({ nombre: p.nombre + ' ' + p.apellido, dia: r.d, tipo: 'pac',
-      edad: calcEdadCumple(p.fecha_nacimiento), telefono: p.telefono || '' });
-  });
-  getDoctors().forEach(d => {
-    const r = parseMesDia(d.fecha_nac);
-    if (!r || r.m !== mesActual || r.d === diaHoy) return;
-    lista.push({ nombre: (d.titulo||'Dr.') + ' ' + d.nombre + ' ' + d.apellido,
-      dia: r.d, tipo: 'doc', edad: calcEdadCumple(d.fecha_nac), telefono: '' });
-  });
-
-  return lista.sort((a, b) => a.dia - b.dia);
-}
-
 function calcEdadCumple(fechaStr) {
   if (!fechaStr) return null;
   let b;
@@ -5022,36 +4986,10 @@ function openCumpleanosModal() {
       ${lista.length ? `<div style="padding:6px 24px 0;text-align:center;font-size:11px;color:var(--text-muted);">
         ${lista.length} cumpleaños hoy
       </div>` : ''}
-      <div id="cumple-mes-section"></div>
     </div>`;
 
   document.body.appendChild(m);
   m.onclick = e => { if (e.target===m) m.remove(); };
-
-  // Renderizar sección del mes por separado (evita problemas con template literals anidados)
-  const mesSec = m.querySelector('#cumple-mes-section');
-  if (mesSec) {
-    const mes = getCumpleaniosMes();
-    if (mes.length) {
-      const mesNombre = new Date().toLocaleDateString('es-MX', {month:'long'});
-      const filas = mes.map(c => {
-        const icon = c.tipo === 'doc' ? '👨‍⚕️' : '👤';
-        return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">'
-          + '<span style="font-size:11px;font-weight:700;color:var(--blue-mid);width:26px;text-align:center;flex-shrink:0;">' + c.dia + '</span>'
-          + '<span style="font-size:13px;">' + icon + '</span>'
-          + '<span style="font-size:12px;flex:1;">' + c.nombre
-            + (c.edad ? ' <span style="color:var(--text-muted);font-size:11px;">· ' + c.edad + ' años</span>' : '') + '</span>'
-          + '<span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">' + (c.tipo==='doc'?'Doctor':'Paciente') + '</span>'
-          + '</div>';
-      }).join('');
-      mesSec.innerHTML = '<div style="border-top:2px solid var(--border);margin-top:12px;padding:14px 24px 6px;">'
-        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px;">'
-        + '🗓 Resto del mes de ' + mesNombre + ' (' + mes.length + ')'
-        + '</div>'
-        + '<div style="max-height:220px;overflow-y:auto;padding-bottom:8px;">' + filas + '</div>'
-        + '</div>';
-    }
-  }
 }
 
 function openWATemplate(id, nombre, num, edad) {
