@@ -1489,6 +1489,13 @@
 
         </div>
 
+
+        <!-- PACIENTE DETALLE -->
+        <div class="module-page" id="module-patient-detail">
+          <button class="back-btn" onclick="showModule('patients')">← Volver a pacientes</button>
+          <div id="patient-detail-content"></div>
+        </div>
+
         <!-- PATIENTS MODULE -->
         <div class="module-page" id="module-patients">
           <div class="search-bar">
@@ -2324,6 +2331,78 @@
   </div>
 </div>
 
+
+<!-- MODAL EDITAR PACIENTE -->
+<div class="modal-overlay" id="modal-edit-patient">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Editar Paciente</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-patient')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ep-id">
+      <div class="form-section-title">Datos Personales</div>
+      <div class="form-row">
+        <div class="form-field"><label>Nombre *</label><input type="text" id="ep-nombre" placeholder="Nombre(s)"></div>
+        <div class="form-field"><label>Apellidos *</label><input type="text" id="ep-apellido" placeholder="Apellido paterno y materno"></div>
+      </div>
+      <div class="form-row triple">
+        <div class="form-field"><label>Fecha de Nacimiento</label><input type="date" id="ep-nacimiento"></div>
+        <div class="form-field"><label>Sexo</label>
+          <select id="ep-sexo">
+            <option value="">Seleccionar</option>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+            <option value="O">Otro</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Estado Civil</label>
+          <select id="ep-estado-civil">
+            <option value="">Seleccionar</option>
+            <option value="soltero">Soltero/a</option>
+            <option value="casado">Casado/a</option>
+            <option value="divorciado">Divorciado/a</option>
+            <option value="viudo">Viudo/a</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Teléfono</label><input type="tel" id="ep-telefono"></div>
+        <div class="form-field"><label>Correo electrónico</label><input type="email" id="ep-email"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-field"><label>Dirección</label><input type="text" id="ep-direccion"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Ocupación</label><input type="text" id="ep-ocupacion"></div>
+        <div class="form-field"><label>¿Cómo nos conoció?</label>
+          <select id="ep-referido">
+            <option value="">Seleccionar</option>
+            <option value="recomendacion">Recomendación</option>
+            <option value="instagram">Instagram</option>
+            <option value="facebook">Facebook</option>
+            <option value="google">Google</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-section-title">Contacto de Emergencia</div>
+      <div class="form-row">
+        <div class="form-field"><label>Nombre del Contacto</label><input type="text" id="ep-emergencia-nombre"></div>
+        <div class="form-field"><label>Teléfono del Contacto</label><input type="tel" id="ep-emergencia-tel"></div>
+      </div>
+      <div class="form-section-title">Notas</div>
+      <div class="form-row single">
+        <div class="form-field"><textarea id="ep-notas" placeholder="Observaciones..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-edit-patient')">Cancelar</button>
+      <button class="btn-gold" onclick="saveEditPatient()" id="btn-save-edit-patient">Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- NEW PATIENT MODAL -->
 <div class="modal-overlay" id="modal-new-patient">
   <div class="modal">
@@ -2718,7 +2797,11 @@ function renderPatientsTable(filter = '') {
       <div class="td muted">${p.telefono || '—'}</div>
       <div class="td muted">${formatDate(p.created_at)}</div>
       <div class="td"><span class="badge badge-active">Activo</span></div>
-      <div class="td"><a class="card-link">Ver expediente</a></div>
+      <div class="td" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <a class="card-link" onclick="showPatientDetail('${p.id}')">Ver →</a>
+        <a class="card-link" style="color:var(--blue-mid);" onclick="openEditPatientModal('${p.id}')">Editar</a>
+        <a class="card-link" style="color:var(--error);" onclick="deletePatient('${p.id}','${p.nombre} ${p.apellido}')">Eliminar</a>
+      </div>
     </div>
   `).join('');
 }
@@ -2821,6 +2904,185 @@ function clearNewPatientForm() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+}
+
+
+// ============================================================
+// PATIENT DETAIL & DELETE
+// ============================================================
+function showPatientDetail(id) {
+  const p = patients.find(x => x.id === id);
+  if (!p) return;
+
+  // Show detail module
+  document.querySelectorAll('.module-page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('module-patient-detail').classList.add('active');
+  document.getElementById('topbar-title').textContent = `Expediente #${p.expediente}`;
+
+  const sexoMap = { M: 'Masculino', F: 'Femenino', O: 'Otro' };
+  const ecMap = { soltero: 'Soltero/a', casado: 'Casado/a', divorciado: 'Divorciado/a', viudo: 'Viudo/a' };
+
+  document.getElementById('patient-detail-content').innerHTML = `
+    <div class="patient-detail-header">
+      <div class="patient-detail-avatar">${getInitials(p.nombre, p.apellido)}</div>
+      <div class="patient-detail-info">
+        <h2>${p.nombre} ${p.apellido}</h2>
+        <div class="patient-detail-meta">
+          <div class="meta-item">Expediente: <strong>#${p.expediente}</strong></div>
+          ${p.fecha_nacimiento ? `<div class="meta-item">Edad: <strong>${calcAge(p.fecha_nacimiento)}</strong></div>` : ''}
+          ${p.sexo ? `<div class="meta-item">Sexo: <strong>${sexoMap[p.sexo]||p.sexo}</strong></div>` : ''}
+          ${p.estado_civil ? `<div class="meta-item">Estado civil: <strong>${ecMap[p.estado_civil]||p.estado_civil}</strong></div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Contacto</div></div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Teléfono</div><div style="font-size:14px;font-weight:500;">${p.telefono||'—'}</div></div>
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Correo</div><div style="font-size:14px;">${p.email||'—'}</div></div>
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Dirección</div><div style="font-size:14px;">${p.direccion||'—'}</div></div>
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Ocupación</div><div style="font-size:14px;">${p.ocupacion||'—'}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Emergencia</div></div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Contacto</div><div style="font-size:14px;font-weight:500;">${p.emergencia_nombre||'—'}</div></div>
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Teléfono</div><div style="font-size:14px;">${p.emergencia_tel||'—'}</div></div>
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Referido por</div><div style="font-size:14px;">${p.referido||'—'}</div></div>
+          ${p.notas ? `<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Notas</div><div style="font-size:14px;">${p.notas}</div></div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Historial Clínico</div>
+        <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="openNewHistoryModal('${p.id}')">+ Nueva Historia</button>
+      </div>
+      <div id="patient-histories-list" style="padding:24px;">
+        <div style="text-align:center;color:var(--text-muted);padding:20px;">Cargando historial...</div>
+      </div>
+    </div>`;
+
+  // Load histories for this patient
+  loadPatientHistories(id);
+}
+
+async function loadPatientHistories(patientId) {
+  try {
+    const { data } = await db.from('clinical_histories')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false });
+    const container = document.getElementById('patient-histories-list');
+    if (!container) return;
+    if (!data || !data.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">Sin historias clínicas registradas</div>';
+      return;
+    }
+    container.innerHTML = data.map(h => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-weight:500;font-size:14px;">${h.motivo_consulta||'Historia clínica'}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${formatDate(h.created_at)}</div>
+        </div>
+        <a class="card-link" onclick="viewHistory('${h.id}')">Ver →</a>
+      </div>`).join('');
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function deletePatient(id, nombre) {
+  if (!confirm(`¿Eliminar al paciente ${nombre}?\n\nEsta acción no se puede deshacer.`)) return;
+  try {
+    const { error } = await db.from('patients').delete().eq('id', id);
+    if (error) throw error;
+    patients = patients.filter(p => p.id !== id);
+    renderPatients();
+    showToast(`Paciente ${nombre} eliminado`, 'success');
+  } catch(e) {
+    showToast('Error al eliminar el paciente', 'error');
+    console.error(e);
+  }
+}
+
+
+
+
+// ============================================================
+// EDIT PATIENT
+// ============================================================
+function openEditPatientModal(id) {
+  const p = patients.find(x => x.id === id);
+  if (!p) return;
+
+  // Fill form fields
+  document.getElementById('ep-id').value = p.id;
+  document.getElementById('ep-nombre').value = p.nombre || '';
+  document.getElementById('ep-apellido').value = p.apellido || '';
+  document.getElementById('ep-nacimiento').value = p.fecha_nacimiento || '';
+  document.getElementById('ep-sexo').value = p.sexo || '';
+  document.getElementById('ep-estado-civil').value = p.estado_civil || '';
+  document.getElementById('ep-telefono').value = p.telefono || '';
+  document.getElementById('ep-email').value = p.email || '';
+  document.getElementById('ep-direccion').value = p.direccion || '';
+  document.getElementById('ep-ocupacion').value = p.ocupacion || '';
+  document.getElementById('ep-referido').value = p.referido || '';
+  document.getElementById('ep-emergencia-nombre').value = p.emergencia_nombre || '';
+  document.getElementById('ep-emergencia-tel').value = p.emergencia_tel || '';
+  document.getElementById('ep-notas').value = p.notas || '';
+
+  document.getElementById('modal-edit-patient').classList.add('open');
+}
+
+async function saveEditPatient() {
+  const id = document.getElementById('ep-id').value;
+  const nombre = document.getElementById('ep-nombre').value.trim();
+  const apellido = document.getElementById('ep-apellido').value.trim();
+
+  if (!nombre || !apellido) {
+    showToast('Nombre y apellido son obligatorios', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-save-edit-patient');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  const updates = {
+    nombre,
+    apellido,
+    fecha_nacimiento: document.getElementById('ep-nacimiento').value || null,
+    sexo: document.getElementById('ep-sexo').value || null,
+    estado_civil: document.getElementById('ep-estado-civil').value || null,
+    telefono: document.getElementById('ep-telefono').value.trim() || null,
+    email: document.getElementById('ep-email').value.trim() || null,
+    direccion: document.getElementById('ep-direccion').value.trim() || null,
+    ocupacion: document.getElementById('ep-ocupacion').value.trim() || null,
+    referido: document.getElementById('ep-referido').value || null,
+    emergencia_nombre: document.getElementById('ep-emergencia-nombre').value.trim() || null,
+    emergencia_tel: document.getElementById('ep-emergencia-tel').value.trim() || null,
+    notas: document.getElementById('ep-notas').value.trim() || null,
+  };
+
+  try {
+    const { data, error } = await db.from('patients').update(updates).eq('id', id).select();
+    if (error) throw error;
+    // Update local array
+    const idx = patients.findIndex(p => p.id === id);
+    if (idx !== -1) patients[idx] = { ...patients[idx], ...updates };
+    renderPatients();
+    closeModal('modal-edit-patient');
+    showToast(`Paciente actualizado exitosamente ✓`, 'success');
+  } catch(e) {
+    showToast('Error al actualizar el paciente', 'error');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'Guardar Cambios';
 }
 
 // ============================================================
