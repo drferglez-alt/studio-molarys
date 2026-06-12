@@ -4234,6 +4234,7 @@ async function saveRecibirPago() {
   const btn = document.getElementById('btn-save-rp');
   btn.disabled = true; btn.textContent = 'Guardando...';
   const r = window._rpResult || {};
+  const metodoPago = document.getElementById('rp-pago').value;
   try {
     const { error } = await db.from('income').insert([{
       patient_id: patientId,
@@ -4241,7 +4242,7 @@ async function saveRecibirPago() {
       usuario_id: currentUser.id,
       ingreso_bruto: r.bruto || bruto,
       descuento: r.descuento || 0,
-      tipo_pago: document.getElementById('rp-pago').value,
+      tipo_pago: metodoPago,
       comision_tpv: r.tpv || 0,
       impuesto_federal: r.impF || 0,
       impuesto_estatal: r.impE || 0,
@@ -4257,8 +4258,82 @@ async function saveRecibirPago() {
     showToast('Pago registrado exitosamente ✓', 'success');
     closeModal('modal-recibir-pago');
     updateStats();
+
+    // ── Preguntar si solicita factura ──
+    const patientName = document.getElementById('rp-patient').options[document.getElementById('rp-patient').selectedIndex]?.text || '';
+    const monto = (r.bruto || bruto).toFixed(2);
+    const fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+    // Buscar RFC guardado del paciente para pre-llenar
+    let razonSocial = '', correoFactura = '', regimenFiscal = '';
+    try {
+      const { data: rfcData } = await db.from('patient_rfc').select('*').eq('patient_id', patientId).order('id').limit(1);
+      if (rfcData && rfcData.length > 0) {
+        razonSocial = rfcData[0].razon_social || '';
+        correoFactura = rfcData[0].email_factura || '';
+        regimenFiscal = rfcData[0].regimen_fiscal || '';
+      }
+    } catch(e) { /* sin RFC guardado */ }
+
+    // Mapeo método de pago → opción del form
+    const metodosMap = { efectivo: 'EFECTIVO', tarjeta: 'TDD', transferencia: 'TRANSFERENCIA' };
+    const metodoPagoForm = metodosMap[metodoPago] || 'EFECTIVO';
+
+    // Construir URL pre-llenada del Google Form
+    const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdz26f2A9N19P3_3zOpCMkjMch9m0GOLLzJPzBTqSyVmcIRfA/viewform';
+    const params = new URLSearchParams({
+      'entry.924035152': patientName,
+      'entry.1891503596': razonSocial,
+      'entry.1864276173': correoFactura,
+      'entry.659284804': monto,
+      'entry.1669863158': metodoPagoForm,
+      'entry.1395379549': regimenFiscal,
+      'entry.265564419': fechaHoy
+    });
+    const formUrlPrellenado = `${FORM_URL}?${params.toString()}`;
+
+    // Mostrar modal de pregunta factura
+    openFacturaModal(formUrlPrellenado, patientName, monto);
+
   } catch(e) { showToast('Error al guardar el pago', 'error'); console.error(e); }
   btn.disabled = false; btn.textContent = 'Registrar Pago';
+}
+
+function openFacturaModal(formUrl, paciente, monto) {
+  // Crear modal dinámico si no existe
+  let m = document.getElementById('modal-factura-pregunta');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'modal-factura-pregunta';
+    m.className = 'modal-overlay';
+    m.innerHTML = `
+      <div class="modal" style="max-width:420px;text-align:center;">
+        <div class="modal-header" style="justify-content:center;border-bottom:none;padding-bottom:0;">
+          <div class="modal-title" style="font-size:18px;">🧾 ¿El paciente solicita factura?</div>
+        </div>
+        <div class="modal-body" style="padding-top:12px;">
+          <p id="factura-detalle" style="color:var(--text-secondary);font-size:14px;margin-bottom:20px;"></p>
+          <div style="display:flex;gap:12px;justify-content:center;">
+            <button id="btn-factura-si" class="btn-gold" style="min-width:140px;font-size:15px;padding:12px 20px;">
+              ✅ Sí, abrir form
+            </button>
+            <button id="btn-factura-no" class="btn-secondary" style="min-width:140px;font-size:15px;padding:12px 20px;">
+              ❌ No, gracias
+            </button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+  document.getElementById('factura-detalle').textContent = `${paciente} — $${parseFloat(monto).toLocaleString('es-MX', {minimumFractionDigits:2})}`;
+  document.getElementById('btn-factura-si').onclick = () => {
+    window.open(formUrl, '_blank');
+    m.classList.remove('open');
+  };
+  document.getElementById('btn-factura-no').onclick = () => { m.classList.remove('open'); };
+  m.classList.add('open');
+  // Cerrar al click en overlay
+  m.onclick = (e) => { if (e.target === m) m.classList.remove('open'); };
 }
 
 // ── Corte de Caja ──
