@@ -1512,24 +1512,24 @@
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--text-primary);">Agenda</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizado con Google Calendar &middot; drferglez@gmail.com</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Sincronizado con Google Calendar · drferglez@gmail.com</div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
               <div style="display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
                 <button class="agenda-view-btn active" onclick="setCalendarView(this,'month')">Mes</button>
                 <button class="agenda-view-btn" onclick="setCalendarView(this,'week')">Semana</button>
-                <button class="agenda-view-btn" onclick="setCalendarView(this,'day')">D&iacute;a</button>
+                <button class="agenda-view-btn" onclick="setCalendarView(this,'day')">Día</button>
                 <button class="agenda-view-btn" onclick="setCalendarView(this,'list')">Lista</button>
               </div>
-              <button class="btn-new" onclick="loadGoogleEvents()">&#8635; Actualizar</button>
+              <button class="btn-new" onclick="loadGoogleEvents()">↻ Actualizar</button>
             </div>
           </div>
 
           <div style="background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
-              <button onclick="calNavigate(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">&lsaquo;</button>
+              <button onclick="calNavigate(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">‹</button>
               <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;" id="cal-title">---</div>
-              <button onclick="calNavigate(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">&rsaquo;</button>
+              <button onclick="calNavigate(1)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:16px;color:var(--text-primary);">›</button>
             </div>
 
             <div id="cal-loading" style="display:none;padding:60px;text-align:center;color:var(--text-muted);">
@@ -1537,7 +1537,7 @@
               <div>Cargando citas...</div>
             </div>
             <div id="cal-error" style="display:none;padding:40px;text-align:center;">
-              <div style="font-size:32px;margin-bottom:12px;">&oplus;</div>
+              <div style="font-size:32px;margin-bottom:12px;">⊕</div>
               <div style="color:var(--error);font-size:14px;" id="cal-error-msg">Error al cargar el calendario</div>
               <button onclick="loadGoogleEvents()" style="margin-top:16px;padding:8px 20px;background:var(--blue-mid);color:white;border:none;border-radius:4px;cursor:pointer;font-family:DM Sans,sans-serif;">Reintentar</button>
             </div>
@@ -1547,10 +1547,10 @@
                 <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">DOM</div>
                 <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">LUN</div>
                 <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MAR</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MI&Eacute;</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">MIÉ</div>
                 <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">JUE</div>
                 <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">VIE</div>
-                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">S&Aacute;B</div>
+                <div style="padding:10px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);letter-spacing:1.5px;">SÁB</div>
               </div>
               <div id="month-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
             </div>
@@ -1569,7 +1569,7 @@
             <div class="modal" style="max-width:480px;">
               <div class="modal-header">
                 <div class="modal-title" id="event-detail-title">Cita</div>
-                <button class="modal-close" onclick="closeModal('modal-event-detail')">&#10005;</button>
+                <button class="modal-close" onclick="closeModal('modal-event-detail')">✕</button>
               </div>
               <div class="modal-body" id="event-detail-body"></div>
               <div class="modal-footer">
@@ -2847,7 +2847,7 @@ function renderMonthGrid() {
       ${evs.slice(0,3).map(ev => {
         const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
         const color = ev.colorId ? getEventColor(ev.colorId) : 'var(--blue-mid)';
-        return '<div onclick="event.stopPropagation();showEventDetail('' + ev.id + '')" style="background:' + color + ';color:white;font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (time ? time + ' ' : '') + (ev.summary || 'Sin título') + '</div>';
+        return `<div onclick="event.stopPropagation();showEventDetail('${ev.id}')" style="background:${color};color:white;font-size:10px;padding:2px 6px;border-radius:3px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${time ? time + ' ' : ''}${ev.summary || 'Sin título'}</div>`;
       }).join('')}
       ${evs.length > 3 ? '<div style="font-size:10px;color:var(--text-muted);">+' + (evs.length-3) + ' más</div>' : ''}
     </div>`;
@@ -2875,7 +2875,7 @@ function renderWeekGrid() {
     weekDays.forEach(d => {
       const evs = getEventsForDate(d).filter(ev => ev.start?.dateTime && new Date(ev.start.dateTime).getHours()===h);
       html += '<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);height:56px;padding:2px;">'
-        + evs.map(ev => '<div onclick="showEventDetail('' + ev.id + '')" style="background:var(--blue-mid);color:white;font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;height:100%;">' + (ev.summary||'Cita') + '</div>').join('')
+        + evs.map(ev => `<div onclick="showEventDetail('${ev.id}')" style="background:var(--blue-mid);color:white;font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;overflow:hidden;height:100%;">${ev.summary||'Cita'}</div>`).join('')
         + '</div>';
     });
   });
@@ -2893,30 +2893,33 @@ function renderDayGrid() {
 
   let html = '';
   if (allDay.length) {
-    html += '<div style="padding:8px 16px;background:var(--cream);border-bottom:1px solid var(--border);">'
-      + allDay.map(ev => '<div onclick="showEventDetail('' + ev.id + '')" style="background:var(--blue-mid);color:white;padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;margin-bottom:4px;">' + (ev.summary||'Sin título') + ' — Todo el día</div>').join('')
-      + '</div>';
+    html += '<div style="padding:8px 16px;background:var(--cream);border-bottom:1px solid var(--border);">';
+    allDay.forEach(ev => {
+      html += `<div onclick="showEventDetail('${ev.id}')" style="background:var(--blue-mid);color:white;padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;margin-bottom:4px;">${ev.summary||'Sin título'} — Todo el día</div>`;
+    });
+    html += '</div>';
   }
 
   html += '<div style="display:grid;grid-template-columns:56px 1fr;">';
   hours.forEach(h => {
     const evs = timed.filter(ev => new Date(ev.start.dateTime).getHours()===h);
-    html += '<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:64px;">' + h + ':00</div>'
-      + '<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:64px;padding:4px 8px;">'
-      + evs.map(ev => {
-          const start = new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-          const end = ev.end?.dateTime ? new Date(ev.end.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
-          return '<div onclick="showEventDetail('' + ev.id + '')" style="background:var(--blue-deep);color:white;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;border-left:3px solid var(--blue-light);">'
-            + '<div style="font-weight:500;font-size:14px;">' + (ev.summary||'Sin título') + '</div>'
-            + '<div style="font-size:12px;opacity:0.7;margin-top:2px;">' + start + (end?' — '+end:'') + '</div>'
-            + (ev.description ? '<div style="font-size:11px;opacity:0.6;margin-top:4px;">' + ev.description + '</div>' : '')
-            + '</div>';
-        }).join('')
-      + '</div>';
+    html += `<div style="padding:8px;font-size:12px;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);min-height:64px;">${h}:00</div>`;
+    html += '<div style="border-left:1px solid var(--border);border-top:1px solid var(--border);min-height:64px;padding:4px 8px;">';
+    evs.forEach(ev => {
+      const start = new Date(ev.start.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      const end = ev.end?.dateTime ? new Date(ev.end.dateTime).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
+      html += `<div onclick="showEventDetail('${ev.id}')" style="background:var(--blue-deep);color:white;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;border-left:3px solid var(--blue-light);">
+        <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:2px;">${start}${end?' — '+end:''}</div>
+        ${ev.description ? '<div style="font-size:11px;opacity:0.6;margin-top:4px;">'+ev.description+'</div>' : ''}
+      </div>`;
+    });
+    html += '</div>';
   });
   html += '</div>';
   grid.innerHTML = html;
 }
+
 
 function renderListGrid() {
   const grid = document.getElementById('list-grid-cal');
@@ -2939,21 +2942,22 @@ function renderListGrid() {
     const dateStr = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][start.getDay()] + ' ' + start.getDate() + ' de ' + months[start.getMonth()];
     const timeStr = ev.start?.dateTime ? start.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'Todo el día';
     if (dateStr !== lastDate) {
-      html += '<div style="font-family:Cormorant Garamond,serif;font-size:17px;font-weight:500;padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;color:var(--blue-deep);">' + dateStr + '</div>';
+      html += `<div style="font-family:Cormorant Garamond,serif;font-size:17px;font-weight:500;padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:capitalize;color:var(--blue-deep);">${dateStr}</div>`;
       lastDate = dateStr;
     }
-    html += '<div onclick="showEventDetail('' + ev.id + '')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--blue-xpale)'" onmouseout="this.style.background='var(--white)'">'
-      + '<div style="width:4px;height:40px;background:var(--blue-mid);border-radius:2px;flex-shrink:0;"></div>'
-      + '<div style="flex:1;">'
-      + '<div style="font-weight:500;font-size:14px;">' + (ev.summary||'Sin título') + '</div>'
-      + '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + timeStr + '</div>'
-      + (ev.description ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + ev.description + '</div>' : '')
-      + '</div>'
-      + '<div style="font-size:12px;color:var(--blue-mid);">Ver &#8594;</div>'
-      + '</div>';
+    html += `<div onclick="showEventDetail('${ev.id}')" style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--blue-xpale)'" onmouseout="this.style.background='var(--white)'">
+      <div style="width:4px;height:40px;background:var(--blue-mid);border-radius:2px;flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-weight:500;font-size:14px;">${ev.summary||'Sin título'}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${timeStr}</div>
+        ${ev.description ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">'+ev.description+'</div>' : ''}
+      </div>
+      <div style="font-size:12px;color:var(--blue-mid);">Ver →</div>
+    </div>`;
   });
   grid.innerHTML = html;
 }
+
 
 function getEventColor(colorId) {
   const colors = {
