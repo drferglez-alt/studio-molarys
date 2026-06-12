@@ -1143,6 +1143,29 @@
     font-weight: 500;
   }
 
+  /* Patient profile */
+  .patient-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .info-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .info-val {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
   .back-btn {
     display: inline-flex;
     align-items: center;
@@ -2978,8 +3001,8 @@ function clearNewPatientForm() {
 function showPatientDetail(id) {
   const p = patients.find(x => x.id === id);
   if (!p) return;
+  currentPatientId = id;
 
-  // Show detail module
   document.querySelectorAll('.module-page').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.getElementById('module-patient-detail').classList.add('active');
@@ -2987,58 +3010,124 @@ function showPatientDetail(id) {
 
   const sexoMap = { M: 'Masculino', F: 'Femenino', O: 'Otro' };
   const ecMap = { soltero: 'Soltero/a', casado: 'Casado/a', divorciado: 'Divorciado/a', viudo: 'Viudo/a' };
+  const tags = Array.isArray(p.etiquetas) ? p.etiquetas : (p.etiquetas ? JSON.parse(p.etiquetas) : []);
+  const alergias = p.alergia_medicamento === 'S' || p.alergia_anestesico === 'S';
+  const waNum = (p.telefono || '').replace(/\D/g,'');
+
+  const TAG_COLORS = {
+    'VIP': '#F59E0B', 'Ortodoncia': '#3B82F6', 'Rehabilitación Completa': '#8B5CF6',
+    'Implantes': '#10B981', 'Irregular': '#EF4444'
+  };
+
+  function tagColor(t) {
+    return TAG_COLORS[t] || '#5B7BA8';
+  }
 
   document.getElementById('patient-detail-content').innerHTML = `
-    <div class="patient-detail-header">
-      <div class="patient-detail-avatar">${getInitials(p.nombre, p.apellido)}</div>
-      <div class="patient-detail-info" style="flex:1;">
-        <h2>${p.nombre} ${p.apellido}</h2>
-        <div class="patient-detail-meta">
-          <div class="meta-item">Expediente: <strong>#${p.expediente}</strong></div>
-          ${p.fecha_nacimiento ? `<div class="meta-item">Edad: <strong>${calcAge(p.fecha_nacimiento)}</strong></div>` : ''}
-          ${p.sexo ? `<div class="meta-item">Sexo: <strong>${sexoMap[p.sexo]||p.sexo}</strong></div>` : ''}
-          ${p.estado_civil ? `<div class="meta-item">Estado civil: <strong>${ecMap[p.estado_civil]||p.estado_civil}</strong></div>` : ''}
+    <button class="back-btn" onclick="showModule('patients')">← Volver a pacientes</button>
+
+    <!-- HEADER PERFIL -->
+    <div class="card" style="margin-bottom:20px;padding:28px 32px;">
+      <div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;">
+        <!-- Avatar -->
+        <div class="patient-detail-avatar">${getInitials(p.nombre, p.apellido)}</div>
+
+        <!-- Info principal -->
+        <div style="flex:1;min-width:200px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+            <h2 style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;">${p.nombre} ${p.apellido}</h2>
+            <span style="font-size:12px;color:var(--blue-mid);background:var(--blue-pale);padding:3px 10px;border-radius:20px;font-weight:500;">#${p.expediente}</span>
+          </div>
+          <div class="patient-detail-meta" style="margin-bottom:12px;">
+            ${p.fecha_nacimiento ? `<div class="meta-item">Edad: <strong>${calcAge(p.fecha_nacimiento)}</strong></div>` : ''}
+            ${p.sexo ? `<div class="meta-item">Sexo: <strong>${sexoMap[p.sexo]||p.sexo}</strong></div>` : ''}
+            ${p.estado_civil ? `<div class="meta-item">Estado civil: <strong>${ecMap[p.estado_civil]||p.estado_civil}</strong></div>` : ''}
+          </div>
+
+          <!-- Alerta alergia -->
+          ${alergias ? `<div style="display:inline-flex;align-items:center;gap:8px;background:#FEE2E2;border:1px solid #FECACA;border-radius:8px;padding:8px 14px;margin-bottom:12px;">
+            <span style="font-size:18px;">⚠️</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#B91C1C;text-transform:uppercase;letter-spacing:0.5px;">ALERGIA REGISTRADA</div>
+              <div style="font-size:12px;color:#DC2626;">${p.alergia_medicamento==='S'?'Alérgico a medicamentos':''}${p.alergia_medicamento==='S'&&p.alergia_anestesico==='S'?' · ':''}${p.alergia_anestesico==='S'?'Alérgico a anestésicos':''}</div>
+            </div>
+          </div>` : ''}
+
+          <!-- Etiquetas -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;" id="patient-tags-row">
+            ${tags.map(t => `<span class="patient-tag" style="background:${tagColor(t)}20;color:${tagColor(t)};border:1px solid ${tagColor(t)}40;">${t} <span onclick="removeTag('${p.id}','${t}')" style="cursor:pointer;margin-left:4px;opacity:0.7;">×</span></span>`).join('')}
+            <button onclick="openTagModal('${p.id}')" style="background:none;border:1px dashed var(--border);border-radius:20px;padding:3px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">+ Etiqueta</button>
+          </div>
         </div>
-      </div>
-      <div style="display:flex;gap:10px;flex-shrink:0;">
-        <button class="btn-new" onclick="openEditPatientModal('${p.id}')">✏️ Editar</button>
-        <button class="btn-new" style="color:var(--error);border-color:var(--error);" onclick="deletePatient('${p.id}','${p.nombre} ${p.apellido}')">🗑️ Eliminar</button>
+
+        <!-- Acciones -->
+        <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
+          ${waNum ? `<a href="https://wa.me/52${waNum}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#25D366;color:white;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </a>` : ''}
+          <button class="btn-new" onclick="openEditPatientModal('${p.id}')">✏️ Editar</button>
+          <button class="btn-new" style="color:var(--error);border-color:var(--error);" onclick="deletePatient('${p.id}','${p.nombre} ${p.apellido}')">🗑️ Eliminar</button>
+        </div>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+    <!-- CONTACTO Y EMERGENCIA -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
       <div class="card">
         <div class="card-header"><div class="card-title">Contacto</div></div>
         <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Teléfono</div><div style="font-size:14px;font-weight:500;">${p.telefono||'—'}</div></div>
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Correo</div><div style="font-size:14px;">${p.email||'—'}</div></div>
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Dirección</div><div style="font-size:14px;">${p.direccion||'—'}</div></div>
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Ocupación</div><div style="font-size:14px;">${p.ocupacion||'—'}</div></div>
+          <div><div class="info-label">Teléfono</div><div class="info-val">${p.telefono||'—'}</div></div>
+          <div><div class="info-label">Correo</div><div class="info-val">${p.email||'—'}</div></div>
+          <div><div class="info-label">Dirección</div><div class="info-val">${p.direccion||'—'}</div></div>
+          <div><div class="info-label">Ocupación</div><div class="info-val">${p.ocupacion||'—'}</div></div>
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Emergencia</div></div>
+        <div class="card-header"><div class="card-title">Contacto de Emergencia</div></div>
         <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Contacto</div><div style="font-size:14px;font-weight:500;">${p.emergencia_nombre||'—'}</div></div>
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Teléfono</div><div style="font-size:14px;">${p.emergencia_tel||'—'}</div></div>
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Referido por</div><div style="font-size:14px;">${p.referido||'—'}</div></div>
-          ${p.notas ? `<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px;">Notas</div><div style="font-size:14px;">${p.notas}</div></div>` : ''}
+          <div><div class="info-label">Nombre</div><div class="info-val">${p.emergencia_nombre||'—'}</div></div>
+          <div><div class="info-label">Teléfono</div><div class="info-val">${p.emergencia_tel||'—'}</div></div>
+          <div><div class="info-label">Referido por</div><div class="info-val">${p.referido||'—'}</div></div>
+          ${p.notas ? `<div><div class="info-label">Notas</div><div class="info-val">${p.notas}</div></div>` : ''}
         </div>
       </div>
     </div>
 
-    <div class="card">
+    <!-- HISTORIAL CLÍNICO -->
+    <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
         <div class="card-title">Historial Clínico</div>
         <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="openNewHistoryModal('${p.id}')">+ Nueva Historia</button>
       </div>
       <div id="patient-histories-list" style="padding:24px;">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;">Cargando historial...</div>
+        <div style="text-align:center;color:var(--text-muted);padding:20px;">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- PRESUPUESTOS -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">Presupuestos</div>
+        <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="showModule('budgets')">+ Nuevo Presupuesto</button>
+      </div>
+      <div id="patient-budgets-list" style="padding:24px;">
+        <div style="text-align:center;color:var(--text-muted);padding:20px;">Sin presupuestos registrados</div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL DE PAGOS -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">Historial de Pagos</div>
+      </div>
+      <div id="patient-payments-list" style="padding:0;">
+        <div style="text-align:center;color:var(--text-muted);padding:24px;">Cargando pagos...</div>
       </div>
     </div>`;
 
-  // Load histories for this patient
   loadPatientHistories(id);
+  loadPatientPayments(id);
 }
 
 async function loadPatientHistories(patientId) {
@@ -3065,6 +3154,140 @@ async function loadPatientHistories(patientId) {
     console.error(e);
   }
 }
+
+
+// ============================================================
+// PATIENT TAGS
+// ============================================================
+let currentPatientId = null;
+const PRESET_TAGS = ['VIP', 'Ortodoncia', 'Rehabilitación Completa', 'Implantes', 'Irregular'];
+
+function openTagModal(patientId) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+  const tags = Array.isArray(p.etiquetas) ? p.etiquetas : (p.etiquetas ? JSON.parse(p.etiquetas) : []);
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'modal-tags-temp';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header">
+        <div class="modal-title">Etiquetas</div>
+        <button class="modal-close" onclick="document.getElementById('modal-tags-temp').remove()">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px;">Etiquetas predefinidas</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${PRESET_TAGS.map(t => `
+              <button onclick="toggleTag('${patientId}','${t}',this)" style="padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:${tags.includes(t)?'var(--blue-deep)':'var(--white)'};color:${tags.includes(t)?'white':'var(--text-secondary)'};cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:all 0.15s;">${t}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">Etiqueta personalizada</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="custom-tag-input" placeholder="Escribe una etiqueta..." style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:4px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+            <button onclick="addCustomTag('${patientId}')" class="btn-gold" style="padding:9px 16px;">Agregar</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-tags-temp').remove()">Cerrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function toggleTag(patientId, tag, btn) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+  let tags = Array.isArray(p.etiquetas) ? [...p.etiquetas] : (p.etiquetas ? JSON.parse(p.etiquetas) : []);
+  if (tags.includes(tag)) {
+    tags = tags.filter(t => t !== tag);
+    btn.style.background = 'var(--white)'; btn.style.color = 'var(--text-secondary)';
+  } else {
+    tags.push(tag);
+    btn.style.background = 'var(--blue-deep)'; btn.style.color = 'white';
+  }
+  await savePatientTags(patientId, tags);
+}
+
+async function addCustomTag(patientId) {
+  const input = document.getElementById('custom-tag-input');
+  const tag = input.value.trim();
+  if (!tag) return;
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+  let tags = Array.isArray(p.etiquetas) ? [...p.etiquetas] : (p.etiquetas ? JSON.parse(p.etiquetas) : []);
+  if (!tags.includes(tag)) tags.push(tag);
+  await savePatientTags(patientId, tags);
+  input.value = '';
+  document.getElementById('modal-tags-temp')?.remove();
+  showPatientDetail(patientId);
+}
+
+async function removeTag(patientId, tag) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+  let tags = Array.isArray(p.etiquetas) ? [...p.etiquetas] : (p.etiquetas ? JSON.parse(p.etiquetas) : []);
+  tags = tags.filter(t => t !== tag);
+  await savePatientTags(patientId, tags);
+  showPatientDetail(patientId);
+}
+
+async function savePatientTags(patientId, tags) {
+  try {
+    const { error } = await db.from('patients').update({ etiquetas: JSON.stringify(tags) }).eq('id', patientId);
+    if (error) throw error;
+    const idx = patients.findIndex(p => p.id === patientId);
+    if (idx !== -1) patients[idx].etiquetas = tags;
+    showToast('Etiquetas actualizadas ✓', 'success');
+  } catch(e) {
+    showToast('Error al guardar etiquetas', 'error');
+    console.error(e);
+  }
+}
+
+// ============================================================
+// PATIENT PAYMENTS
+// ============================================================
+async function loadPatientPayments(patientId) {
+  const container = document.getElementById('patient-payments-list');
+  if (!container) return;
+  try {
+    const { data } = await db.from('income')
+      .select('*, treatments(nombre)')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false });
+
+    if (!data || !data.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">Sin pagos registrados</div>';
+      return;
+    }
+
+    const fmt = n => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const pagoIcon = { efectivo: '💵', tarjeta: '💳', transferencia: '📱' };
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 120px 100px 120px;padding:10px 24px;background:var(--cream);border-bottom:1px solid var(--border);">
+        <div class="th">Tratamiento</div>
+        <div class="th">Fecha</div>
+        <div class="th">Pago</div>
+        <div class="th">Monto</div>
+      </div>
+      ${data.map(r => `
+      <div style="display:grid;grid-template-columns:1fr 120px 100px 120px;padding:13px 24px;border-bottom:1px solid rgba(0,0,0,0.04);align-items:center;">
+        <div style="font-size:13px;font-weight:500;">${r.treatments?.nombre||'Sin tratamiento'}</div>
+        <div style="font-size:12px;color:var(--text-muted);">${formatDate(r.created_at)}</div>
+        <div style="font-size:13px;">${pagoIcon[r.tipo_pago]||''} ${r.tipo_pago||''}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--blue-mid);">${fmt(r.ingreso_bruto)}</div>
+      </div>`).join('')}`;
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">Sin pagos registrados</div>';
+  }
+}
+
 
 async function deletePatient(id, nombre) {
   if (!confirm(`¿Eliminar al paciente ${nombre}?\n\nEsta acción no se puede deshacer.`)) return;
