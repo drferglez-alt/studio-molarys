@@ -2663,6 +2663,7 @@ function renderPatients() {
 
 function renderDashboardPatients() {
   const container = document.getElementById('dashboard-patients-list');
+  if (!container) return;
   if (patients.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -3134,6 +3135,7 @@ function editCurrentEvent() {
 
 function renderDashboardAgenda() {
   const container = document.getElementById('dashboard-agenda-list');
+  if (!container) return;
   if (!container) return;
   const today = new Date().toDateString();
   const todayEvs = gEvents.filter(ev => {
