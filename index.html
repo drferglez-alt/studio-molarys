@@ -2489,6 +2489,99 @@
   </div>
 </div>
 
+
+<!-- MODAL AGREGAR / EDITAR RFC -->
+<div class="modal-overlay" id="modal-rfc">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title" id="rfc-modal-title">Agregar Datos Fiscales</div>
+      <button class="modal-close" onclick="closeModal('modal-rfc')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rfc-record-id">
+      <input type="hidden" id="rfc-patient-id">
+      <div class="form-row">
+        <div class="form-field">
+          <label>RFC *</label>
+          <input type="text" id="rfc-rfc" placeholder="XAXX010101000" style="text-transform:uppercase;">
+        </div>
+        <div class="form-field">
+          <label>Razón Social *</label>
+          <input type="text" id="rfc-razon" placeholder="Nombre o empresa completo">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Régimen Fiscal</label>
+          <select id="rfc-regimen">
+            <option value="">Seleccionar...</option>
+            <option value="601">601 — General de Ley Personas Morales</option>
+            <option value="603">603 — Personas Morales con Fines no Lucrativos</option>
+            <option value="605">605 — Sueldos y Salarios</option>
+            <option value="606">606 — Arrendamiento</option>
+            <option value="607">607 — Régimen de Enajenación o Adquisición de Bienes</option>
+            <option value="608">608 — Demás Ingresos</option>
+            <option value="610">610 — Residentes en el Extranjero</option>
+            <option value="611">611 — Ingresos por Dividendos</option>
+            <option value="612">612 — Personas Físicas con Actividades Empresariales</option>
+            <option value="614">614 — Ingresos por intereses</option>
+            <option value="616">616 — Sin obligaciones fiscales</option>
+            <option value="621">621 — Incorporación Fiscal</option>
+            <option value="622">622 — Actividades Agrícolas, Ganaderas, Silvícolas</option>
+            <option value="625">625 — Régimen de las Actividades Empresariales con ingresos a través de Plataformas</option>
+            <option value="626">626 — Régimen Simplificado de Confianza</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Uso de CFDI</label>
+          <select id="rfc-cfdi">
+            <option value="">Seleccionar...</option>
+            <option value="D01">D01 — Honorarios médicos y dentales</option>
+            <option value="D02">D02 — Gastos médicos por incapacidad o discapacidad</option>
+            <option value="D07">D07 — Primas por seguros de gastos médicos</option>
+            <option value="G01">G01 — Adquisición de mercancias</option>
+            <option value="G03">G03 — Gastos en general</option>
+            <option value="S01">S01 — Sin efectos fiscales</option>
+            <option value="CP01">CP01 — Pagos</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Correo para factura</label>
+          <input type="email" id="rfc-email" placeholder="correo@empresa.com">
+        </div>
+        <div class="form-field">
+          <label>Teléfono</label>
+          <input type="tel" id="rfc-telefono" placeholder="3141234567">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-field">
+          <label>Dirección fiscal</label>
+          <input type="text" id="rfc-direccion" placeholder="Calle, número, colonia, CP, ciudad">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-field">
+          <label>Link Constancia de Situación Fiscal (Google Drive)</label>
+          <input type="url" id="rfc-drive" placeholder="https://drive.google.com/...">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-field">
+          <label>Notas</label>
+          <textarea id="rfc-notas" placeholder="Ej. Factura a nombre del esposo, empresa familiar..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-rfc')">Cancelar</button>
+      <button class="btn-gold" onclick="saveRFC()" id="btn-save-rfc">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- NEW PATIENT MODAL -->
 <div class="modal-overlay" id="modal-new-patient">
   <div class="modal">
@@ -3115,6 +3208,17 @@ function showPatientDetail(id) {
       </div>
     </div>
 
+    <!-- DATOS FISCALES -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">Datos de Facturación</div>
+        <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="openAddRFCModal('${p.id}')">+ Agregar RFC</button>
+      </div>
+      <div id="patient-rfc-list" style="padding:0;">
+        <div style="text-align:center;color:var(--text-muted);padding:24px;">Cargando datos fiscales...</div>
+      </div>
+    </div>
+
     <!-- HISTORIAL DE PAGOS -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
@@ -3127,6 +3231,7 @@ function showPatientDetail(id) {
 
   loadPatientHistories(id);
   loadPatientPayments(id);
+  loadPatientRFC(id);
 }
 
 async function loadPatientHistories(patientId) {
@@ -3248,6 +3353,147 @@ async function savePatientTags(patientId, tags) {
     console.error(e);
   }
 }
+
+
+// ============================================================
+// FACTURACIÓN — Datos Fiscales por Paciente
+// ============================================================
+async function loadPatientRFC(patientId) {
+  const container = document.getElementById('patient-rfc-list');
+  if (!container) return;
+  try {
+    const { data } = await db.from('patient_rfc')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: true });
+
+    if (!data || !data.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;font-size:13px;">Sin datos fiscales registrados</div>';
+      return;
+    }
+
+    container.innerHTML = data.map(r => `
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+              <span style="font-size:15px;font-weight:600;color:var(--blue-deep);">${r.razon_social}</span>
+              <span style="font-size:12px;font-family:monospace;background:var(--cream);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--text-secondary);">${r.rfc}</span>
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
+              ${r.regimen_fiscal ? `<span>&#128209; ${r.regimen_fiscal}</span>` : ''}
+              ${r.uso_cfdi ? `<span>&#128196; ${r.uso_cfdi}</span>` : ''}
+              ${r.email_factura ? `<span>&#9993; ${r.email_factura}</span>` : ''}
+              ${r.telefono ? `<span>&#128222; ${r.telefono}</span>` : ''}
+            </div>
+            ${r.direccion_fiscal ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">&#128205; ${r.direccion_fiscal}</div>` : ''}
+            ${r.notas ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;font-style:italic;">&#128172; ${r.notas}</div>` : ''}
+            ${r.link_drive ? `<div style="margin-top:8px;"><a href="${r.link_drive}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--blue-mid);text-decoration:none;background:var(--blue-xpale);padding:4px 10px;border-radius:4px;">
+              <svg width="13" height="13" viewBox="0 0 87.3 78" fill="#4285F4" xmlns="http://www.w3.org/2000/svg"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066DA"/><path d="M43.65 25L29.9 1.2C28.55.4 27 0 25.45 0c-1.55 0-3.1.4-4.5 1.2L6.6 11.15c1.4.8 2.5 1.95 3.3 3.3l33.75 58.4z" fill="#00AC47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.45 9.5z" fill="#EA4335"/><path d="M43.65 25L57.4 1.2C56 .4 54.45 0 52.9 0H34.4c-1.55 0-3.1.4-4.5 1.2z" fill="#00832D"/><path d="M59.8 53H27.5L13.75 76.8c1.4.8 2.95 1.2 4.5 1.2h50.8c1.55 0 3.1-.4 4.5-1.2z" fill="#2684FC"/><path d="M73.4 26.95l-6.6-11.45c-.8-1.35-1.9-2.5-3.3-3.3L49.8 35.5 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#FFBA00"/></svg>
+              Ver Constancia en Drive
+            </a></div>` : ''}
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button onclick="openEditRFCModal('${r.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text-secondary);">&#9998; Editar</button>
+            <button onclick="deleteRFC('${r.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--error);">&#10005;</button>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">Sin datos fiscales registrados</div>';
+    console.error(e);
+  }
+}
+
+function openAddRFCModal(patientId) {
+  document.getElementById('rfc-record-id').value = '';
+  document.getElementById('rfc-patient-id').value = patientId;
+  document.getElementById('rfc-rfc').value = '';
+  document.getElementById('rfc-razon').value = '';
+  document.getElementById('rfc-regimen').value = '';
+  document.getElementById('rfc-cfdi').value = '';
+  document.getElementById('rfc-email').value = '';
+  document.getElementById('rfc-telefono').value = '';
+  document.getElementById('rfc-direccion').value = '';
+  document.getElementById('rfc-drive').value = '';
+  document.getElementById('rfc-notas').value = '';
+  document.getElementById('rfc-modal-title').textContent = 'Agregar Datos Fiscales';
+  document.getElementById('modal-rfc').classList.add('open');
+}
+
+let _rfcCache = [];
+
+async function openEditRFCModal(rfcId) {
+  try {
+    const { data } = await db.from('patient_rfc').select('*').eq('id', rfcId).single();
+    if (!data) return;
+    document.getElementById('rfc-record-id').value = data.id;
+    document.getElementById('rfc-patient-id').value = data.patient_id;
+    document.getElementById('rfc-rfc').value = data.rfc || '';
+    document.getElementById('rfc-razon').value = data.razon_social || '';
+    document.getElementById('rfc-regimen').value = data.regimen_fiscal || '';
+    document.getElementById('rfc-cfdi').value = data.uso_cfdi || '';
+    document.getElementById('rfc-email').value = data.email_factura || '';
+    document.getElementById('rfc-telefono').value = data.telefono || '';
+    document.getElementById('rfc-direccion').value = data.direccion_fiscal || '';
+    document.getElementById('rfc-drive').value = data.link_drive || '';
+    document.getElementById('rfc-notas').value = data.notas || '';
+    document.getElementById('rfc-modal-title').textContent = 'Editar Datos Fiscales';
+    document.getElementById('modal-rfc').classList.add('open');
+  } catch(e) { showToast('Error al cargar datos', 'error'); }
+}
+
+async function saveRFC() {
+  const rfc = document.getElementById('rfc-rfc').value.trim().toUpperCase();
+  const razon = document.getElementById('rfc-razon').value.trim();
+  if (!rfc || !razon) { showToast('RFC y Razón Social son obligatorios', 'error'); return; }
+
+  const btn = document.getElementById('btn-save-rfc');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  const record = {
+    patient_id: document.getElementById('rfc-patient-id').value,
+    rfc,
+    razon_social: razon,
+    regimen_fiscal: document.getElementById('rfc-regimen').value || null,
+    uso_cfdi: document.getElementById('rfc-cfdi').value || null,
+    email_factura: document.getElementById('rfc-email').value.trim() || null,
+    telefono: document.getElementById('rfc-telefono').value.trim() || null,
+    direccion_fiscal: document.getElementById('rfc-direccion').value.trim() || null,
+    link_drive: document.getElementById('rfc-drive').value.trim() || null,
+    notas: document.getElementById('rfc-notas').value.trim() || null,
+  };
+
+  const recordId = document.getElementById('rfc-record-id').value;
+  try {
+    if (recordId) {
+      const { error } = await db.from('patient_rfc').update(record).eq('id', recordId);
+      if (error) throw error;
+    } else {
+      const { error } = await db.from('patient_rfc').insert([record]);
+      if (error) throw error;
+    }
+    showToast('Datos fiscales guardados ✓', 'success');
+    closeModal('modal-rfc');
+    loadPatientRFC(record.patient_id);
+  } catch(e) {
+    showToast('Error al guardar: ' + (e.message || ''), 'error');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+
+async function deleteRFC(rfcId) {
+  if (!confirm('¿Eliminar estos datos fiscales?')) return;
+  try {
+    const { data } = await db.from('patient_rfc').select('patient_id').eq('id', rfcId).single();
+    const { error } = await db.from('patient_rfc').delete().eq('id', rfcId);
+    if (error) throw error;
+    showToast('Datos fiscales eliminados', 'success');
+    if (data) loadPatientRFC(data.patient_id);
+  } catch(e) { showToast('Error al eliminar', 'error'); }
+}
+
 
 // ============================================================
 // PATIENT PAYMENTS
