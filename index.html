@@ -6607,6 +6607,7 @@ function applyAdminVisibility(isAdmin) {
 // ============================================================
 let incomeRecords = [];
 let treatments = [];
+window.treatments = treatments;
 let gastos = [];
 let currentUserProfile = null;
 
@@ -6945,9 +6946,10 @@ async function loadTreatments() {
   try {
     const { data } = await db.from('treatments').select('*').eq('activo', true).order('nombre');
     treatments = data || [];
+    window.treatments = treatments; // sincronizar con getCatalog()
     populateTreatmentSelects();
     renderTreatmentsTable();
-  } catch(e) { treatments = []; }
+  } catch(e) { treatments = []; window.treatments = []; }
 }
 
 function populateTreatmentSelects() {
@@ -7259,3 +7261,4 @@ async function saveHistory() {
 </script>
 </body>
 </html>
+
