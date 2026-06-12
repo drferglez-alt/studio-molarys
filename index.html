@@ -809,6 +809,68 @@
   .patient-row-clickable:hover { background: var(--blue-xpale) !important; }
   .patient-row-clickable:hover .patient-exp { color: var(--blue-deep); }
 
+  /* ── Módulo Doctores ── */
+  .doctors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .doctor-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    transition: box-shadow .2s, transform .1s;
+    position: relative;
+  }
+  .doctor-card:hover { box-shadow: 0 6px 20px rgba(45,58,82,.1); transform: translateY(-2px); }
+  .doctor-card-header {
+    display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px;
+  }
+  .doctor-avatar-wrap {
+    width: 68px; height: 68px; border-radius: 50%; flex-shrink: 0;
+    background: var(--blue-deep); display: flex; align-items: center;
+    justify-content: center; font-family: 'Cormorant Garamond', serif;
+    font-size: 24px; color: var(--blue-light);
+    position: relative; overflow: hidden; cursor: pointer;
+  }
+  .doctor-avatar-wrap img {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 50%; position: absolute; inset: 0;
+  }
+  .doctor-avatar-overlay {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: rgba(0,0,0,.45); color: #fff; font-size: 10px; font-weight: 600;
+    display: none; align-items: center; justify-content: center; text-align: center;
+  }
+  .doctor-avatar-wrap:hover .doctor-avatar-overlay { display: flex; }
+  .doctor-name { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 500; }
+  .doctor-esp  { font-size: 12px; color: var(--blue-mid); font-weight: 500; margin-top: 2px; }
+  .doctor-row  {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--border);
+  }
+  .doctor-row:last-child { border-bottom: none; }
+  .doctor-row-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .7px; width: 90px; flex-shrink: 0; padding-top: 1px; }
+  .doctor-row-val { flex: 1; color: var(--text-primary); }
+  .doctor-ced-tag {
+    display: inline-block; background: var(--blue-xpale);
+    border: 1px solid var(--blue-pale); border-radius: 6px;
+    padding: 2px 8px; font-size: 11px; color: var(--blue-deep);
+    font-weight: 500; margin: 2px 4px 2px 0;
+  }
+  .doctor-card-actions {
+    position: absolute; top: 14px; right: 14px;
+    display: flex; gap: 6px;
+  }
+  .doctor-action-btn {
+    background: none; border: none; font-size: 15px;
+    cursor: pointer; padding: 4px 7px; border-radius: 6px;
+    color: var(--text-muted); transition: background .1s;
+  }
+  .doctor-action-btn:hover { background: var(--cream); color: var(--blue-deep); }
+
   /* Notas de Evolución */
   .evol-table { width:100%; border-collapse:collapse; font-size:13px; }
   .evol-table th {
@@ -1595,6 +1657,9 @@
 
 
         <div class="nav-section">Clínico</div>
+        <a class="nav-item" onclick="showModule('doctors')" id="nav-doctors">
+          <span class="nav-icon">👨‍⚕️</span> Doctores
+        </a>
         <a class="nav-item" onclick="showModule('patients')" id="nav-patients">
           <span class="nav-icon">👤</span> Pacientes
         </a>
@@ -1671,6 +1736,11 @@
 
           <!-- Grid de módulos -->
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:900px;margin:0 auto;">
+
+            <button class="dash-card" onclick="showModule('doctors')">
+              <div class="dash-card-icon">👨‍⚕️</div>
+              <div class="dash-card-label">Doctores</div>
+            </button>
 
             <button class="dash-card" onclick="showModule('patients')">
               <div class="dash-card-icon">&#128100;</div>
@@ -2358,6 +2428,25 @@
         </div>
 
         <!-- USUARIOS -->
+        <!-- MÓDULO DOCTORES -->
+        <div class="module-page" id="module-doctors">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <div>
+              <div style="font-family:Cormorant Garamond,serif;font-size:22px;">Doctores</div>
+              <div style="font-size:13px;color:var(--text-muted);">Perfiles del equipo médico</div>
+            </div>
+            <button class="btn-new" onclick="openDoctorModal()">+ Nuevo Doctor</button>
+          </div>
+          <div class="doctors-grid" id="doctors-grid">
+            <div class="empty-state" style="grid-column:1/-1;">
+              <div class="empty-state-icon">👨‍⚕️</div>
+              <h3>Sin doctores registrados</h3>
+              <p>Agrega el primer perfil del equipo</p>
+              <button class="btn-gold" onclick="openDoctorModal()">+ Agregar Doctor</button>
+            </div>
+          </div>
+        </div>
+
         <div class="module-page" id="module-users">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
             <div>
@@ -3012,6 +3101,7 @@ function showModule(module) {
   // Update topbar
   const titles = {
     dashboard: 'Dashboard',
+    doctors: 'Doctores',
     patients: 'Pacientes',
     histories: 'Historias Clínicas',
     consents: 'Consentimientos',
@@ -3024,6 +3114,7 @@ function showModule(module) {
   currentModule = module;
 
   // Load data per module
+  if (module === 'doctors') loadDoctors();
   if (module === 'agenda') setTimeout(() => loadGoogleEvents(), 100);
   if (module === 'users') loadUsers();
   if (module === 'income') {
@@ -4217,6 +4308,259 @@ function saveArchivo(patientId) {
   loadPatientArchivos(patientId);
   document.getElementById('modal-add-archivo').remove();
   showToast('Archivo agregado ✓', 'success');
+}
+
+// ══════════════════════════════════════════
+// MÓDULO DOCTORES
+// Guardado en localStorage: molarys_doctors = [{ id, nombre, apellido, especialidades:[{nombre,cedula}], fecha_nac, rfc, foto, notas }]
+// ══════════════════════════════════════════
+function getDoctors() {
+  return JSON.parse(localStorage.getItem('molarys_doctors') || '[]');
+}
+function saveDoctors(list) {
+  localStorage.setItem('molarys_doctors', JSON.stringify(list));
+}
+function getDoctorInitials(d) {
+  return ((d.nombre||'?')[0] + (d.apellido||'?')[0]).toUpperCase();
+}
+
+function loadDoctors() {
+  const grid = document.getElementById('doctors-grid');
+  if (!grid) return;
+  const list = getDoctors();
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      <div class="empty-state-icon">👨‍⚕️</div>
+      <h3>Sin doctores registrados</h3>
+      <p>Agrega el primer perfil del equipo</p>
+      <button class="btn-gold" onclick="openDoctorModal()">+ Agregar Doctor</button>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = list.map(d => renderDoctorCard(d)).join('');
+}
+
+function renderDoctorCard(d) {
+  const avatarContent = d.foto
+    ? `<img src="${d.foto}" onerror="this.style.display='none'">${getDoctorInitials(d)}`
+    : getDoctorInitials(d);
+
+  const especialidades = (d.especialidades || []).map(e =>
+    `<span class="doctor-ced-tag">🏅 ${e.nombre}${e.cedula ? ' · Céd. ' + e.cedula : ''}</span>`
+  ).join('');
+
+  const edad = d.fecha_nac ? (() => {
+    const b = new Date(d.fecha_nac);
+    const age = Math.floor((new Date() - b) / (365.25*24*3600*1000));
+    return `${age} años`;
+  })() : '—';
+
+  return `
+  <div class="doctor-card" id="dcard-${d.id}">
+    <div class="doctor-card-actions">
+      <button class="doctor-action-btn" onclick="openDoctorModal('${d.id}')" title="Editar">✏️</button>
+      <button class="doctor-action-btn" onclick="deleteDoctor('${d.id}')" title="Eliminar">🗑</button>
+    </div>
+    <div class="doctor-card-header">
+      <div class="doctor-avatar-wrap" onclick="triggerDoctorAvatar('${d.id}')" title="Cambiar foto">
+        ${d.foto ? `<img src="${d.foto}" onerror="this.style.display='none'">` : ''}
+        <span style="position:relative;z-index:1;">${getDoctorInitials(d)}</span>
+        <div class="doctor-avatar-overlay">📷<br>Foto</div>
+      </div>
+      <input type="file" id="doc-avatar-input-${d.id}" accept="image/*" style="display:none"
+             onchange="uploadDoctorAvatar(event,'${d.id}')">
+      <div>
+        <div class="doctor-name">Dr. ${d.nombre} ${d.apellido}</div>
+        <div class="doctor-esp">${(d.especialidades||[]).map(e=>e.nombre).join(' · ') || 'Sin especialidad'}</div>
+      </div>
+    </div>
+    <div>
+      <div class="doctor-row">
+        <span class="doctor-row-label">Especialidad</span>
+        <span class="doctor-row-val">${especialidades || '<span style="color:var(--text-muted)">—</span>'}</span>
+      </div>
+      <div class="doctor-row">
+        <span class="doctor-row-label">Nacimiento</span>
+        <span class="doctor-row-val">${d.fecha_nac ? new Date(d.fecha_nac).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) + ' · ' + edad : '—'}</span>
+      </div>
+      <div class="doctor-row">
+        <span class="doctor-row-label">RFC</span>
+        <span class="doctor-row-val" style="font-family:monospace;">${d.rfc || '—'}</span>
+      </div>
+      ${d.notas ? `<div class="doctor-row">
+        <span class="doctor-row-label">Notas</span>
+        <span class="doctor-row-val" style="color:var(--text-muted);">${d.notas}</span>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function triggerDoctorAvatar(id) {
+  document.getElementById('doc-avatar-input-' + id)?.click();
+}
+
+function uploadDoctorAvatar(event, id) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { showToast('Imagen menor a 3MB', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const list = getDoctors();
+    const d = list.find(x => x.id === id);
+    if (!d) return;
+    d.foto = e.target.result;
+    saveDoctors(list);
+    loadDoctors();
+    showToast('Foto actualizada ✓', 'success');
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function deleteDoctor(id) {
+  const list = getDoctors();
+  const d = list.find(x => x.id === id);
+  if (!confirm(`¿Eliminar al Dr. ${d?.nombre} ${d?.apellido}?`)) return;
+  saveDoctors(list.filter(x => x.id !== id));
+  loadDoctors();
+  showToast('Doctor eliminado', 'success');
+}
+
+// ── Modal agregar/editar doctor ──
+function openDoctorModal(editId) {
+  const list = getDoctors();
+  const d = editId ? list.find(x => x.id === editId) : null;
+  const esps = d ? [...(d.especialidades || [])] : [];
+
+  let m = document.getElementById('modal-doctor');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-doctor';
+  m.className = 'modal-overlay open';
+
+  m.innerHTML = `
+    <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-header">
+        <div class="modal-title">${d ? '✏️ Editar Doctor' : '👨‍⚕️ Nuevo Doctor'}</div>
+        <button class="modal-close" onclick="document.getElementById('modal-doctor').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Nombre *</label>
+            <input id="doc-nombre" type="text" placeholder="Nombre(s)" value="${d?.nombre||''}">
+          </div>
+          <div class="form-field">
+            <label>Apellido(s) *</label>
+            <input id="doc-apellido" type="text" placeholder="Apellido(s)" value="${d?.apellido||''}">
+          </div>
+        </div>
+
+        <!-- Especialidades dinámicas -->
+        <div class="form-field">
+          <label>Especialidades y Cédulas</label>
+          <div id="doc-esps-list" style="margin-bottom:8px;"></div>
+          <button type="button" onclick="addEspRow()" style="
+            background:none;border:2px dashed var(--border);border-radius:8px;
+            padding:7px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;width:100%;">
+            + Agregar especialidad / cédula
+          </button>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label>Fecha de nacimiento</label>
+            <input id="doc-fecha-nac" type="date" value="${d?.fecha_nac||''}">
+          </div>
+          <div class="form-field">
+            <label>RFC</label>
+            <input id="doc-rfc" type="text" placeholder="XXXX000000XXX" maxlength="13"
+                   value="${d?.rfc||''}" style="text-transform:uppercase;"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Notas adicionales</label>
+          <textarea id="doc-notas" rows="2" placeholder="Horario, teléfono, observaciones...">${d?.notas||''}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-doctor').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="saveDoctor('${editId||''}')">Guardar</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target === m) m.remove(); };
+
+  // Renderizar especialidades iniciales
+  window._docEsps = esps.map(e => ({...e}));
+  renderEspRows();
+  // Si no tiene ninguna, agregar una vacía
+  if (!window._docEsps.length) addEspRow();
+
+  document.getElementById('doc-nombre').focus();
+}
+
+function renderEspRows() {
+  const cont = document.getElementById('doc-esps-list');
+  if (!cont) return;
+  cont.innerHTML = (window._docEsps || []).map((e, i) => `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <input type="text" value="${e.nombre||''}" placeholder="Especialidad"
+             oninput="window._docEsps[${i}].nombre=this.value"
+             style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;">
+      <input type="text" value="${e.cedula||''}" placeholder="Cédula (opcional)"
+             oninput="window._docEsps[${i}].cedula=this.value"
+             style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;">
+      <button onclick="removeEspRow(${i})" style="
+        background:#fee2e2;color:#dc2626;border:none;border-radius:6px;
+        padding:7px 10px;cursor:pointer;font-size:13px;">✕</button>
+    </div>`).join('');
+}
+
+function addEspRow() {
+  window._docEsps = window._docEsps || [];
+  window._docEsps.push({ nombre: '', cedula: '' });
+  renderEspRows();
+}
+function removeEspRow(i) {
+  window._docEsps.splice(i, 1);
+  renderEspRows();
+}
+
+function saveDoctor(editId) {
+  const nombre   = document.getElementById('doc-nombre').value.trim();
+  const apellido = document.getElementById('doc-apellido').value.trim();
+  if (!nombre || !apellido) { showToast('Nombre y apellido son obligatorios', 'error'); return; }
+
+  const especialidades = (window._docEsps || [])
+    .filter(e => e.nombre.trim())
+    .map(e => ({ nombre: e.nombre.trim(), cedula: e.cedula.trim() }));
+
+  const list = getDoctors();
+  if (editId) {
+    const idx = list.findIndex(x => x.id === editId);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], nombre, apellido, especialidades,
+        fecha_nac: document.getElementById('doc-fecha-nac').value,
+        rfc: document.getElementById('doc-rfc').value.trim(),
+        notas: document.getElementById('doc-notas').value.trim() };
+    }
+  } else {
+    list.push({
+      id: 'doc_' + Date.now(),
+      nombre, apellido, especialidades,
+      fecha_nac: document.getElementById('doc-fecha-nac').value,
+      rfc: document.getElementById('doc-rfc').value.trim(),
+      notas: document.getElementById('doc-notas').value.trim(),
+      foto: null
+    });
+  }
+  saveDoctors(list);
+  document.getElementById('modal-doctor').remove();
+  loadDoctors();
+  showToast(editId ? 'Doctor actualizado ✓' : 'Doctor agregado ✓', 'success');
 }
 
 // ══════════════════════════════════════════
