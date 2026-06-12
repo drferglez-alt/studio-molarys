@@ -805,6 +805,18 @@
   .badge-pending { background: rgba(230,126,34,0.1); color: var(--warning); }
 
   /* Badge estado paciente — clickeable */
+  /* Fila paciente clickeable */
+  .patient-row-clickable:hover { background: var(--blue-xpale) !important; }
+  .patient-row-clickable:hover .patient-exp { color: var(--blue-deep); }
+
+  /* Control de limpieza */
+  .ctrl-ok    { color: #1a7a40; font-size:12px; font-weight:500; }
+  .ctrl-prox  { color: #b45309; font-size:12px; font-weight:500; }
+  .ctrl-vence { color: #dc2626; font-size:12px; font-weight:600; }
+  .ctrl-label { font-size:11px; color: var(--text-muted); display:block; }
+  .ctrl-setup { font-size:12px; color:var(--text-muted); cursor:pointer; }
+  .ctrl-setup:hover { color:var(--blue-mid); text-decoration:underline; }
+
   .badge-estado {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
@@ -1670,9 +1682,8 @@
               <div class="th">Expediente</div>
               <div class="th">Paciente</div>
               <div class="th">Teléfono</div>
-              <div class="th">Última Visita</div>
               <div class="th">Estado</div>
-              <div class="th">Acciones</div>
+              <div class="th">🦷 Control de Limpieza</div>
             </div>
             <div id="patients-table-body">
               <div class="empty-state">
@@ -3050,19 +3061,18 @@ function renderPatientsTable(filter = '') {
   }
 
   container.innerHTML = filtered.map(p => `
-    <div class="table-row">
+    <div class="table-row patient-row-clickable" onclick="showPatientDetail('${p.id}')" style="cursor:pointer;">
       <div class="td"><span class="patient-exp">#${p.expediente}</span></div>
       <div class="td">
         <div style="font-weight:500">${p.nombre} ${p.apellido}</div>
         <div style="font-size:12px;color:var(--text-muted)">${calcAge(p.fecha_nacimiento)}</div>
       </div>
       <div class="td muted">${p.telefono || '—'}</div>
-      <div class="td muted">${formatDate(p.created_at)}</div>
-      <div class="td">
+      <div class="td" onclick="event.stopPropagation()">
         ${renderEstadoBadge(p)}
       </div>
       <div class="td">
-        <a class="card-link" onclick="showPatientDetail('${p.id}')">Ver expediente →</a>
+        ${renderControlLimpieza(p.id)}
       </div>
     </div>
   `).join('');
@@ -3164,6 +3174,131 @@ function setEstadoCustom(patientId) {
   const val = document.getElementById('estado-custom-input')?.value.trim();
   if (!val) return;
   setEstado(patientId, val, 'custom');
+}
+
+// ══════════════════════════════════════════
+// CONTROL DE LIMPIEZA DENTAL
+// Guardado: { [patientId]: { ultima: 'YYYY-MM-DD', intervalo_meses: 6 } }
+// ══════════════════════════════════════════
+function getControlesLimpieza() {
+  return JSON.parse(localStorage.getItem('molarys_control_limpieza') || '{}');
+}
+function saveControlLimpieza(patientId, ultima, intervaloMeses) {
+  const map = getControlesLimpieza();
+  map[patientId] = { ultima, intervalo: intervaloMeses };
+  localStorage.setItem('molarys_control_limpieza', JSON.stringify(map));
+}
+
+function renderControlLimpieza(patientId) {
+  const map = getControlesLimpieza();
+  const ctrl = map[patientId];
+
+  if (!ctrl || !ctrl.ultima) {
+    return `<span class="ctrl-setup" onclick="event.stopPropagation();openControlModal('${patientId}')">+ Registrar última limpieza</span>`;
+  }
+
+  const ultima   = new Date(ctrl.ultima);
+  const intervalo = ctrl.intervalo || 6; // meses
+  const proxima  = new Date(ultima);
+  proxima.setMonth(proxima.getMonth() + intervalo);
+  const hoy      = new Date();
+  const diffMs   = proxima - hoy;
+  const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffMeses = Math.floor(Math.abs(diffDias) / 30);
+
+  let cls, texto, subtexto;
+  if (diffDias < 0) {
+    // Vencida
+    cls     = 'ctrl-vence';
+    texto   = `⚠️ Venció hace ${diffMeses > 0 ? diffMeses + ' mes' + (diffMeses>1?'es':'') : Math.abs(diffDias) + ' días'}`;
+    subtexto = 'Llamar para agendar';
+  } else if (diffDias <= 30) {
+    // Próxima ≤ 1 mes
+    cls     = 'ctrl-prox';
+    texto   = `🔔 En ${diffDias} día${diffDias>1?'s':''}`;
+    subtexto = 'Próxima limpieza';
+  } else {
+    // OK — más de 1 mes
+    cls     = 'ctrl-ok';
+    const mf = Math.ceil(diffDias / 30);
+    texto   = `✓ En ${mf} mes${mf>1?'es':''}`;
+    subtexto = 'Control al día';
+  }
+
+  const proxFmt = proxima.toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'});
+  return `<div onclick="event.stopPropagation();openControlModal('${patientId}')" style="cursor:pointer;" title="Click para editar">
+    <span class="${cls}">${texto}</span>
+    <span class="ctrl-label">${subtexto} · ${proxFmt}</span>
+  </div>`;
+}
+
+function openControlModal(patientId) {
+  const pac = patients.find(p => p.id === patientId);
+  if (!pac) return;
+  const map = getControlesLimpieza();
+  const ctrl = map[patientId] || {};
+  const nombre = `${pac.nombre} ${pac.apellido}`;
+
+  let m = document.getElementById('modal-control-limpieza');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-control-limpieza';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <div class="modal-title">🦷 Control de Limpieza</div>
+        <button class="modal-close" onclick="document.getElementById('modal-control-limpieza').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:20px;"><strong>${nombre}</strong></p>
+        <div class="form-field">
+          <label>Fecha de la última limpieza</label>
+          <input id="ctrl-ultima" type="date" value="${ctrl.ultima || new Date().toISOString().split('T')[0]}">
+        </div>
+        <div class="form-field">
+          <label>Repetir cada (meses)</label>
+          <select id="ctrl-intervalo">
+            <option value="3"  ${(ctrl.intervalo||6)==3  ?'selected':''}>3 meses</option>
+            <option value="4"  ${(ctrl.intervalo||6)==4  ?'selected':''}>4 meses</option>
+            <option value="6"  ${(ctrl.intervalo||6)==6  ?'selected':''}>6 meses (estándar)</option>
+            <option value="12" ${(ctrl.intervalo||6)==12 ?'selected':''}>12 meses</option>
+          </select>
+        </div>
+        <div id="ctrl-preview" style="background:var(--cream);border-radius:8px;padding:12px;font-size:13px;margin-top:8px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-control-limpieza').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="saveControlLimpiezaModal('${patientId}')">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+
+  // Preview dinámico
+  function updatePreview() {
+    const ult = document.getElementById('ctrl-ultima').value;
+    const int = parseInt(document.getElementById('ctrl-intervalo').value);
+    if (!ult) return;
+    const prox = new Date(ult);
+    prox.setMonth(prox.getMonth() + int);
+    const fmt = prox.toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    document.getElementById('ctrl-preview').innerHTML =
+      `📅 Próxima limpieza: <strong>${fmt}</strong>`;
+  }
+  document.getElementById('ctrl-ultima').addEventListener('change', updatePreview);
+  document.getElementById('ctrl-intervalo').addEventListener('change', updatePreview);
+  updatePreview();
+}
+
+function saveControlLimpiezaModal(patientId) {
+  const ultima     = document.getElementById('ctrl-ultima').value;
+  const intervalo  = parseInt(document.getElementById('ctrl-intervalo').value);
+  if (!ultima) { showToast('Ingresa la fecha de la última limpieza', 'error'); return; }
+  saveControlLimpieza(patientId, ultima, intervalo);
+  document.getElementById('modal-control-limpieza').remove();
+  renderPatientsTable(document.getElementById('patient-search')?.value || '');
+  showToast('Control de limpieza guardado ✓', 'success');
 }
 
 function filterPatients() {
