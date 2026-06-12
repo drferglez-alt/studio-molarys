@@ -2550,25 +2550,44 @@
             <button class="btn-new" onclick="openCatalogItemModal()">+ Agregar</button>
           </div>
 
-          <!-- Búsqueda + tabs -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-            <input type="text" class="search-input" id="catalog-search" placeholder="Buscar servicio o producto..."
-                   oninput="renderCatalog()" style="max-width:280px;">
-            <div class="catalog-tabs">
-              <button class="catalog-tab active" id="ctab-all"    onclick="setCatalogTab('all')">Todos</button>
-              <button class="catalog-tab"         id="ctab-serv"  onclick="setCatalogTab('servicio')">🦷 Servicios</button>
-
-            </div>
+          <!-- Vista tabs principales -->
+          <div class="catalog-tabs" style="margin-bottom:20px;">
+            <button class="catalog-tab active" id="cvista-lista" onclick="setCatalogVista('lista')">📋 Lista de precios</button>
+            <button class="catalog-tab" id="cvista-stats" onclick="setCatalogVista('stats')">📊 Estadísticas</button>
           </div>
 
-          <div class="catalog-grid" id="catalog-grid">
+          <!-- VISTA: LISTA -->
+          <div id="catalog-vista-lista">
+            <div style="margin-bottom:16px;">
+              <input type="text" class="search-input" id="catalog-search" placeholder="Buscar servicio..."
+                     oninput="renderCatalog()" style="max-width:280px;">
+            </div>
+            <div class="catalog-grid" id="catalog-grid">
             <div class="empty-state" style="grid-column:1/-1;">
               <div class="empty-state-icon">🦷</div>
               <h3>Sin servicios registrados</h3>
               <p>Agrega tu lista de precios</p>
               <button class="btn-gold" onclick="openCatalogItemModal()">+ Agregar servicio</button>
             </div>
+            </div>
+          </div><!-- /catalog-vista-lista -->
+
+          <!-- VISTA: ESTADÍSTICAS -->
+          <div id="catalog-vista-stats" style="display:none;">
+            <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+              <select id="stat-periodo" onchange="renderCatalogStats()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+                <option value="mes">Este mes</option>
+                <option value="3m">Últimos 3 meses</option>
+                <option value="6m">Últimos 6 meses</option>
+                <option value="anio">Este año</option>
+                <option value="todo">Todo el tiempo</option>
+              </select>
+            </div>
+            <div id="catalog-stats-content">
+              <div class="empty-state"><div class="empty-state-icon">📊</div><h3>Cargando estadísticas...</h3></div>
+            </div>
           </div>
+
         </div>
 
         <!-- MÓDULO DOCTORES -->
@@ -3258,7 +3277,7 @@ function showModule(module) {
   currentModule = module;
 
   // Load data per module
-  if (module === 'catalog') { renderCatalog(); loadTreatments().then(() => renderCatalog()); }
+  if (module === 'catalog') { renderCatalog(); loadTreatments().then(() => renderCatalog()).catch(() => renderCatalog()); }
   if (module === 'doctors') loadDoctors();
   if (module === 'agenda') setTimeout(() => loadGoogleEvents(), 100);
   if (module === 'users') loadUsers();
@@ -4469,36 +4488,132 @@ const CATALOG_CATS_SERV = [
 const CATALOG_CATS_PROD = ['Higiene', 'Medicamento', 'Material', 'Equipo', 'Otro'];
 
 function getCatalog() {
-  // 1. Items locales (siempre presentes)
-  const local = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
-
-  // 2. Treatments de Supabase que NO están ya en local
-  const localNames = local.map(x => x.nombre.toLowerCase().trim());
-  const fromSupabase = (window.treatments || [])
-    .filter(t => !localNames.includes(t.nombre.toLowerCase().trim()))
-    .map(t => ({
-      id: 'sup_' + t.id, supaId: t.id,
-      tipo: 'servicio', nombre: t.nombre,
-      categoria: t.categoria || 'General',
-      precio: t.precio || 0,
-      descripcion: t.descripcion || '',
-      activo: true
-    }));
-
-  return [...local, ...fromSupabase];
+  // Fuente única: Supabase treatments (ya cargados en window.treatments)
+  return (window.treatments || []).map(t => ({
+    id: t.id,
+    supaId: t.id,
+    tipo: 'servicio',
+    nombre: t.nombre,
+    categoria: t.categoria || 'General',
+    precio: t.precio || 0,
+    descripcion: t.descripcion || '',
+    activo: true
+  }));
 }
 
-function saveCatalogItem(item) {
-  const list = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
-  const idx = list.findIndex(x => x.id === item.id);
-  if (idx >= 0) list[idx] = item;
-  else list.push(item);
-  localStorage.setItem('molarys_catalog', JSON.stringify(list));
+// saveCatalogItem y deleteCatalogItem ya no usan localStorage — van directo a Supabase
+
+function setCatalogVista(vista) {
+  document.getElementById('catalog-vista-lista').style.display = vista === 'lista' ? '' : 'none';
+  document.getElementById('catalog-vista-stats').style.display = vista === 'stats' ? '' : 'none';
+  document.getElementById('cvista-lista').classList.toggle('active', vista === 'lista');
+  document.getElementById('cvista-stats').classList.toggle('active', vista === 'stats');
+  if (vista === 'stats') renderCatalogStats();
 }
 
-function deleteCatalogItem(id) {
-  const list = JSON.parse(localStorage.getItem('molarys_catalog') || '[]');
-  localStorage.setItem('molarys_catalog', JSON.stringify(list.filter(x => x.id !== id)));
+async function renderCatalogStats() {
+  const cont = document.getElementById('catalog-stats-content');
+  if (!cont) return;
+  cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Cargando datos...</div>';
+
+  const periodo = document.getElementById('stat-periodo')?.value || 'mes';
+  const hoy = new Date();
+  let desde;
+  if (periodo === 'mes')  desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  else if (periodo === '3m') desde = new Date(hoy.getFullYear(), hoy.getMonth()-2, 1);
+  else if (periodo === '6m') desde = new Date(hoy.getFullYear(), hoy.getMonth()-5, 1);
+  else if (periodo === 'anio') desde = new Date(hoy.getFullYear(), 0, 1);
+  else desde = new Date('2000-01-01');
+
+  try {
+    const { data, error } = await db.from('income')
+      .select('*, treatments(nombre, categoria, precio)')
+      .gte('created_at', desde.toISOString())
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Agrupar por tratamiento
+    const map = {};
+    let totalGeneral = 0;
+    (data || []).forEach(r => {
+      const nombre = r.treatments?.nombre || 'Sin tratamiento';
+      const cat    = r.treatments?.categoria || 'General';
+      const monto  = r.ingreso_bruto || 0;
+      if (!map[nombre]) map[nombre] = { nombre, cat, count: 0, total: 0 };
+      map[nombre].count++;
+      map[nombre].total += monto;
+      totalGeneral += monto;
+    });
+
+    const lista = Object.values(map).sort((a,b) => b.count - a.count);
+    const fmt = n => '$' + (n||0).toLocaleString('es-MX', {minimumFractionDigits:2});
+    const periodoLabel = { mes:'este mes', '3m':'últimos 3 meses', '6m':'últimos 6 meses', anio:'este año', todo:'todo el tiempo' };
+
+    if (!lista.length) {
+      cont.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><h3>Sin ingresos registrados en este período</h3></div>';
+      return;
+    }
+
+    const maxCount = lista[0].count;
+    const filas = lista.map((t, i) => {
+      const pct = Math.round((t.count / maxCount) * 100);
+      const pctTotal = totalGeneral > 0 ? Math.round((t.total / totalGeneral) * 100) : 0;
+      return `
+      <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <span style="font-size:13px;font-weight:600;">${i+1}. ${t.nombre}</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">${t.cat}</span>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <span style="font-size:14px;font-weight:700;color:var(--blue-deep);">${t.count}</span>
+            <span style="font-size:11px;color:var(--text-muted);"> veces</span>
+            <span style="font-size:12px;color:var(--blue-mid);margin-left:10px;">${fmt(t.total)}</span>
+          </div>
+        </div>
+        <div style="background:var(--cream);border-radius:20px;height:8px;overflow:hidden;">
+          <div style="background:var(--blue-mid);height:100%;border-radius:20px;width:${pct}%;transition:width .4s;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${pctTotal}% del ingreso total del período</div>
+      </div>`;
+    }).join('');
+
+    cont.innerHTML = `
+      <div class="stats-grid" style="margin-bottom:24px;">
+        <div class="stat-card">
+          <div class="stat-label">Servicios realizados</div>
+          <div class="stat-value">${data.length}</div>
+          <div class="stat-sub">${periodoLabel[periodo]}</div>
+          <div class="stat-icon">🦷</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tipos distintos</div>
+          <div class="stat-value">${lista.length}</div>
+          <div class="stat-sub">tratamientos diferentes</div>
+          <div class="stat-icon">📋</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ingreso total</div>
+          <div class="stat-value" style="font-size:18px;">${fmt(totalGeneral)}</div>
+          <div class="stat-sub">${periodoLabel[periodo]}</div>
+          <div class="stat-icon">💰</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Más frecuente</div>
+          <div class="stat-value" style="font-size:15px;">${lista[0]?.nombre || '—'}</div>
+          <div class="stat-sub">${lista[0]?.count || 0} veces</div>
+          <div class="stat-icon">🏆</div>
+        </div>
+      </div>
+      <div class="card" style="padding:0 24px;">
+        <div class="card-header"><div class="card-title">Ranking de servicios</div></div>
+        <div style="padding-bottom:16px;">${filas}</div>
+      </div>`;
+  } catch(e) {
+    cont.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar estadísticas</h3><p>' + e.message + '</p></div>';
+    console.error(e);
+  }
 }
 
 function setCatalogTab(tab) {
@@ -4563,12 +4678,16 @@ function renderCatalog() {
   `).join('');
 }
 
-function confirmDeleteCatalog(id) {
+async function confirmDeleteCatalog(id) {
   const item = getCatalog().find(x => x.id === id);
   if (!confirm(`¿Eliminar "${item?.nombre}"?`)) return;
-  deleteCatalogItem(id);
-  renderCatalog();
-  showToast('Eliminado ✓', 'success');
+  try {
+    const realId = id.toString().startsWith('sup_') ? id.replace('sup_','') : id;
+    await db.from('treatments').update({ activo: false }).eq('id', realId);
+    await loadTreatments();
+    renderCatalog();
+    showToast('Servicio eliminado ✓', 'success');
+  } catch(e) { showToast('Error al eliminar', 'error'); }
 }
 
 function openCatalogItemModal(editId) {
@@ -4637,7 +4756,7 @@ function refreshCatalogCats() {
   if (sel) sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
-function saveCatalogItemModal(editId) {
+async function saveCatalogItemModal(editId) {
   const nombre = document.getElementById('cat-nombre').value.trim();
   const precio = parseFloat(document.getElementById('cat-precio').value) || 0;
   if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
@@ -4652,18 +4771,24 @@ function saveCatalogItemModal(editId) {
     activo: true
   };
 
-  saveCatalogItem(item);
+  const btn = document.querySelector('#modal-catalog-item .btn-gold');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-  // También guardar en Supabase treatments si es servicio
-  if (tipo === 'servicio') {
-    db.from('treatments').upsert([{ nombre, precio, categoria: item.categoria }]).then(() => {
-      loadTreatments();
-    }).catch(() => {});
-  }
+  const supaRecord = { nombre, precio, categoria: item.categoria };
+  try {
+    if (editId && !editId.startsWith('sup_')) {
+      await db.from('treatments').update(supaRecord).eq('id', editId);
+    } else if (editId && editId.startsWith('sup_')) {
+      await db.from('treatments').update(supaRecord).eq('id', editId.replace('sup_',''));
+    } else {
+      await db.from('treatments').insert([supaRecord]);
+    }
+    await loadTreatments();
+  } catch(e) { showToast('Error al guardar en base de datos', 'error'); console.error(e); return; }
 
   document.getElementById('modal-catalog-item').remove();
   renderCatalog();
-  showToast(editId ? 'Actualizado ✓' : 'Agregado ✓', 'success');
+  showToast(editId ? 'Actualizado ✓' : 'Servicio agregado ✓', 'success');
 }
 
 // ══════════════════════════════════════════
