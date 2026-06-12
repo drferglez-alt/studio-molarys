@@ -5235,6 +5235,47 @@ async function saveRecibirPago() {
     closeModal('modal-recibir-pago');
     updateStats();
 
+    // ── Crear nota de evolución automática ──
+    const notasExtra = document.getElementById('rp-notas').value.trim();
+    const tratSel = document.getElementById('rp-treatment');
+    const tratNombre = tratSel.options[tratSel.selectedIndex]?.text || '';
+    const metodosLabel = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia' };
+    const now = new Date();
+    const fechaISO = now.toISOString().split('T')[0];
+    const [yy, mm, dd] = fechaISO.split('-');
+    const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const fechaDisplay = `${dd} ${mesesCortos[parseInt(mm)-1]} ${yy}`;
+    const horaDisplay = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+
+    let notaTexto = tratNombre && tratNombre !== 'Seleccionar...' ? `${tratNombre}` : 'Consulta / Pago registrado';
+    if (notasExtra) notaTexto += `
+${notasExtra}`;
+
+    const evolRecord = {
+      patient_id: patientId,
+      fecha: fechaDisplay,
+      fecha_iso: fechaISO,
+      hora: horaDisplay,
+      nota: notaTexto,
+      pago: 'si',
+      monto: parseFloat(monto),
+      metodo_pago: metodosLabel[metodoPago] || metodoPago,
+    };
+
+    try {
+      const { data: ed } = await db.from('patient_evolution').insert([evolRecord]).select();
+      if (ed) evolRecord.id = ed[0].id;
+    } catch(e) { /* tabla no existe aún */ }
+
+    // Guardar en localStorage también
+    const evolLocal = getEvolLocal(patientId);
+    evolLocal.unshift({ ...evolRecord, id: evolRecord.id || ('local_' + Date.now()) });
+    saveEvolLocal(patientId, evolLocal);
+
+    // Si el perfil del paciente está abierto, refrescar la tabla
+    const tbody = document.getElementById('evolucion-tbody-' + patientId);
+    if (tbody) renderEvolTabla(patientId, evolLocal);
+
     // ── Buscar RFC del paciente para pre-llenar ──
     let razonSocial = '', correoFactura = '', regimenFiscal = '';
     try {
