@@ -1483,31 +1483,6 @@
   .back-btn:hover { color: var(--text-primary); }
 
   /* ========== HISTORIA CLÍNICA ========== */
-  /* Heredofamiliares */
-  .heredof-card {
-    background: var(--cream); border: 1px solid var(--border);
-    border-radius: 10px; padding: 16px; position: relative;
-  }
-  .heredof-card-title {
-    font-size: 13px; font-weight: 600; color: var(--blue-deep);
-    margin-bottom: 12px; display: flex; align-items: center;
-    justify-content: space-between;
-  }
-  .heredof-enf-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 6px; margin: 10px 0;
-  }
-  .heredof-check {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 12px; color: var(--text-secondary); cursor: pointer;
-  }
-  .heredof-check input[type="checkbox"] { accent-color: var(--blue-mid); width: 14px; height: 14px; flex-shrink: 0; }
-  .heredof-del {
-    background: #fee2e2; color: #dc2626; border: none;
-    border-radius: 6px; padding: 3px 10px; font-size: 12px;
-    cursor: pointer; flex-shrink: 0;
-  }
 
   .hc-section-title {
     font-family: 'Cormorant Garamond', serif;
@@ -2218,16 +2193,6 @@
                   <label class="hc-check"><input type="checkbox" id="hc-gastritis"> Gastritis</label>
                 </div>
               </div>
-
-              <!-- ANTECEDENTES HEREDOFAMILIARES -->
-              <div class="hc-section-title" style="margin-top:8px;">Antecedentes Heredofamiliares</div>
-              <div id="hc-heredof-lista" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;"></div>
-              <button type="button" onclick="addHeredofFamiliar()" style="
-                width:100%;padding:10px;background:none;border:2px dashed var(--border);
-                border-radius:8px;font-size:13px;color:var(--text-muted);cursor:pointer;
-                transition:border-color .15s,color .15s;">
-                + Agregar familiar
-              </button>
               <input type="hidden" id="hc-ant-fam">
 
               <div class="form-row single" style="margin-top:16px;">
@@ -3863,6 +3828,7 @@ function showPatientDetail(id) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
             WhatsApp
           </a>` : ''}
+          <button class="btn-new" onclick="printExpediente('${p.id}')">🖨️ Imprimir</button>
           <button class="btn-new" onclick="openEditPatientModal('${p.id}')">✏️ Editar</button>
           <button class="btn-new" style="color:var(--error);border-color:var(--error);" onclick="deletePatient('${p.id}','${p.nombre} ${p.apellido}')">🗑️ Eliminar</button>
         </div>
@@ -3916,17 +3882,6 @@ function showPatientDetail(id) {
             <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">Sin notas de evolución registradas</td></tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- ANTECEDENTES HEREDOFAMILIARES -->
-    <div class="card" style="margin-bottom:20px;">
-      <div class="card-header">
-        <div class="card-title">🧬 Antecedentes Heredofamiliares</div>
-        <button class="btn-gold" style="padding:6px 14px;font-size:12px;" onclick="openHeredofModal('${p.id}')">✏️ Editar</button>
-      </div>
-      <div id="heredof-resumen-${p.id}" style="padding:16px 24px;">
-        <div style="text-align:center;color:var(--text-muted);padding:16px;font-size:13px;">Sin antecedentes registrados</div>
       </div>
     </div>
 
@@ -3997,7 +3952,6 @@ function showPatientDetail(id) {
   loadPatientRFC(id);
   loadPatientArchivos(id);
   loadEvolucion(id);
-  loadHeredof(id);
 }
 
 async function loadPatientHistories(patientId) {
@@ -5549,6 +5503,175 @@ function selectWATemplate(idx, nombre, edad, num) {
 
 // Inicializar badge al cargar
 document.addEventListener('DOMContentLoaded', () => setTimeout(renderBadgeCumple, 2000));
+
+// ══════════════════════════════════════════
+// IMPRIMIR EXPEDIENTE COMPLETO
+// ══════════════════════════════════════════
+async function printExpediente(patientId) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+
+  showToast('Generando expediente...', 'info');
+
+  const fechaImp = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'long', year:'numeric'});
+  const sexoMap  = { M:'Masculino', F:'Femenino', O:'Otro' };
+  const ecMap    = { soltero:'Soltero/a', casado:'Casado/a', divorciado:'Divorciado/a', viudo:'Viudo/a', union:'Unión libre' };
+
+  // ── 1. Datos de contacto ──
+  const contactoHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;">
+      <tr>
+        <td style="padding:4px 8px;color:#555;width:140px;">Expediente</td>
+        <td style="padding:4px 8px;font-weight:600;">#${p.expediente || '—'}</td>
+        <td style="padding:4px 8px;color:#555;width:140px;">Fecha de nacimiento</td>
+        <td style="padding:4px 8px;">${p.fecha_nacimiento ? new Date(p.fecha_nacimiento+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;color:#555;">Nombre completo</td>
+        <td style="padding:4px 8px;font-weight:600;">${p.nombre} ${p.apellido}</td>
+        <td style="padding:4px 8px;color:#555;">Sexo</td>
+        <td style="padding:4px 8px;">${sexoMap[p.sexo] || p.sexo || '—'}</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;color:#555;">Teléfono</td>
+        <td style="padding:4px 8px;">${p.telefono || '—'}</td>
+        <td style="padding:4px 8px;color:#555;">Estado civil</td>
+        <td style="padding:4px 8px;">${ecMap[p.estado_civil] || p.estado_civil || '—'}</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;color:#555;">Correo</td>
+        <td style="padding:4px 8px;">${p.email || '—'}</td>
+        <td style="padding:4px 8px;color:#555;">Ocupación</td>
+        <td style="padding:4px 8px;">${p.ocupacion || '—'}</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;color:#555;">Dirección</td>
+        <td colspan="3" style="padding:4px 8px;">${p.direccion || '—'}</td>
+      </tr>
+      ${p.emergencia_nombre ? `<tr>
+        <td style="padding:4px 8px;color:#555;">Contacto emergencia</td>
+        <td colspan="3" style="padding:4px 8px;">${p.emergencia_nombre} — ${p.emergencia_tel || ''}</td>
+      </tr>` : ''}
+      ${(p.alergia_medicamento==='S'||p.alergia_anestesico==='S') ? `<tr>
+        <td style="padding:4px 8px;color:#c00;font-weight:700;">⚠️ ALERGIAS</td>
+        <td colspan="3" style="padding:4px 8px;color:#c00;">
+          ${p.alergia_medicamento==='S'?'Alérgico a medicamentos':''}
+          ${p.alergia_medicamento==='S'&&p.alergia_anestesico==='S'?' · ':''}
+          ${p.alergia_anestesico==='S'?'Alérgico a anestésicos':''}
+        </td>
+      </tr>` : ''}
+    </table>`;
+
+  // ── 2. Historia clínica ──
+  let historiaHTML = '<p style="color:#999;font-size:12px;">Sin historia clínica registrada.</p>';
+  try {
+    const { data: hcData } = await db.from('clinical_histories')
+      .select('*').eq('patient_id', patientId)
+      .order('created_at', { ascending: false }).limit(1);
+    if (hcData && hcData.length) {
+      const h = hcData[0];
+      const row = (label, val) => val ? `<tr><td style="padding:3px 8px;color:#555;width:200px;font-size:11px;">${label}</td><td style="padding:3px 8px;font-size:12px;">${val}</td></tr>` : '';
+      const yn  = v => v === 'S' ? 'Sí' : v === 'N' ? 'No' : (v || '—');
+      historiaHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          ${row('Motivo de consulta', h.motivo_consulta)}
+          ${row('Bajo tratamiento médico', yn(h.trat_medico) + (h.trat_medico_det?' — '+h.trat_medico_det:''))}
+          ${row('Alergia a medicamentos', yn(h.alergia_med) + (h.alergia_med_det?' — '+h.alergia_med_det:''))}
+          ${row('Alergia a anestésicos', yn(h.alergia_anest) + (h.alergia_anest_det?' — '+h.alergia_anest_det:''))}
+          ${row('Enfermedades cardíacas', yn(h.cardio) + (h.cardio_det?' — '+h.cardio_det:''))}
+          ${row('Diabetes', yn(h.diabetes))}
+          ${row('Sangrado anormal', yn(h.sangrado))}
+          ${row('Cirugías previas', yn(h.cirugia) + (h.cirugia_det?' — '+h.cirugia_det:''))}
+          ${row('Medicación permanente', h.medicacion)}
+          ${row('Médico tratante', h.medico)}
+          ${row('Diagnóstico', h.diagnostico)}
+          ${row('Plan de tratamiento', h.plan_tratamiento)}
+          ${row('Observaciones', h.observaciones)}
+          ${row('Antecedentes familiares', h.ant_familiares)}
+        </table>`;
+    }
+  } catch(e) { console.error(e); }
+
+  // ── 3. Notas de evolución ──
+  const notas = getEvolLocal(patientId);
+  let notasHTML = '<p style="color:#999;font-size:12px;">Sin notas de evolución registradas.</p>';
+  if (notas.length) {
+    const pagoTxt = p => p === 'si' ? 'Pagó' : p === 'parcial' ? 'Pago parcial' : 'Pendiente';
+    notasHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#f0f0f0;">
+          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;width:90px;">Fecha</th>
+          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;width:60px;">Hora</th>
+          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;">Procedimiento / Nota</th>
+          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;width:120px;">Pago</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${notas.map(n => `
+        <tr>
+          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;">${n.fecha||'—'}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;">${n.hora||'—'}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;line-height:1.5;">${(n.nota||'').replace(/\n/g,'<br>')}</td>
+          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;">${pagoTxt(n.pago)}${n.monto?' — $'+Number(n.monto).toLocaleString('es-MX'):''}${n.metodo_pago?'<br><span style="color:#666;font-size:10px;">'+n.metodo_pago+'</span>':''}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  // ── Armar HTML final ──
+  const html = `<!DOCTYPE html><html lang="es"><head>
+  <meta charset="UTF-8">
+  <title>Expediente — ${p.nombre} ${p.apellido}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; color: #111; padding: 32px; font-size: 13px; }
+    h1 { font-size: 18px; font-weight: 700; }
+    h2 { font-size: 14px; font-weight: 700; color: #2D3A52; border-bottom: 2px solid #2D3A52;
+         padding-bottom: 4px; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: .5px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .header-right { text-align: right; font-size: 11px; color: #666; }
+    .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd;
+              font-size: 10px; color: #999; text-align: center; }
+    @media print { button { display: none !important; } }
+  </style>
+  </head><body>
+
+  <div class="header">
+    <div>
+      <h1>STUDIO MOLARYS — Expediente Clínico</h1>
+      <div style="font-size:12px;color:#666;margin-top:2px;">Dr. Fernando González · Sistema Clínico</div>
+    </div>
+    <div class="header-right">
+      Impreso: ${fechaImp}<br>
+      Expediente #${p.expediente||'—'}
+    </div>
+  </div>
+
+  <h2>Datos del Paciente</h2>
+  ${contactoHTML}
+
+  <h2>Historia Clínica</h2>
+  ${historiaHTML}
+
+  <h2>Notas de Evolución e Historial de Pagos</h2>
+  ${notasHTML}
+
+  <div class="footer">
+    Documento confidencial — uso exclusivo médico-legal · Studio Molarys · Total de notas: ${notas.length}
+  </div>
+
+  <div style="text-align:center;margin-top:24px;">
+    <button onclick="window.print()"
+      style="padding:10px 28px;background:#2D3A52;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">
+      🖨️ Imprimir / Guardar PDF
+    </button>
+  </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
 
 async function loadPatientPayments(patientId) {
   const container = document.getElementById('patient-payments-list');
@@ -7224,161 +7347,9 @@ function fillPatientData() {
   document.getElementById('hc-emergencia').value = p.emergencia_nombre ? `${p.emergencia_nombre} — ${p.emergencia_tel || ''}` : '';
 }
 
-// ══════════════════════════════════════════
-// ANTECEDENTES HEREDOFAMILIARES
-// ══════════════════════════════════════════
-const PARENTESCOS = ['Padre','Madre','Abuelo paterno','Abuela paterna','Abuelo materno',
-  'Abuela materna','Hermano/a','Tío/a','Primo/a','Hijo/a','Otro'];
-
-const ENF_HEREDOF = [
-  'Diabetes mellitus','Hipertensión arterial','Enfermedades cardíacas',
-  'Cáncer','Enfermedades renales','Enfermedades pulmonares',
-  'Enfermedades hepáticas','Enfermedades tiroideas','Artritis / Reumatismo',
-  'Epilepsia','Enfermedades mentales','Tuberculosis',
-  'VIH / SIDA','Hemofilia / trastornos de coagulación','Alergias graves',
-  'Obesidad','Osteoporosis','Otro'
-];
-
-// Estado en memoria mientras se llena el form
-window._heredofData = [];
-
-function initHeredof(savedData) {
-  window._heredofData = savedData ? JSON.parse(savedData) : [];
-  renderHeredofLista();
-}
-
-function addHeredofFamiliar() {
-  window._heredofData.push({
-    parentesco: '', nombre: '', vive: 'si', enfermedades: [], notas: ''
-  });
-  renderHeredofLista();
-  // scroll al nuevo
-  setTimeout(() => {
-    const cards = document.querySelectorAll('.heredof-card');
-    cards[cards.length-1]?.scrollIntoView({ behavior:'smooth', block:'nearest' });
-  }, 100);
-}
-
-function removeHeredofFamiliar(idx) {
-  window._heredofData.splice(idx, 1);
-  renderHeredofLista();
-}
-
-function renderHeredofLista() {
-  const cont = document.getElementById('hc-heredof-lista');
-  if (!cont) return;
-
-  if (!window._heredofData.length) {
-    cont.innerHTML = '<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">Sin familiares registrados. Agrega uno con el botón de abajo.</div>';
-    syncHeredofHidden();
-    return;
-  }
-
-  cont.innerHTML = window._heredofData.map((f, i) => `
-    <div class="heredof-card">
-      <div class="heredof-card-title">
-        <span>Familiar #${i+1}${f.parentesco ? ' — ' + f.parentesco : ''}</span>
-        <button type="button" class="heredof-del" onclick="removeHeredofFamiliar(${i})">✕ Quitar</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Parentesco</label>
-          <select onchange="updateHeredof(${i},'parentesco',this.value)"
-            style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;">
-            <option value="">Seleccionar...</option>
-            ${PARENTESCOS.map(p => `<option value="${p}" ${f.parentesco===p?'selected':''}>${p}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Nombre (opcional)</label>
-          <input type="text" value="${f.nombre||''}" placeholder="Ej: Juan Pérez"
-            oninput="updateHeredof(${i},'nombre',this.value)"
-            style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;box-sizing:border-box;">
-        </div>
-      </div>
-
-      <div style="margin-bottom:10px;">
-        <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">¿Vive?</label>
-        <div style="display:flex;gap:8px;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
-            <input type="radio" name="vive_${i}" value="si" ${f.vive!=='no'?'checked':''} onchange="updateHeredof(${i},'vive','si')"> Sí
-          </label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
-            <input type="radio" name="vive_${i}" value="no" ${f.vive==='no'?'checked':''} onchange="updateHeredof(${i},'vive','no')"> No (finado)
-          </label>
-        </div>
-      </div>
-
-      <div>
-        <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Enfermedades</label>
-        <div class="heredof-enf-grid">
-          ${ENF_HEREDOF.map(enf => `
-            <label class="heredof-check">
-              <input type="checkbox" ${(f.enfermedades||[]).includes(enf)?'checked':''}
-                onchange="toggleHeredofEnf(${i},'${enf}',this.checked)">
-              ${enf}
-            </label>`).join('')}
-        </div>
-      </div>
-
-      <div style="margin-top:10px;">
-        <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Notas adicionales</label>
-        <textarea rows="2" placeholder="Observaciones..." oninput="updateHeredof(${i},'notas',this.value)"
-          style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;">${f.notas||''}</textarea>
-      </div>
-    </div>
-  `).join('');
-
-  syncHeredofHidden();
-}
-
-function updateHeredof(idx, campo, valor) {
-  if (window._heredofData[idx]) {
-    window._heredofData[idx][campo] = valor;
-    // Actualizar título sin re-renderizar todo
-    const cards = document.querySelectorAll('.heredof-card');
-    const title = cards[idx]?.querySelector('.heredof-card-title span');
-    if (title) {
-      const p = window._heredofData[idx].parentesco;
-      title.textContent = `Familiar #${idx+1}${p ? ' — ' + p : ''}`;
-    }
-    syncHeredofHidden();
-  }
-}
-
-function toggleHeredofEnf(idx, enf, checked) {
-  if (!window._heredofData[idx]) return;
-  const lista = window._heredofData[idx].enfermedades || [];
-  if (checked && !lista.includes(enf)) lista.push(enf);
-  if (!checked) {
-    const i = lista.indexOf(enf);
-    if (i >= 0) lista.splice(i, 1);
-  }
-  window._heredofData[idx].enfermedades = lista;
-  syncHeredofHidden();
-}
-
-function syncHeredofHidden() {
-  const el = document.getElementById('hc-ant-fam');
-  if (el) el.value = JSON.stringify(window._heredofData);
-}
-
-function getHeredofResumen() {
-  // Para mostrar en el expediente como texto legible
-  const data = window._heredofData || [];
-  if (!data.length) return '—';
-  return data.map(f => {
-    const enfs = (f.enfermedades||[]).join(', ') || 'Sin enfermedades registradas';
-    return `${f.parentesco||'Familiar'}${f.nombre?' ('+f.nombre+')':''}: ${enfs}`;
-  }).join(' | ');
-}
-
 function showHCForm() {
   document.getElementById('hc-list-view').style.display = 'none';
   document.getElementById('hc-form-view').style.display = 'block';
-  // Inicializar heredofamiliares vacío al abrir nuevo form
-  setTimeout(() => initHeredof(null), 50);
 }
 
 function showHCList() {
@@ -7438,7 +7409,7 @@ async function saveHistory() {
     tiroides: getCheck('hc-tiroides'), anemia: getCheck('hc-anemia'),
     leucemia: getCheck('hc-leucemia'), hemofilia: getCheck('hc-hemofilia'),
     deficit_vitk: getCheck('hc-vitk'), vih: getCheck('hc-vih'), gastritis: getCheck('hc-gastritis'),
-    ant_familiares: getHeredofResumen(), ant_familiares_json: getVal('hc-ant-fam'), ant_personales: getVal('hc-ant-pers'),
+    ant_familiares: getVal('hc-ant-fam'), ant_personales: getVal('hc-ant-pers'),
     medico: getVal('hc-medico'), medicacion: getVal('hc-medicacion'), tutor: getVal('hc-tutor'),
     anticoncep: getVal('hc-anticoncep'), anticoncep_det: getVal('hc-anticoncep-det'),
     embarazo: getVal('hc-embarazo'), embarazo_det: getVal('hc-embarazo-det'),
