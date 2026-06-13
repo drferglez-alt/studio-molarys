@@ -3919,6 +3919,17 @@ function showPatientDetail(id) {
       </div>
     </div>
 
+    <!-- ANTECEDENTES HEREDOFAMILIARES -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">🧬 Antecedentes Heredofamiliares</div>
+        <button class="btn-gold" style="padding:6px 14px;font-size:12px;" onclick="openHeredofModal('${p.id}')">✏️ Editar</button>
+      </div>
+      <div id="heredof-resumen-${p.id}" style="padding:16px 24px;">
+        <div style="text-align:center;color:var(--text-muted);padding:16px;font-size:13px;">Sin antecedentes registrados</div>
+      </div>
+    </div>
+
     <!-- HISTORIAL CLÍNICO -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
@@ -3986,6 +3997,7 @@ function showPatientDetail(id) {
   loadPatientRFC(id);
   loadPatientArchivos(id);
   loadEvolucion(id);
+  loadHeredof(id);
 }
 
 async function loadPatientHistories(patientId) {
@@ -7172,12 +7184,21 @@ function renderHistoriesTable(filter = '') {
     </div>`).join('');
 }
 
-function openNewHistoryModal() {
+function openNewHistoryModal(patientId) {
+  // Navegar al módulo de historias clínicas
+  showModule('histories');
   showHCForm();
   populatePatientSelect();
   const now = new Date();
   document.getElementById('hc-folio').textContent = 'HC-' + String(histories.length + 1).padStart(4, '0');
   document.getElementById('hc-fecha').textContent = now.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+  // Pre-seleccionar paciente si viene del expediente
+  if (patientId) {
+    setTimeout(() => {
+      const sel = document.getElementById('hc-patient-id');
+      if (sel) { sel.value = patientId; fillPatientData(); }
+    }, 100);
+  }
 }
 
 function populatePatientSelect() {
