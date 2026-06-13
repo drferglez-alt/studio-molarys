@@ -5510,168 +5510,245 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(renderBadgeCumple
 async function printExpediente(patientId) {
   const p = patients.find(x => x.id === patientId);
   if (!p) return;
-
   showToast('Generando expediente...', 'info');
 
-  const fechaImp = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'long', year:'numeric'});
-  const sexoMap  = { M:'Masculino', F:'Femenino', O:'Otro' };
-  const ecMap    = { soltero:'Soltero/a', casado:'Casado/a', divorciado:'Divorciado/a', viudo:'Viudo/a', union:'Unión libre' };
+  const fechaImp = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+  const sexoMap = {M:'Masculino',F:'Femenino',O:'Otro'};
+  const ecMap   = {soltero:'Soltero/a',casado:'Casado/a',divorciado:'Divorciado/a',viudo:'Viudo/a',union:'Unión libre'};
 
-  // ── 1. Datos de contacto ──
-  const contactoHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;">
-      <tr>
-        <td style="padding:4px 8px;color:#555;width:140px;">Expediente</td>
-        <td style="padding:4px 8px;font-weight:600;">#${p.expediente || '—'}</td>
-        <td style="padding:4px 8px;color:#555;width:140px;">Fecha de nacimiento</td>
-        <td style="padding:4px 8px;">${p.fecha_nacimiento ? new Date(p.fecha_nacimiento+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 8px;color:#555;">Nombre completo</td>
-        <td style="padding:4px 8px;font-weight:600;">${p.nombre} ${p.apellido}</td>
-        <td style="padding:4px 8px;color:#555;">Sexo</td>
-        <td style="padding:4px 8px;">${sexoMap[p.sexo] || p.sexo || '—'}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 8px;color:#555;">Teléfono</td>
-        <td style="padding:4px 8px;">${p.telefono || '—'}</td>
-        <td style="padding:4px 8px;color:#555;">Estado civil</td>
-        <td style="padding:4px 8px;">${ecMap[p.estado_civil] || p.estado_civil || '—'}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 8px;color:#555;">Correo</td>
-        <td style="padding:4px 8px;">${p.email || '—'}</td>
-        <td style="padding:4px 8px;color:#555;">Ocupación</td>
-        <td style="padding:4px 8px;">${p.ocupacion || '—'}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 8px;color:#555;">Dirección</td>
-        <td colspan="3" style="padding:4px 8px;">${p.direccion || '—'}</td>
-      </tr>
-      ${p.emergencia_nombre ? `<tr>
-        <td style="padding:4px 8px;color:#555;">Contacto emergencia</td>
-        <td colspan="3" style="padding:4px 8px;">${p.emergencia_nombre} — ${p.emergencia_tel || ''}</td>
-      </tr>` : ''}
-      ${(p.alergia_medicamento==='S'||p.alergia_anestesico==='S') ? `<tr>
-        <td style="padding:4px 8px;color:#c00;font-weight:700;">⚠️ ALERGIAS</td>
-        <td colspan="3" style="padding:4px 8px;color:#c00;">
-          ${p.alergia_medicamento==='S'?'Alérgico a medicamentos':''}
-          ${p.alergia_medicamento==='S'&&p.alergia_anestesico==='S'?' · ':''}
-          ${p.alergia_anestesico==='S'?'Alérgico a anestésicos':''}
-        </td>
-      </tr>` : ''}
+  // ── Datos de contacto ──
+  const fld = (label, val) => `
+    <tr>
+      <td class="lbl">${label}</td>
+      <td class="val">${val||'—'}</td>
+    </tr>`;
+  const alerta = (p.alergia_medicamento==='S'||p.alergia_anestesico==='S')
+    ? `<div class="alerta">⚠️ ALERGIA: ${[p.alergia_medicamento==='S'?'Medicamentos':'', p.alergia_anestesico==='S'?'Anestésicos':''].filter(Boolean).join(', ')}</div>` : '';
+
+  const datosHTML = `${alerta}
+    <table class="data-table">
+      ${fld('Nombre completo', `<strong>${p.nombre} ${p.apellido}</strong>`)}
+      ${fld('Expediente', '#'+p.expediente)}
+      ${fld('Fecha de nacimiento', p.fecha_nacimiento ? new Date(p.fecha_nacimiento+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) : '')}
+      ${fld('Edad', p.fecha_nacimiento ? calcAge(p.fecha_nacimiento) : '')}
+      ${fld('Sexo', sexoMap[p.sexo]||p.sexo)}
+      ${fld('Estado civil', ecMap[p.estado_civil]||p.estado_civil)}
+      ${fld('Teléfono', p.telefono)}
+      ${fld('Correo', p.email)}
+      ${fld('Dirección', p.direccion)}
+      ${fld('Ocupación', p.ocupacion)}
+      ${p.emergencia_nombre ? fld('Contacto emergencia', p.emergencia_nombre + (p.emergencia_tel?' — '+p.emergencia_tel:'')) : ''}
     </table>`;
 
-  // ── 2. Historia clínica ──
-  let historiaHTML = '<p style="color:#999;font-size:12px;">Sin historia clínica registrada.</p>';
+  // ── Historia clínica ──
+  let hcHTML = '<p class="empty-note">Sin historia clínica registrada.</p>';
   try {
     const { data: hcData } = await db.from('clinical_histories')
       .select('*').eq('patient_id', patientId)
-      .order('created_at', { ascending: false }).limit(1);
+      .order('created_at',{ascending:false}).limit(1);
     if (hcData && hcData.length) {
       const h = hcData[0];
-      const row = (label, val) => val ? `<tr><td style="padding:3px 8px;color:#555;width:200px;font-size:11px;">${label}</td><td style="padding:3px 8px;font-size:12px;">${val}</td></tr>` : '';
-      const yn  = v => v === 'S' ? 'Sí' : v === 'N' ? 'No' : (v || '—');
-      historiaHTML = `
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      const yn = v => v==='S' ? '<span class="yn-si">SÍ</span>' : v==='N' ? '<span class="yn-no">NO</span>' : '—';
+      const yndet = (v, det) => yn(v) + (det&&v==='S' ? ` — <em>${det}</em>` : '');
+      const chk = v => v ? '☑' : '☐';
+      const row = (label,val) => val&&val!=='—'&&val!==''?`<tr><td class="lbl">${label}</td><td class="val">${val}</td></tr>`:'';
+
+      hcHTML = `
+        <p class="sec-sub">Folio: ${h.id?.substring(0,8)||'—'} &nbsp;|&nbsp; Fecha: ${new Date(h.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})}</p>
+
+        <div class="sec-title-sm">Enfermedad Actual</div>
+        <table class="data-table">
           ${row('Motivo de consulta', h.motivo_consulta)}
-          ${row('Bajo tratamiento médico', yn(h.trat_medico) + (h.trat_medico_det?' — '+h.trat_medico_det:''))}
-          ${row('Alergia a medicamentos', yn(h.alergia_med) + (h.alergia_med_det?' — '+h.alergia_med_det:''))}
-          ${row('Alergia a anestésicos', yn(h.alergia_anest) + (h.alergia_anest_det?' — '+h.alergia_anest_det:''))}
-          ${row('Enfermedades cardíacas', yn(h.cardio) + (h.cardio_det?' — '+h.cardio_det:''))}
-          ${row('Diabetes', yn(h.diabetes))}
-          ${row('Sangrado anormal', yn(h.sangrado))}
-          ${row('Cirugías previas', yn(h.cirugia) + (h.cirugia_det?' — '+h.cirugia_det:''))}
-          ${row('Medicación permanente', h.medicacion)}
+          ${row('Tiempo de enfermedad', h.tiempo_enfermedad)}
+          ${row('Signos y síntomas', h.signos_sintomas)}
+          ${row('Relato cronológico', h.relato)}
+          ${row('Funciones biológicas', h.funciones_biologicas)}
+        </table>
+
+        <div class="sec-title-sm">Antecedentes Generales</div>
+        <table class="data-table">
+          ${row('1. Tratamiento médico actual', yndet(h.trat_medico, h.trat_medico_det))}
+          ${row('2. Alergia a medicamentos', yndet(h.alergia_med, h.alergia_med_det))}
+          ${row('3. Alergia a anestésicos', yndet(h.alergia_anest, h.alergia_anest_det))}
+          ${row('4. Drogas', yndet(h.drogas, h.drogas_det))}
+          ${row('5. Alcohol', yndet(h.alcohol, h.alcohol_det))}
+          ${row('6. Tabaquismo', yndet(h.tabaco, h.tabaco_det))}
+          ${row('7. Problema cardiaco', yndet(h.cardio, h.cardio_det))}
+          ${row('8. Cirugías previas', yndet(h.cirugia, h.cirugia_det))}
+          ${row('9. Problema respiratorio', yndet(h.respiratorio, h.respiratorio_det))}
+          ${row('10. Sangrado abundante', yn(h.sangrado))}
+          ${row('11. Enf. transmisión sexual', yndet(h.ets, h.ets_det))}
+          ${row('12. Diabetes', yn(h.diabetes))}
+        </table>
+
+        <div class="sec-title-sm">Enfermedades Sistémicas</div>
+        <div class="checks-grid">
+          <span>${chk(h.radiaciones)} Radiaciones</span>
+          <span>${chk(h.quimioterapia)} Quimioterapia</span>
+          <span>${chk(h.esteroides)} Esteroides</span>
+          <span>${chk(h.bifosfonatos)} Bifosfonatos</span>
+          <span>${chk(h.hepatitis)} Hepatitis</span>
+          <span>${chk(h.tuberculosis)} Tuberculosis</span>
+          <span>${chk(h.asma)} Asma</span>
+          <span>${chk(h.ulcera)} Úlcera gástrica</span>
+          <span>${chk(h.tiroides)} Tiroides</span>
+          <span>${chk(h.anemia)} Anemia</span>
+          <span>${chk(h.leucemia)} Leucemia</span>
+          <span>${chk(h.hemofilia)} Hemofilia</span>
+          <span>${chk(h.deficit_vitk)} Déf. Vitamina K</span>
+          <span>${chk(h.vih)} VIH</span>
+          <span>${chk(h.gastritis)} Gastritis</span>
+        </div>
+
+        <table class="data-table" style="margin-top:8px;">
+          ${row('Antecedentes familiares', h.ant_familiares)}
+          ${row('Antecedentes personales', h.ant_personales)}
           ${row('Médico tratante', h.medico)}
+          ${row('Medicación permanente', h.medicacion)}
+        </table>
+
+        ${h.anticoncep||h.embarazo||h.hormonas ? `
+        <div class="sec-title-sm">Paciente Mujer</div>
+        <table class="data-table">
+          ${row('Anticonceptivos', yndet(h.anticoncep, h.anticoncep_det))}
+          ${row('Embarazo', yndet(h.embarazo, h.embarazo_det))}
+          ${row('Hormonas', yndet(h.hormonas, h.hormonas_det))}
+        </table>` : ''}
+
+        <div class="sec-title-sm">Antecedentes Odontológicos</div>
+        <table class="data-table">
+          ${row('Cepillado', yndet(h.cepilla, h.cepilla_det))}
+          ${row('Sangrado de encías', yn(h.sangra_encias))}
+          ${row('Mal aliento', yn(h.mal_aliento))}
+          ${row('Sensibilidad dental', yn(h.sensibilidad))}
+          ${row('Ortodoncia previa', yn(h.ortodoncia))}
+          ${row('Problemas con anestesia', yn(h.prob_anestesia))}
+          ${row('Hemorragia post-extracción', yn(h.hemorragia_ext))}
+          ${row('Bruxismo', yn(h.bruxismo))}
+          ${row('Dolor de mandíbula', yn(h.mandibula))}
+          ${row('Interés por conservar dientes', yn(h.conservar))}
+        </table>
+
+        <div class="sec-title-sm">Examen Clínico — Signos Vitales</div>
+        <table class="data-table">
+          ${row('Presión arterial', h.pa)}
+          ${row('Frec. cardiaca', h.fc ? h.fc+' bpm' : '')}
+          ${row('Temperatura', h.temp ? h.temp+' °C' : '')}
+          ${row('Frec. respiratoria', h.fr ? h.fr+' r/m' : '')}
+          ${row('Examen extraoral', h.extraoral)}
+          ${row('Examen intraoral', h.intraoral)}
+          ${row('Exámenes auxiliares', h.examenes_aux)}
+          ${row('Observaciones clínicas', h.obs_clinicas)}
+        </table>
+
+        <div class="sec-title-sm">Diagnóstico y Plan de Tratamiento</div>
+        <table class="data-table">
           ${row('Diagnóstico', h.diagnostico)}
           ${row('Plan de tratamiento', h.plan_tratamiento)}
-          ${row('Observaciones', h.observaciones)}
-          ${row('Antecedentes familiares', h.ant_familiares)}
+          ${row('Observaciones finales', h.observaciones)}
         </table>`;
     }
   } catch(e) { console.error(e); }
 
-  // ── 3. Notas de evolución ──
+  // ── Notas de evolución ──
   const notas = getEvolLocal(patientId);
-  let notasHTML = '<p style="color:#999;font-size:12px;">Sin notas de evolución registradas.</p>';
+  const pagoTxt = p => p==='si'?'Pagó':p==='parcial'?'Parcial':'Pendiente';
+  let notasHTML = '<p class="empty-note">Sin notas de evolución registradas.</p>';
   if (notas.length) {
-    const pagoTxt = p => p === 'si' ? 'Pagó' : p === 'parcial' ? 'Pago parcial' : 'Pendiente';
-    notasHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead>
-        <tr style="background:#f0f0f0;">
-          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;width:90px;">Fecha</th>
-          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;width:60px;">Hora</th>
-          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;">Procedimiento / Nota</th>
-          <th style="padding:6px 8px;text-align:left;border:1px solid #ddd;width:120px;">Pago</th>
-        </tr>
-      </thead>
+    notasHTML = `<table class="evol-table">
+      <thead><tr>
+        <th>Fecha</th><th>Hora</th><th>Procedimiento / Nota clínica</th><th>Pago</th>
+      </tr></thead>
       <tbody>
-        ${notas.map(n => `
-        <tr>
-          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;">${n.fecha||'—'}</td>
-          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;">${n.hora||'—'}</td>
-          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;line-height:1.5;">${(n.nota||'').replace(/\n/g,'<br>')}</td>
-          <td style="padding:5px 8px;border:1px solid #ddd;vertical-align:top;">${pagoTxt(n.pago)}${n.monto?' — $'+Number(n.monto).toLocaleString('es-MX'):''}${n.metodo_pago?'<br><span style="color:#666;font-size:10px;">'+n.metodo_pago+'</span>':''}</td>
+        ${notas.map(n=>`<tr>
+          <td style="white-space:nowrap;">${n.fecha||'—'}</td>
+          <td style="white-space:nowrap;">${n.hora||'—'}</td>
+          <td>${(n.nota||'').replace(/\n/g,'<br>')}</td>
+          <td style="white-space:nowrap;">${pagoTxt(n.pago)}${n.monto?' $'+Number(n.monto).toLocaleString('es-MX'):''}${n.metodo_pago?'<br><small>'+n.metodo_pago+'</small>':''}</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
   }
 
-  // ── Armar HTML final ──
+  // ── HTML final ──
   const html = `<!DOCTYPE html><html lang="es"><head>
   <meta charset="UTF-8">
   <title>Expediente — ${p.nombre} ${p.apellido}</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: Arial, sans-serif; color: #111; padding: 32px; font-size: 13px; }
-    h1 { font-size: 18px; font-weight: 700; }
-    h2 { font-size: 14px; font-weight: 700; color: #2D3A52; border-bottom: 2px solid #2D3A52;
-         padding-bottom: 4px; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: .5px; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-    .header-right { text-align: right; font-size: 11px; color: #666; }
-    .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd;
-              font-size: 10px; color: #999; text-align: center; }
-    @media print { button { display: none !important; } }
-  </style>
-  </head><body>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:28px 32px;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2D3A52;}
+    .clinic-name{font-size:17px;font-weight:700;color:#2D3A52;}
+    .clinic-sub{font-size:11px;color:#666;margin-top:2px;}
+    .header-right{text-align:right;font-size:11px;color:#666;}
+    .sec-title{font-size:13px;font-weight:700;color:#2D3A52;text-transform:uppercase;letter-spacing:.5px;
+               border-bottom:2px solid #2D3A52;padding-bottom:4px;margin:18px 0 10px;}
+    .sec-title-sm{font-size:11px;font-weight:700;color:#5B7BA8;text-transform:uppercase;letter-spacing:.5px;
+                  margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid #ddd;}
+    .sec-sub{font-size:10px;color:#888;margin-bottom:8px;}
+    .data-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+    .data-table .lbl{color:#555;width:200px;padding:3px 8px;font-size:11px;vertical-align:top;}
+    .data-table .val{padding:3px 8px;font-size:12px;vertical-align:top;}
+    .data-table tr:nth-child(even) td{background:#f8f8f8;}
+    .yn-si{color:#1a7a40;font-weight:700;}
+    .yn-no{color:#999;}
+    .alerta{background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;padding:6px 10px;
+            color:#b91c1c;font-weight:700;font-size:12px;margin-bottom:10px;}
+    .checks-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px 8px;font-size:11px;
+                 background:#f8f8f8;padding:8px;border-radius:4px;}
+    .evol-table{width:100%;border-collapse:collapse;font-size:11px;}
+    .evol-table th{background:#2D3A52;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;}
+    .evol-table td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top;}
+    .evol-table tr:nth-child(even) td{background:#f8f8f8;}
+    .firma-box{border:1px solid #ccc;border-radius:4px;height:60px;margin-top:4px;background:#fff;}
+    .empty-note{color:#999;font-size:12px;padding:8px 0;font-style:italic;}
+    .footer{margin-top:32px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#999;text-align:center;}
+    .no-print button{margin-top:20px;padding:10px 28px;background:#2D3A52;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;display:block;margin-left:auto;margin-right:auto;}
+    @media print{.no-print{display:none!important;} body{padding:16px 20px;}}
+  </style></head><body>
 
   <div class="header">
     <div>
-      <h1>STUDIO MOLARYS — Expediente Clínico</h1>
-      <div style="font-size:12px;color:#666;margin-top:2px;">Dr. Fernando González · Sistema Clínico</div>
+      <div class="clinic-name">STUDIO MOLARYS</div>
+      <div class="clinic-sub">Dr. Fernando González &nbsp;·&nbsp; Sistema Clínico Odontológico</div>
     </div>
-    <div class="header-right">
-      Impreso: ${fechaImp}<br>
-      Expediente #${p.expediente||'—'}
-    </div>
+    <div class="header-right">Impreso: ${fechaImp}<br>Expediente #${p.expediente||'—'}</div>
   </div>
 
-  <h2>Datos del Paciente</h2>
-  ${contactoHTML}
+  <div class="sec-title">Datos del Paciente</div>
+  ${datosHTML}
 
-  <h2>Historia Clínica</h2>
-  ${historiaHTML}
+  <div class="sec-title">Historia Clínica</div>
+  ${hcHTML}
 
-  <h2>Notas de Evolución e Historial de Pagos</h2>
+  <div class="sec-title">Notas de Evolución e Historial de Pagos</div>
   ${notasHTML}
 
-  <div class="footer">
-    Documento confidencial — uso exclusivo médico-legal · Studio Molarys · Total de notas: ${notas.length}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;">
+    <div>
+      <div style="font-size:11px;color:#555;margin-bottom:4px;">Firma del paciente</div>
+      <div class="firma-box"></div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:#555;margin-bottom:4px;">Firma del médico</div>
+      <div class="firma-box"></div>
+    </div>
   </div>
 
-  <div style="text-align:center;margin-top:24px;">
-    <button onclick="window.print()"
-      style="padding:10px 28px;background:#2D3A52;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">
-      🖨️ Imprimir / Guardar PDF
-    </button>
+  <div class="footer">
+    Documento confidencial · Uso exclusivo médico-legal · Studio Molarys · ${notas.length} nota(s) de evolución
+  </div>
+
+  <div class="no-print">
+    <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
   </div>
   </body></html>`;
 
-  const w = window.open('', '_blank');
+  const w = window.open('','_blank');
   w.document.write(html);
   w.document.close();
 }
+
 
 async function loadPatientPayments(patientId) {
   const container = document.getElementById('patient-payments-list');
