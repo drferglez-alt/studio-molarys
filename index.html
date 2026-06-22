@@ -5268,21 +5268,28 @@ function printEvolucion(patientId, nombre, expediente) {
     </tr>`;
   }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:#999;">Sin notas</td></tr>';
 
+  const cfgE = getClinicaConfig();
+  const logoE = cfgE.logo ? '<img src="'+cfgE.logo+'" style="height:50px;width:auto;object-fit:contain;margin-right:12px;">' : '';
+
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Historial de Evolución — ${nombre}</title>
   <style>
     body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 24px; }
-    h1 { font-size: 20px; margin-bottom: 2px; }
-    .sub { color: #555; font-size: 13px; margin-bottom: 20px; }
+    h1 { font-size: 18px; margin-bottom: 2px; }
+    .sub { color: #555; font-size: 12px; margin-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; }
     th { background: #f0f0f0; text-align: left; padding: 8px 10px; border: 1px solid #ccc; font-size: 11px; text-transform: uppercase; }
     .footer { margin-top: 40px; font-size: 11px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
     @media print { button { display:none; } }
   </style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-    <div>
-      <h1>STUDIO MOLARYS — Historial de Evolución</h1>
-      <div class="sub">Dr. Fernando González &nbsp;|&nbsp; Sistema Clínico</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2D3A52;">
+    <div style="display:flex;align-items:center;">${logoE}
+      <div>
+        <h1>${cfgE.nombre||'STUDIO MOLARYS'}</h1>
+        <div class="sub">${cfgE.doctor||''}${cfgE.cedula?' · Céd. '+cfgE.cedula:''}</div>
+        ${cfgE.direccion?'<div class="sub">'+cfgE.direccion+'</div>':''}
+        ${cfgE.telefono?'<div class="sub">Tel. '+cfgE.telefono+'</div>':''}
+      </div>
     </div>
     <div style="text-align:right;font-size:12px;color:#555;">
       Impreso: ${fechaImp}<br>
@@ -5547,18 +5554,6 @@ function saveClinicaConfig(cfg) {
 
 function openClinicaConfigModal() {
   const cfg = getClinicaConfig();
-
-  // Construir encabezado de clínica sin template literals anidados
-  const logoHtml    = cfg.logo ? '<img src="' + cfg.logo + '" style="height:60px;width:auto;object-fit:contain;margin-right:14px;">' : '';
-  const cedHtml     = cfg.cedula ? ' &nbsp;·&nbsp; Céd. ' + cfg.cedula : '';
-  const dirHtml     = cfg.direccion ? '<div class="clinic-sub">' + cfg.direccion + '</div>' : '';
-  const telHtml     = cfg.telefono  ? '<div class="clinic-sub">Tel. ' + cfg.telefono + '</div>' : '';
-  const headerClinica = logoHtml +
-    '<div>' +
-      '<div class="clinic-name">' + cfg.nombre + '</div>' +
-      '<div class="clinic-sub">' + cfg.doctor + cedHtml + '</div>' +
-      dirHtml + telHtml +
-    '</div>';
   let m = document.getElementById('modal-clinica-config');
   if (m) m.remove();
   m = document.createElement('div');
@@ -5659,6 +5654,18 @@ async function printExpediente(patientId) {
   const sexoMap = {M:'Masculino',F:'Femenino',O:'Otro'};
   const ecMap   = {soltero:'Soltero/a',casado:'Casado/a',divorciado:'Divorciado/a',viudo:'Viudo/a',union:'Unión libre'};
   const cfg = getClinicaConfig();
+
+  // ── Encabezado de clínica ──
+  const logoHtml     = cfg.logo ? '<img src="' + cfg.logo + '" style="height:60px;width:auto;object-fit:contain;margin-right:14px;">' : '';
+  const cedHtml      = cfg.cedula ? ' &nbsp;·&nbsp; Céd. ' + cfg.cedula : '';
+  const dirHtml      = cfg.direccion ? '<div class="clinic-sub">' + cfg.direccion + '</div>' : '';
+  const telHtml      = cfg.telefono  ? '<div class="clinic-sub">Tel. ' + cfg.telefono + '</div>' : '';
+  const headerClinica = logoHtml +
+    '<div>' +
+      '<div class="clinic-name">' + (cfg.nombre||'Studio Molarys') + '</div>' +
+      '<div class="clinic-sub">' + (cfg.doctor||'') + cedHtml + '</div>' +
+      dirHtml + telHtml +
+    '</div>';
 
   // ── Datos de contacto ──
   const fld = (label, val) => `
