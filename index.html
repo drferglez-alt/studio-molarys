@@ -5318,9 +5318,13 @@ function printEvolucion(patientId, nombre, expediente) {
   </div>
   </body></html>`;
 
-  const w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.target   = '_blank';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 // ══════════════════════════════════════════
@@ -5904,9 +5908,11 @@ async function printExpediente(patientId) {
   </div>
   </body></html>`;
 
-  const w = window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const burl = URL.createObjectURL(blob);
+  const ba = document.createElement('a');
+  ba.href = burl; ba.target = '_blank'; ba.click();
+  setTimeout(() => URL.revokeObjectURL(burl), 10000);
 }
 
 
