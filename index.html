@@ -1789,6 +1789,9 @@
         </a>
       </div>
       <div class="sidebar-footer">
+        <a class="nav-item" onclick="openClinicaConfigModal()" style="margin-bottom:4px;opacity:.8;">
+          <span class="nav-icon">🏥</span> Datos de la Clínica
+        </a>
         <div class="sidebar-user">
           <div class="sidebar-avatar">FG</div>
           <div class="sidebar-user-info">
@@ -1893,6 +1896,11 @@
               <div class="dash-card-icon">&#9203;</div>
               <div class="dash-card-label">Facturas Pendientes</div>
               <span id="badge-fact-pendientes" style="position:absolute;top:8px;right:8px;background:#e53935;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
+            </button>
+
+            <button class="dash-card" onclick="openClinicaConfigModal()">
+              <div class="dash-card-icon">🏥</div>
+              <div class="dash-card-label">Datos Clínica</div>
             </button>
 
             <button class="dash-card" onclick="openCumpleanosModal()" style="position:relative;">
@@ -5539,6 +5547,18 @@ function saveClinicaConfig(cfg) {
 
 function openClinicaConfigModal() {
   const cfg = getClinicaConfig();
+
+  // Construir encabezado de clínica sin template literals anidados
+  const logoHtml    = cfg.logo ? '<img src="' + cfg.logo + '" style="height:60px;width:auto;object-fit:contain;margin-right:14px;">' : '';
+  const cedHtml     = cfg.cedula ? ' &nbsp;·&nbsp; Céd. ' + cfg.cedula : '';
+  const dirHtml     = cfg.direccion ? '<div class="clinic-sub">' + cfg.direccion + '</div>' : '';
+  const telHtml     = cfg.telefono  ? '<div class="clinic-sub">Tel. ' + cfg.telefono + '</div>' : '';
+  const headerClinica = logoHtml +
+    '<div>' +
+      '<div class="clinic-name">' + cfg.nombre + '</div>' +
+      '<div class="clinic-sub">' + cfg.doctor + cedHtml + '</div>' +
+      dirHtml + telHtml +
+    '</div>';
   let m = document.getElementById('modal-clinica-config');
   if (m) m.remove();
   m = document.createElement('div');
@@ -5842,14 +5862,8 @@ async function printExpediente(patientId) {
   </style></head><body>
 
   <div class="header">
-    <div style="display:flex;align-items:center;gap:14px;">
-      ${cfg.logo ? `<img src="${cfg.logo}" style="height:56px;width:auto;object-fit:contain;">` : ''}
-      <div>
-        <div class="clinic-name">${cfg.nombre}</div>
-        <div class="clinic-sub">${cfg.doctor}${cfg.cedula?' &nbsp;·&nbsp; Céd. '+cfg.cedula:''}</div>
-        ${cfg.direccion ? `<div class="clinic-sub">${cfg.direccion}</div>` : ''}
-        ${cfg.telefono  ? `<div class="clinic-sub">Tel. ${cfg.telefono}</div>` : ''}
-      </div>
+    <div style="display:flex;align-items:center;">
+      ${headerClinica}
     </div>
     <div class="header-right">Impreso: ${fechaImp}<br>Expediente #${p.expediente||'—'}</div>
   </div>
