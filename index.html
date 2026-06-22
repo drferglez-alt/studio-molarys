@@ -3870,11 +3870,11 @@ function showPatientDetail(id) {
         <table class="evol-table">
           <thead>
             <tr>
-              <th style="width:110px;">Fecha</th>
-              <th style="width:90px;">Hora</th>
+              <th style="width:100px;">Fecha</th>
+              <th style="width:80px;">Hora</th>
+              <th style="width:160px;">Doctor</th>
               <th>Procedimiento / Nota clínica</th>
-              <th style="width:130px;">Pago</th>
-              <th style="width:110px;">Monto</th>
+              <th style="width:120px;">Pago</th>
               <th style="width:40px;"></th>
             </tr>
           </thead>
@@ -5113,11 +5113,14 @@ function renderEvolTabla(patientId, notas) {
   };
   tbody.innerHTML = notas.map((n, i) => `
     <tr>
-      <td style="font-weight:500;white-space:nowrap;">${n.fecha || '—'}</td>
-      <td style="color:var(--text-muted);white-space:nowrap;">${n.hora || '—'}</td>
+      <td style="font-weight:500;white-space:nowrap;font-size:12px;">${n.fecha || '—'}</td>
+      <td style="color:var(--text-muted);white-space:nowrap;font-size:12px;">${n.hora || '—'}</td>
+      <td style="font-size:12px;">
+        ${n.doctor_nombre ? `<span style="font-weight:500;">${n.doctor_nombre}</span>` : '<span style="color:var(--text-muted);">—</span>'}
+        ${n.doctor_cedula ? `<br><span style="font-size:10px;color:var(--text-muted);">Céd. ${n.doctor_cedula}</span>` : ''}
+      </td>
       <td style="line-height:1.5;">${(n.nota || '').replace(/\n/g,'<br>')}</td>
-      <td>${pagoHTML(n.pago, n.monto)}</td>
-      <td style="color:var(--text-muted);">${n.metodo_pago ? '· ' + n.metodo_pago : ''}</td>
+      <td>${pagoHTML(n.pago, n.monto)}${n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : ''}</td>
       <td>
         <button class="evol-del-btn" onclick="deleteEvolucion('${patientId}','${n.id || i}')" title="Eliminar">🗑</button>
       </td>
@@ -5168,6 +5171,13 @@ function openAddEvolucionModal(patientId) {
           </div>
         </div>
         <div class="form-field">
+          <label>Doctor que atendió</label>
+          <select id="evol-doctor">
+            <option value="">— Sin asignar —</option>
+            ${getDoctors().map(d => `<option value="${(d.titulo||'Dr.')+' '+d.nombre+' '+d.apellido}" data-ced="${(d.especialidades&&d.especialidades[0])?d.especialidades[0].cedula||'':''}">${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}${d.especialidades&&d.especialidades[0]?' — '+d.especialidades[0].nombre:''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field">
           <label>Procedimiento / Nota clínica *</label>
           <textarea id="evol-nota" rows="5" placeholder="Ej: Extracción de pieza 46. Paciente sin complicaciones. Se aplicó anestesia local, cicatrización adecuada..." style="resize:vertical;"></textarea>
         </div>
@@ -5187,11 +5197,15 @@ function openAddEvolucionModal(patientId) {
 
 async function saveEvolucion(patientId) {
   const fechaInput = document.getElementById('evol-fecha').value;
-  const hora  = document.getElementById('evol-hora').value;
-  const nota  = document.getElementById('evol-nota').value.trim();
+  const hora   = document.getElementById('evol-hora').value;
+  const nota   = document.getElementById('evol-nota').value.trim();
   const pago   = 'no';
   const monto  = null;
   const metodo = null;
+  // Doctor
+  const doctorSel = document.getElementById('evol-doctor');
+  const doctorNombre = doctorSel?.value || '';
+  const doctorCedula = doctorSel?.selectedOptions[0]?.dataset?.ced || '';
 
   if (!fechaInput || !nota) { showToast('Fecha y nota son obligatorias', 'error'); return; }
 
@@ -5209,6 +5223,8 @@ async function saveEvolucion(patientId) {
     pago,
     monto: monto ? parseFloat(monto) : null,
     metodo_pago: metodo || null,
+    doctor_nombre: doctorNombre || null,
+    doctor_cedula: doctorCedula || null,
   };
 
   // Intentar guardar en Supabase
@@ -5505,6 +5521,113 @@ function selectWATemplate(idx, nombre, edad, num) {
 document.addEventListener('DOMContentLoaded', () => setTimeout(renderBadgeCumple, 2000));
 
 // ══════════════════════════════════════════
+// CONFIGURACIÓN DE CLÍNICA
+// ══════════════════════════════════════════
+function getClinicaConfig() {
+  return JSON.parse(localStorage.getItem('molarys_clinica') || JSON.stringify({
+    nombre: 'STUDIO MOLARYS',
+    doctor: 'Dr. Fernando González',
+    cedula: '',
+    direccion: '',
+    telefono: '',
+    logo: null
+  }));
+}
+function saveClinicaConfig(cfg) {
+  localStorage.setItem('molarys_clinica', JSON.stringify(cfg));
+}
+
+function openClinicaConfigModal() {
+  const cfg = getClinicaConfig();
+  let m = document.getElementById('modal-clinica-config');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-clinica-config';
+  m.className = 'modal-overlay open';
+  m.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <div class="modal-title">🏥 Datos de la Clínica</div>
+        <button class="modal-close" onclick="document.getElementById('modal-clinica-config').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>Logo (imagen)</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="logo-preview" style="width:64px;height:64px;border:2px dashed var(--border);border-radius:8px;
+              display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+              ${cfg.logo ? `<img src="${cfg.logo}" style="width:100%;height:100%;object-fit:contain;">` : '<span style="font-size:24px;">🏥</span>'}
+            </div>
+            <div>
+              <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(event)">
+              <button onclick="document.getElementById('logo-file').click()" class="btn-secondary" style="font-size:12px;padding:6px 12px;">📁 Subir logo</button>
+              ${cfg.logo ? `<button onclick="removeLogo()" style="background:none;border:none;color:#dc2626;font-size:12px;cursor:pointer;margin-left:8px;">✕ Quitar</button>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Nombre de la clínica</label>
+          <input id="cfg-nombre" type="text" value="${cfg.nombre}">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Doctor principal</label>
+            <input id="cfg-doctor" type="text" value="${cfg.doctor}">
+          </div>
+          <div class="form-field">
+            <label>Cédula profesional</label>
+            <input id="cfg-cedula" type="text" value="${cfg.cedula}" placeholder="0000000">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Dirección</label>
+          <input id="cfg-direccion" type="text" value="${cfg.direccion}" placeholder="Calle, colonia, ciudad">
+        </div>
+        <div class="form-field">
+          <label>Teléfono</label>
+          <input id="cfg-telefono" type="text" value="${cfg.telefono}" placeholder="(312) 000-0000">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-clinica-config').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="guardarClinicaConfig()">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target === m) m.remove(); };
+}
+
+function previewLogo(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('logo-preview');
+    if (preview) preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;">`;
+    window._logoTemp = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo() {
+  window._logoTemp = null;
+  const preview = document.getElementById('logo-preview');
+  if (preview) preview.innerHTML = '<span style="font-size:24px;">🏥</span>';
+}
+function guardarClinicaConfig() {
+  const cfg = getClinicaConfig();
+  cfg.nombre    = document.getElementById('cfg-nombre').value.trim();
+  cfg.doctor    = document.getElementById('cfg-doctor').value.trim();
+  cfg.cedula    = document.getElementById('cfg-cedula').value.trim();
+  cfg.direccion = document.getElementById('cfg-direccion').value.trim();
+  cfg.telefono  = document.getElementById('cfg-telefono').value.trim();
+  if (window._logoTemp !== undefined) cfg.logo = window._logoTemp;
+  saveClinicaConfig(cfg);
+  window._logoTemp = undefined;
+  document.getElementById('modal-clinica-config').remove();
+  showToast('Datos de la clínica guardados ✓', 'success');
+}
+
+// ══════════════════════════════════════════
 // IMPRIMIR EXPEDIENTE COMPLETO
 // ══════════════════════════════════════════
 async function printExpediente(patientId) {
@@ -5515,6 +5638,7 @@ async function printExpediente(patientId) {
   const fechaImp = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
   const sexoMap = {M:'Masculino',F:'Femenino',O:'Otro'};
   const ecMap   = {soltero:'Soltero/a',casado:'Casado/a',divorciado:'Divorciado/a',viudo:'Viudo/a',union:'Unión libre'};
+  const cfg = getClinicaConfig();
 
   // ── Datos de contacto ──
   const fld = (label, val) => `
@@ -5657,14 +5781,24 @@ async function printExpediente(patientId) {
   if (notas.length) {
     notasHTML = `<table class="evol-table">
       <thead><tr>
-        <th>Fecha</th><th>Hora</th><th>Procedimiento / Nota clínica</th><th>Pago</th>
+        <th style="width:90px;">Fecha</th>
+        <th style="width:55px;">Hora</th>
+        <th style="width:150px;">Doctor</th>
+        <th>Procedimiento / Nota clínica</th>
+        <th style="width:110px;">Pago</th>
+        <th style="width:90px;">Firma</th>
       </tr></thead>
       <tbody>
         ${notas.map(n=>`<tr>
-          <td style="white-space:nowrap;">${n.fecha||'—'}</td>
-          <td style="white-space:nowrap;">${n.hora||'—'}</td>
-          <td>${(n.nota||'').replace(/\n/g,'<br>')}</td>
-          <td style="white-space:nowrap;">${pagoTxt(n.pago)}${n.monto?' $'+Number(n.monto).toLocaleString('es-MX'):''}${n.metodo_pago?'<br><small>'+n.metodo_pago+'</small>':''}</td>
+          <td style="white-space:nowrap;vertical-align:top;">${n.fecha||'—'}</td>
+          <td style="white-space:nowrap;vertical-align:top;">${n.hora||'—'}</td>
+          <td style="vertical-align:top;">
+            ${n.doctor_nombre||'—'}
+            ${n.doctor_cedula?'<br><span style="font-size:9px;color:#888;">Céd. '+n.doctor_cedula+'</span>':''}
+          </td>
+          <td style="vertical-align:top;">${(n.nota||'').replace(/\n/g,'<br>')}</td>
+          <td style="white-space:nowrap;vertical-align:top;">${pagoTxt(n.pago)}${n.monto?'<br>$'+Number(n.monto).toLocaleString('es-MX'):''}${n.metodo_pago?'<br><span style="font-size:9px;color:#888;">'+n.metodo_pago+'</span>':''}</td>
+          <td style="vertical-align:bottom;padding-bottom:4px;"><div style="border-bottom:1px solid #999;margin-top:28px;"></div></td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -5708,9 +5842,14 @@ async function printExpediente(patientId) {
   </style></head><body>
 
   <div class="header">
-    <div>
-      <div class="clinic-name">STUDIO MOLARYS</div>
-      <div class="clinic-sub">Dr. Fernando González &nbsp;·&nbsp; Sistema Clínico Odontológico</div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      ${cfg.logo ? `<img src="${cfg.logo}" style="height:56px;width:auto;object-fit:contain;">` : ''}
+      <div>
+        <div class="clinic-name">${cfg.nombre}</div>
+        <div class="clinic-sub">${cfg.doctor}${cfg.cedula?' &nbsp;·&nbsp; Céd. '+cfg.cedula:''}</div>
+        ${cfg.direccion ? `<div class="clinic-sub">${cfg.direccion}</div>` : ''}
+        ${cfg.telefono  ? `<div class="clinic-sub">Tel. ${cfg.telefono}</div>` : ''}
+      </div>
     </div>
     <div class="header-right">Impreso: ${fechaImp}<br>Expediente #${p.expediente||'—'}</div>
   </div>
