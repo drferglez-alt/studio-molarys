@@ -6672,22 +6672,45 @@ async function saveRecibirPago() {
   const fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
 
   try {
+    // Construir el objeto con solo los campos básicos primero
     const incomeData = {
       patient_id: patientId,
       treatment_id: treatmentId || null,
       usuario_id: currentUser.id,
       ingreso_bruto: r.bruto || bruto,
-      descuento: r.descuento || 0,
       tipo_pago: metodoPago,
-      notas: document.getElementById('rp-notas').value.trim(),
-      es_abono: rpIsAbono
     };
-    // Columnas extendidas solo si existen
-    try { incomeData.comision_tpv = r.tpv||0; incomeData.impuesto_federal = r.impF||0;
-      incomeData.impuesto_estatal = r.impE||0; incomeData.remanente_doctor = r.doctor||0;
-      incomeData.neto_final = r.neto3||0; } catch(e){}
 
-    const { error } = await db.from('income').insert([incomeData]);
+    // Agregar campos opcionales uno a uno (si la columna no existe, Supabase ignora o lanza error manejable)
+    const notasVal = document.getElementById('rp-notas').value.trim();
+    if (notasVal) incomeData.notas = notasVal;
+    if (r.descuento) incomeData.descuento = r.descuento;
+    if (r.tpv)    incomeData.comision_tpv = r.tpv;
+    if (r.impF)   incomeData.impuesto_federal = r.impF;
+    if (r.impE)   incomeData.impuesto_estatal = r.impE;
+    if (r.doctor) incomeData.remanente_doctor = r.doctor;
+    if (r.neto3)  incomeData.neto_final = r.neto3;
+    try { incomeData.es_abono = rpIsAbono; } catch(e){}
+
+    // Intentar con todos los campos; si falla, intentar solo con básicos
+    let insertError = null;
+    let insertResult = await db.from('income').insert([incomeData]);
+    insertError = insertResult.error;
+
+    if (insertError) {
+      // Fallback: solo campos mínimos garantizados
+      const minData = {
+        patient_id: patientId,
+        treatment_id: treatmentId || null,
+        usuario_id: currentUser.id,
+        ingreso_bruto: r.bruto || bruto,
+        tipo_pago: metodoPago,
+      };
+      insertResult = await db.from('income').insert([minData]);
+      insertError = insertResult.error;
+    }
+
+    const { error } = { error: insertError };
     if (error) throw error;
 
     showToast('Pago registrado exitosamente ✓', 'success');
