@@ -1903,6 +1903,12 @@
               <div class="dash-card-label">Datos Clínica</div>
             </button>
 
+            <button class="dash-card" onclick="openPendientesEvolucionModal()" style="position:relative;">
+              <div class="dash-card-icon">📋</div>
+              <div class="dash-card-label">Notas Pendientes</div>
+              <span id="badge-notas-pend" style="position:absolute;top:8px;right:8px;background:#dc2626;color:#fff;border-radius:50%;min-width:20px;height:20px;padding:0 4px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
+            </button>
+
             <button class="dash-card" onclick="openCumpleanosModal()" style="position:relative;">
               <div class="dash-card-icon">🎂</div>
               <div class="dash-card-label">Cumpleaños</div>
@@ -3253,7 +3259,9 @@ function showApp() {
   loadPatients();
   loadHistories();
   loadTreatments();
-  loadUserProfile();
+  loadUserProfile().then(() => {
+    setTimeout(() => checkNotasPendientes(), 1500);
+  });
   // Load calendar automatically (API Key — no auth needed)
   loadGoogleEvents();
   // Populate patient select for income
@@ -5329,6 +5337,151 @@ function printEvolucion(patientId, nombre, expediente) {
   a.target   = '_blank';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// ══════════════════════════════════════════
+// NOTAS DE EVOLUCIÓN PENDIENTES
+// Lógica: cobros de esta semana sin nota de evolución en la misma fecha
+// ══════════════════════════════════════════
+async function checkNotasPendientes() {
+  const badge = document.getElementById('badge-notas-pend');
+  if (!badge) return;
+
+  try {
+    const hoy = new Date();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7)); // lunes de esta semana
+    lunes.setHours(0,0,0,0);
+
+    // Filtrar por doctor activo si el perfil lo indica
+    const doctorNombre = currentUserProfile?.nombre || '';
+    const rol = currentUserProfile?.rol || '';
+
+    let query = db.from('income')
+      .select('id, patient_id, ingreso_bruto, tipo_pago, doctor_nombre, created_at, patients(nombre, apellido, telefono), treatments(nombre)')
+      .gte('created_at', lunes.toISOString())
+      .order('created_at', { ascending: false });
+
+    // Si es doctor (no admin), solo sus cobros
+    if (rol === 'doctor' && doctorNombre) {
+      query = query.eq('doctor_nombre', doctorNombre);
+    }
+
+    const { data: cobros } = await query;
+    if (!cobros || !cobros.length) {
+      badge.style.display = 'none';
+      return;
+    }
+
+    // Para cada cobro, verificar si hay nota de evolución en esa misma fecha
+    const pendientes = [];
+    for (const c of cobros) {
+      const fechaCobro = new Date(c.created_at).toISOString().split('T')[0];
+      const { data: notas } = await db.from('patient_evolution')
+        .select('id')
+        .eq('patient_id', c.patient_id)
+        .eq('fecha_iso', fechaCobro)
+        .limit(1);
+      if (!notas || !notas.length) {
+        pendientes.push(c);
+      }
+    }
+
+    // Deduplicar por patient_id (un paciente puede tener varios cobros el mismo día)
+    const seen = new Set();
+    const unicos = pendientes.filter(c => {
+      if (seen.has(c.patient_id)) return false;
+      seen.add(c.patient_id);
+      return true;
+    });
+
+    window._notasPendientes = unicos;
+    badge.textContent = unicos.length;
+    badge.style.display = unicos.length > 0 ? 'flex' : 'none';
+  } catch(e) {
+    console.error('checkNotasPendientes:', e);
+    badge.style.display = 'none';
+  }
+}
+
+async function openPendientesEvolucionModal() {
+  // Refrescar antes de abrir
+  await checkNotasPendientes();
+  const lista = window._notasPendientes || [];
+
+  let m = document.getElementById('modal-notas-pend');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-notas-pend';
+  m.className = 'modal-overlay open';
+
+  const fmt = n => '$' + (n||0).toLocaleString('es-MX', {minimumFractionDigits:2});
+  const semanaLabel = (() => {
+    const hoy = new Date();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - ((hoy.getDay()+6)%7));
+    return lunes.toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) + ' – ' +
+           hoy.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+  })();
+
+  const items = lista.length ? lista.map(c => {
+    const p = c.patients || {};
+    const nombre = (p.nombre||'') + ' ' + (p.apellido||'');
+    const tratNombre = c.treatments?.nombre || 'Consulta';
+    const fechaCobro = new Date(c.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+    const num = (p.telefono||'').replace(/\D/g,'');
+    return `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--blue-xpale);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--blue-deep);flex-shrink:0;">
+        ${(nombre.trim()[0]||'?').toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:14px;">${nombre}</div>
+        <div style="font-size:12px;color:var(--text-muted);">${tratNombre} · ${fechaCobro} · ${fmt(c.ingreso_bruto)}</div>
+        ${c.doctor_nombre ? `<div style="font-size:11px;color:var(--blue-mid);">Dr: ${c.doctor_nombre}</div>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+        <button onclick="abrirNotaDesdeModal('${c.patient_id}');document.getElementById('modal-notas-pend').remove();"
+          style="background:var(--blue-deep);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+          ✏️ Llenar nota
+        </button>
+        ${num ? `<a href="https://wa.me/52${num}" target="_blank"
+          style="text-align:center;background:#25D366;color:#fff;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;">
+          📲 WA
+        </a>` : ''}
+      </div>
+    </div>`;
+  }).join('') : `<div style="text-align:center;padding:32px 20px;color:var(--text-muted);">
+    <div style="font-size:32px;margin-bottom:12px;">✅</div>
+    <div style="font-size:14px;font-weight:500;">¡Todo al día!</div>
+    <div style="font-size:12px;margin-top:4px;">No hay notas de evolución pendientes esta semana</div>
+  </div>`;
+
+  m.innerHTML = `
+    <div class="modal" style="max-width:540px;max-height:90vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">📋 Notas Pendientes</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${semanaLabel}</div>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-notas-pend').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0 24px;overflow-y:auto;flex:1;">
+        ${items}
+      </div>
+      ${lista.length ? `<div style="padding:12px 24px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);text-align:center;">
+        ${lista.length} paciente${lista.length>1?'s':''} sin nota esta semana
+      </div>` : ''}
+    </div>`;
+
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target === m) m.remove(); };
+}
+
+async function abrirNotaDesdeModal(patientId) {
+  // Navegar al perfil del paciente y abrir directamente el modal de nueva nota
+  await showPatientDetail(patientId);
+  setTimeout(() => openAddEvolucionModal(patientId), 400);
 }
 
 // ══════════════════════════════════════════
