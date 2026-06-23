@@ -6697,6 +6697,7 @@ async function saveRecibirPago() {
       tipo_pago: metodoPago,
     };
     if (rpDoctorNombre) { try { incomeData.doctor_nombre = rpDoctorNombre; incomeData.doctor_id = rpDoctorId || null; } catch(e){} }
+    try { incomeData.cobrador_nombre = currentUserProfile?.nombre || currentUser?.email || ''; } catch(e){}
 
     // Agregar campos opcionales uno a uno (si la columna no existe, Supabase ignora o lanza error manejable)
     const notasVal = document.getElementById('rp-notas').value.trim();
@@ -6746,9 +6747,12 @@ async function saveRecibirPago() {
     const fechaDisplay = `${dd} ${mesesCortos[parseInt(mm)-1]} ${yy}`;
     const horaDisplay = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
 
+    const cobradorNombre = currentUserProfile?.nombre || currentUser?.email || '';
     let notaTexto = tratNombre && tratNombre !== 'Seleccionar...' ? `${tratNombre}` : 'Consulta / Pago registrado';
     if (notasExtra) notaTexto += `
 ${notasExtra}`;
+    if (cobradorNombre) notaTexto += `
+Registrado por: ${cobradorNombre}`;
 
     const evolRecord = {
       patient_id: patientId,
