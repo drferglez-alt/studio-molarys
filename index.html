@@ -6624,6 +6624,7 @@ function calcRPCascada() {
   if (bruto === 0) { resumen.style.display = 'none'; return; }
 
   const neto1 = bruto - descuento;
+  // Calcular internamente para corte de caja (no se muestra al usuario)
   let tpv = 0;
   if (pago === 'tarjeta') tpv = neto1 * 0.0075 * 1.16;
   const neto2 = neto1 - tpv;
@@ -6633,13 +6634,23 @@ function calcRPCascada() {
   const doctor = neto3 * 0.30;
   const fmt = n => '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
+  // Solo mostrar lo relevante para el cobro
   resumen.style.display = 'block';
   resumen.innerHTML = `
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Bruto</span><span style="font-weight:500;">${fmt(bruto)}</span></div>
-    ${descuento>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Descuento</span><span style="color:var(--error);">-${fmt(descuento)}</span></div>`:''}
-    ${tpv>0?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Comisión TPV</span><span style="color:var(--error);">-${fmt(tpv)}</span></div>`:''}
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Impuestos (6%)</span><span style="color:var(--error);">-${fmt(impF+impE)}</span></div>
-    <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);"><span style="font-weight:600;color:var(--blue-deep);">Doctor recibe</span><span style="font-weight:600;color:var(--blue-mid);font-size:15px;">${fmt(doctor)}</span></div>`;
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+      <span style="color:var(--text-muted);">Subtotal</span>
+      <span style="font-weight:500;">${fmt(bruto)}</span>
+    </div>
+    ${descuento>0?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+      <span style="color:var(--text-muted);">Descuento</span>
+      <span style="color:var(--error);">-${fmt(descuento)}</span>
+    </div>`:''}
+    <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:2px solid var(--blue-deep);">
+      <span style="font-weight:700;color:var(--blue-deep);font-size:15px;">Total a cobrar</span>
+      <span style="font-weight:700;color:var(--blue-deep);font-size:18px;">${fmt(neto1)}</span>
+    </div>`;
+
+  // Guardar internamente para corte de caja
   window._rpResult = { bruto, descuento, tpv, impF, impE, doctor, neto3 };
 }
 
@@ -6661,24 +6672,22 @@ async function saveRecibirPago() {
   const fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
 
   try {
-    const { error } = await db.from('income').insert([{
+    const incomeData = {
       patient_id: patientId,
       treatment_id: treatmentId || null,
       usuario_id: currentUser.id,
       ingreso_bruto: r.bruto || bruto,
       descuento: r.descuento || 0,
       tipo_pago: metodoPago,
-      comision_tpv: r.tpv || 0,
-      impuesto_federal: r.impF || 0,
-      impuesto_estatal: r.impE || 0,
-      laboratorio: 0,
-      remanente_clinica: r.neto3 ? r.neto3*0.30 : 0,
-      remanente_equipo: r.neto3 ? r.neto3*0.20 : 0,
-      remanente_doctor: r.doctor || 0,
-      neto_final: r.neto3 || 0,
       notas: document.getElementById('rp-notas').value.trim(),
       es_abono: rpIsAbono
-    }]);
+    };
+    // Columnas extendidas solo si existen
+    try { incomeData.comision_tpv = r.tpv||0; incomeData.impuesto_federal = r.impF||0;
+      incomeData.impuesto_estatal = r.impE||0; incomeData.remanente_doctor = r.doctor||0;
+      incomeData.neto_final = r.neto3||0; } catch(e){}
+
+    const { error } = await db.from('income').insert([incomeData]);
     if (error) throw error;
 
     showToast('Pago registrado exitosamente ✓', 'success');
