@@ -6766,8 +6766,9 @@ ${notasExtra}`;
     setTimeout(() => openFacturaModal(formUrl, patientName, monto, patientId), 300);
 
   } catch(e) {
-    showToast('Error al guardar el pago', 'error');
-    console.error(e);
+    const msg = e?.message || e?.details || JSON.stringify(e) || 'Error desconocido';
+    showToast('Error: ' + msg.substring(0, 80), 'error');
+    console.error('saveRecibirPago error:', e);
   }
   btn.disabled = false;
   btn.textContent = 'Registrar Pago';
