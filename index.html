@@ -5292,13 +5292,11 @@ function printEvolucion(patientId, nombre, expediente) {
       </div>
     </div>
     <div style="text-align:right;font-size:12px;color:#555;">
-      Impreso: ${fechaImp}<br>
-      Expediente: #${expediente}
+      Impreso: ${fechaImp}
     </div>
   </div>
   <div style="background:#f7f7f7;border:1px solid #ddd;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px;">
     <strong>Paciente:</strong> ${nombre} &nbsp;|&nbsp;
-    <strong>Exp.:</strong> #${expediente}
     ${p && p.fecha_nacimiento ? ' &nbsp;|&nbsp; <strong>Edad:</strong> ' + calcAge(p.fecha_nacimiento) : ''}
     ${p && p.telefono ? ' &nbsp;|&nbsp; <strong>Tel:</strong> ' + p.telefono : ''}
   </div>
@@ -5683,7 +5681,7 @@ async function printExpediente(patientId) {
   const datosHTML = `${alerta}
     <table class="data-table">
       ${fld('Nombre completo', `<strong>${p.nombre} ${p.apellido}</strong>`)}
-      ${fld('Expediente', '#'+p.expediente)}
+      
       ${fld('Fecha de nacimiento', p.fecha_nacimiento ? new Date(p.fecha_nacimiento+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}) : '')}
       ${fld('Edad', p.fecha_nacimiento ? calcAge(p.fecha_nacimiento) : '')}
       ${fld('Sexo', sexoMap[p.sexo]||p.sexo)}
@@ -5876,7 +5874,7 @@ async function printExpediente(patientId) {
     <div style="display:flex;align-items:center;">
       ${headerClinica}
     </div>
-    <div class="header-right">Impreso: ${fechaImp}<br>Expediente #${p.expediente||'—'}</div>
+    <div class="header-right">Impreso: ${fechaImp}</div>
   </div>
 
   <div class="sec-title">Datos del Paciente</div>
