@@ -2701,6 +2701,12 @@
         </div>
       </div>
       <div class="form-field" style="margin-bottom:16px;">
+        <label>Doctor que atendió *</label>
+        <select id="rp-doctor">
+          <option value="">— Seleccionar doctor —</option>
+        </select>
+      </div>
+      <div class="form-field" style="margin-bottom:16px;">
         <label>Notas</label>
         <textarea id="rp-notas" placeholder="Observaciones del cobro..."></textarea>
       </div>
@@ -6588,6 +6594,13 @@ function openRecibirPagoModal() {
   document.getElementById('rp-descuento').value = '0';
   document.getElementById('rp-notas').value = '';
   rpIsAbono = false;
+  // Poblar doctores
+  const dsel = document.getElementById('rp-doctor');
+  dsel.innerHTML = '<option value="">— Seleccionar doctor —</option>';
+  getDoctors().forEach(d => {
+    const ced = d.especialidades?.[0]?.cedula || '';
+    dsel.innerHTML += `<option value="${d.id}" data-nombre="${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}" data-cedula="${ced}">${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}</option>`;
+  });
   document.getElementById('modal-recibir-pago').classList.add('open');
 }
 
@@ -6663,9 +6676,14 @@ async function saveRecibirPago() {
   const r = window._rpResult || {};
   const metodoPago = document.getElementById('rp-pago').value;
 
-  // ── Capturar nombre ANTES de cerrar el modal ──
+  // ── Capturar datos ANTES de cerrar el modal ──
   const sel = document.getElementById('rp-patient');
   const patientName = sel.options[sel.selectedIndex]?.text || '';
+  const dsel2 = document.getElementById('rp-doctor');
+  const doctorOpt = dsel2.options[dsel2.selectedIndex];
+  const rpDoctorNombre = doctorOpt?.dataset?.nombre || '';
+  const rpDoctorCedula = doctorOpt?.dataset?.cedula || '';
+  const rpDoctorId = dsel2.value || '';
   const monto = (r.bruto || bruto).toFixed(2);
   const fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
 
@@ -6678,6 +6696,7 @@ async function saveRecibirPago() {
       ingreso_bruto: r.bruto || bruto,
       tipo_pago: metodoPago,
     };
+    if (rpDoctorNombre) { try { incomeData.doctor_nombre = rpDoctorNombre; incomeData.doctor_id = rpDoctorId || null; } catch(e){} }
 
     // Agregar campos opcionales uno a uno (si la columna no existe, Supabase ignora o lanza error manejable)
     const notasVal = document.getElementById('rp-notas').value.trim();
@@ -6740,6 +6759,8 @@ ${notasExtra}`;
       pago: 'si',
       monto: parseFloat(monto),
       metodo_pago: metodosLabel[metodoPago] || metodoPago,
+      doctor_nombre: rpDoctorNombre || null,
+      doctor_cedula: rpDoctorCedula || null,
     };
 
     try {
