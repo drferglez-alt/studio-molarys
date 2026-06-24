@@ -5111,12 +5111,16 @@ async function loadEvolucion(patientId) {
   try {
     const { data, error } = await db.from('patient_evolution')
       .select('*').eq('patient_id', patientId)
-      .order('fecha', { ascending: false }).order('created_at', { ascending: false });
+      .order('fecha_iso', { ascending: false }).order('created_at', { ascending: false });
     if (!error && data) {
       notas = data;
       saveEvolLocal(patientId, data); // cache local
     } else { notas = getEvolLocal(patientId); }
   } catch(e) { notas = getEvolLocal(patientId); }
+
+  // Limpiar automáticamente notas duplicadas (auto + manual en la misma fecha)
+  const eliminados = await limpiarNotasDuplicadas(patientId);
+  if (eliminados > 0) notas = getEvolLocal(patientId);
 
   renderEvolTabla(patientId, notas);
 }
@@ -5259,6 +5263,42 @@ function editarNota(patientId, idx) {
   openAddEvolucionModal(patientId, nota);
 }
 
+// Limpiar notas automáticas duplicadas (para datos ya existentes)
+async function limpiarNotasDuplicadas(patientId) {
+  const lista = getEvolLocal(patientId);
+  // Agrupar por fecha
+  const porFecha = {};
+  lista.forEach(n => {
+    const k = n.fecha_iso || n.fecha || 'sin-fecha';
+    if (!porFecha[k]) porFecha[k] = [];
+    porFecha[k].push(n);
+  });
+
+  const aEliminar = [];
+  Object.values(porFecha).forEach(grupo => {
+    if (grupo.length < 2) return;
+    const tieneManual = grupo.some(n => n.nota && !n.nota.includes('Registrado por:'));
+    const automaticas = grupo.filter(n => n.nota && n.nota.includes('Registrado por:'));
+    if (tieneManual && automaticas.length > 0) {
+      automaticas.forEach(n => aEliminar.push(n.id));
+    }
+  });
+
+  if (aEliminar.length === 0) return 0;
+
+  // Eliminar de localStorage
+  const limpia = lista.filter(n => !aEliminar.includes(n.id));
+  saveEvolLocal(patientId, limpia);
+
+  // Eliminar de Supabase
+  try {
+    const ids = aEliminar.filter(id => !String(id).startsWith('local_'));
+    if (ids.length > 0) await db.from('patient_evolution').delete().in('id', ids);
+  } catch(e) {}
+
+  return aEliminar.length;
+}
+
 function saveEvolucionFromModal() {
   const ctx = window._evolModalCtx || {};
   saveEvolucion(ctx.patientId, ctx.editId || null);
@@ -5333,30 +5373,53 @@ async function saveEvolucion(patientId, editId) {
       }).eq('id', editId);
       if (error) throw error;
     } else {
-      // NUEVA nota — antes de insertar, eliminar notas automáticas duplicadas del mismo cobro
+      // NUEVA nota — antes de insertar, eliminar notas automáticas duplicadas
       if (incomeIds.length > 0) {
         try {
-          // Buscar notas automáticas (sin texto clínico elaborado) con el mismo income_id
+          // 1. Limpiar del localStorage por fecha + "Registrado por:" (notas sin income_id guardado)
+          const localLista = getEvolLocal(patientId);
+          const fechaNota = record.fecha_iso; // ej: "2026-06-24"
+          const filtradaLocal = localLista.filter(n => {
+            const esAutomatica = n.nota && n.nota.includes('Registrado por:');
+            const mismaFecha = n.fecha_iso === fechaNota || (!n.fecha_iso && n.fecha && n.fecha.includes(fechaNota));
+            const mismoIncome = n.income_id && incomeIds.includes(n.income_id);
+            // Eliminar si: es automática Y (misma fecha O mismo income_id)
+            return !(esAutomatica && (mismaFecha || mismoIncome));
+          });
+          if (filtradaLocal.length !== localLista.length) {
+            saveEvolLocal(patientId, filtradaLocal);
+          }
+
+          // 2. Limpiar de Supabase por income_id (para notas nuevas que sí lo tienen)
           for (const iid of incomeIds) {
             const { data: autoNotas } = await db.from('patient_evolution')
               .select('id, nota')
               .eq('patient_id', patientId)
               .eq('income_id', iid);
             if (autoNotas && autoNotas.length > 0) {
-              // Eliminar las notas automáticas (las que contienen "Registrado por:")
               const autoIds = autoNotas
                 .filter(n => n.nota && n.nota.includes('Registrado por:'))
                 .map(n => n.id);
               if (autoIds.length > 0) {
                 await db.from('patient_evolution').delete().in('id', autoIds);
-                // También del localStorage
-                const localLista = getEvolLocal(patientId);
-                const filtrada = localLista.filter(n => !autoIds.includes(n.id));
-                saveEvolLocal(patientId, filtrada);
               }
             }
           }
-        } catch(e2) { console.warn('No se pudo eliminar nota automática:', e2); }
+
+          // 3. También buscar en Supabase por fecha + "Registrado por:" sin income_id
+          const { data: autoFecha } = await db.from('patient_evolution')
+            .select('id, nota')
+            .eq('patient_id', patientId)
+            .eq('fecha_iso', fechaNota);
+          if (autoFecha && autoFecha.length > 0) {
+            const autoFechaIds = autoFecha
+              .filter(n => n.nota && n.nota.includes('Registrado por:'))
+              .map(n => n.id);
+            if (autoFechaIds.length > 0) {
+              await db.from('patient_evolution').delete().in('id', autoFechaIds);
+            }
+          }
+        } catch(e2) { console.warn('Dedup:', e2); }
       }
       const { data, error } = await db.from('patient_evolution').insert([record]).select();
       if (!error && data) savedId = data[0].id;
@@ -5376,12 +5439,15 @@ async function saveEvolucion(patientId, editId) {
     } else {
       lista.unshift({ ...record, id: editId });
     }
-    // Si editamos y ahora vinculamos pagos, quitar notas automáticas del mismo income en local
+    // Si editamos y ahora vinculamos pagos, quitar notas automáticas duplicadas en local
     if (incomeIds.length > 0) {
       const antes = lista.length;
-      const filtrada2 = lista.filter((n, ni) => {
+      const filtrada2 = lista.filter((n) => {
         if (n.id === editId) return true; // conservar la nota editada
-        if (n.nota && n.nota.includes('Registrado por:') && n.income_id && incomeIds.includes(n.income_id)) return false;
+        const esAuto = n.nota && n.nota.includes('Registrado por:');
+        const mismaFecha = n.fecha_iso === record.fecha_iso;
+        const mismoIncome = n.income_id && incomeIds.includes(n.income_id);
+        if (esAuto && (mismaFecha || mismoIncome)) return false;
         return true;
       });
       if (filtrada2.length !== antes) saveEvolLocal(patientId, filtrada2);
