@@ -5222,15 +5222,7 @@ async function openAddEvolucionModal(patientId, editNota) {
         + '<label>Procedimiento / Nota clínica *</label>'
         + '<textarea id="evol-nota" rows="5" style="resize:vertical;">' + ((editNota && editNota.nota) ? editNota.nota.replace(/</g,"&lt;") : '') + '</textarea>'
       + '</div>'
-      + '<div class="form-field">'
-        + '<label>Vincular con pago registrado <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>'
-        + '<select id="evol-income-link" onchange="onEvolPagoChange()">'
-          + '<option value="">⏳ Sin pago / Pendiente</option>'
-          + (pagos.length ? pagoOpts : '')
-        + '</select>'
-        + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Selecciona el cobro correspondiente a esta nota para marcarlo como pagado.</div>'
-      + '</div>'
-      + '<div id="evol-pago-preview" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:4px;color:#1a7a40;"></div>'
+      + '<div class="form-field">'        + '<label>Vincular con pagos registrados <span style="color:var(--text-muted);font-weight:400;">(opcional — selecciona uno o varios)</span></label>'        + '<div id="evol-pagos-checks" style="max-height:160px;overflow-y:auto;background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">'          + (pagos.length ? pagos.map(function(pg) {              var fecha = new Date(pg.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});              var trat = (pg.treatments && pg.treatments.nombre) ? pg.treatments.nombre : 'Pago';              var monto = '$' + (pg.ingreso_bruto||0).toLocaleString('es-MX',{minimumFractionDigits:2});              var chk = (editNota && editNota.income_ids && editNota.income_ids.indexOf(pg.id)>=0) ? 'checked' : '';              return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;">'                + '<input type="checkbox" value="' + pg.id + '" data-monto="' + pg.ingreso_bruto + '" data-metodo="' + (pg.tipo_pago||'') + '" ' + chk + ' onchange="onEvolPagoChange()" style="accent-color:var(--blue-mid);width:15px;height:15px;">'                + '<span>' + fecha + ' — ' + trat + ' <strong>' + monto + '</strong></span>'                + '</label>';            }).join('') : '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Sin pagos registrados para este paciente</div>')        + '</div>'        + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Selecciona los cobros que corresponden a esta visita.</div>'      + '</div>'      + '<div id="evol-pago-preview" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:4px;color:#1a7a40;"></div>'
     + '</div>'
     + '<div class="modal-footer">'
       + '<button class="btn-secondary" onclick="document.getElementById(\'modal-add-evolucion\').remove()">Cancelar</button>'
@@ -5273,15 +5265,13 @@ function saveEvolucionFromModal() {
 }
 
 function onEvolPagoChange() {
-  const sel     = document.getElementById('evol-income-link');
   const preview = document.getElementById('evol-pago-preview');
-  if (!sel || !preview) return;
-  const opt = sel.options[sel.selectedIndex];
-  if (sel.value && opt.dataset.monto) {
-    const monto  = parseFloat(opt.dataset.monto||0).toLocaleString('es-MX',{minimumFractionDigits:2});
-    const metodo = opt.dataset.metodo ? ' · ' + opt.dataset.metodo : '';
+  if (!preview) return;
+  const checks = document.querySelectorAll('#evol-pagos-checks input[type=checkbox]:checked');
+  if (checks.length > 0) {
+    const total = Array.from(checks).reduce((s,c) => s + parseFloat(c.dataset.monto||0), 0);
     preview.style.display = 'block';
-    preview.innerHTML = '💰 Pago vinculado: <strong>$' + monto + '</strong>' + metodo;
+    preview.innerHTML = '💰 ' + checks.length + ' pago(s) vinculado(s) · Total: <strong>$' + total.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</strong>';
   } else {
     preview.style.display = 'none';
   }
@@ -5296,13 +5286,15 @@ async function saveEvolucion(patientId, editId) {
   const doctorNombre = doctorSel?.value || '';
   const doctorCedula = doctorSel?.selectedOptions[0]?.dataset?.ced || '';
 
-  // Vincular con pago
-  const incomeSel = document.getElementById('evol-income-link');
-  const incomeId  = incomeSel?.value || null;
-  const incomeOpt = incomeId ? incomeSel.options[incomeSel.selectedIndex] : null;
-  const pagoVinc  = incomeId ? 'si' : 'no';
-  const montoVinc = incomeOpt ? parseFloat(incomeOpt.dataset.monto||0) : null;
-  const metodoVinc = incomeOpt ? (incomeOpt.dataset.metodo||null) : null;
+  // Vincular con pagos (múltiples checkboxes)
+  const checks = document.querySelectorAll('#evol-pagos-checks input[type=checkbox]:checked');
+  const incomeIds = Array.from(checks).map(c => c.value).filter(Boolean);
+  const incomeId  = incomeIds[0] || null; // primer id como referencia principal
+  const pagoVinc  = incomeIds.length > 0 ? 'si' : 'no';
+  const montoVinc = incomeIds.length > 0
+    ? Array.from(checks).reduce((s,c) => s + parseFloat(c.dataset.monto||0), 0)
+    : null;
+  const metodoVinc = checks.length > 0 ? (checks[0].dataset.metodo||null) : null;
 
   if (!fechaInput || !nota) { showToast('Fecha y nota son obligatorias', 'error'); return; }
 
@@ -5325,6 +5317,7 @@ async function saveEvolucion(patientId, editId) {
     doctor_nombre: doctorNombre || null,
     doctor_cedula: doctorCedula || null,
     income_id:     incomeId || null,
+    income_ids:    incomeIds.length > 0 ? incomeIds.join(",") : null,
   };
 
   let savedId = editId || null;
@@ -5335,11 +5328,36 @@ async function saveEvolucion(patientId, editId) {
         fecha: record.fecha, fecha_iso: record.fecha_iso, hora: record.hora,
         nota: record.nota, pago: record.pago, monto: record.monto,
         metodo_pago: record.metodo_pago, doctor_nombre: record.doctor_nombre,
-        doctor_cedula: record.doctor_cedula, income_id: record.income_id
+        doctor_cedula: record.doctor_cedula, income_id: record.income_id,
+        income_ids: record.income_ids
       }).eq('id', editId);
       if (error) throw error;
     } else {
-      // NUEVA nota
+      // NUEVA nota — antes de insertar, eliminar notas automáticas duplicadas del mismo cobro
+      if (incomeIds.length > 0) {
+        try {
+          // Buscar notas automáticas (sin texto clínico elaborado) con el mismo income_id
+          for (const iid of incomeIds) {
+            const { data: autoNotas } = await db.from('patient_evolution')
+              .select('id, nota')
+              .eq('patient_id', patientId)
+              .eq('income_id', iid);
+            if (autoNotas && autoNotas.length > 0) {
+              // Eliminar las notas automáticas (las que contienen "Registrado por:")
+              const autoIds = autoNotas
+                .filter(n => n.nota && n.nota.includes('Registrado por:'))
+                .map(n => n.id);
+              if (autoIds.length > 0) {
+                await db.from('patient_evolution').delete().in('id', autoIds);
+                // También del localStorage
+                const localLista = getEvolLocal(patientId);
+                const filtrada = localLista.filter(n => !autoIds.includes(n.id));
+                saveEvolLocal(patientId, filtrada);
+              }
+            }
+          }
+        } catch(e2) { console.warn('No se pudo eliminar nota automática:', e2); }
+      }
       const { data, error } = await db.from('patient_evolution').insert([record]).select();
       if (!error && data) savedId = data[0].id;
       else if (error) throw error;
@@ -5357,6 +5375,16 @@ async function saveEvolucion(patientId, editId) {
       lista[idx] = { ...lista[idx], ...record, id: editId };
     } else {
       lista.unshift({ ...record, id: editId });
+    }
+    // Si editamos y ahora vinculamos pagos, quitar notas automáticas del mismo income en local
+    if (incomeIds.length > 0) {
+      const antes = lista.length;
+      const filtrada2 = lista.filter((n, ni) => {
+        if (n.id === editId) return true; // conservar la nota editada
+        if (n.nota && n.nota.includes('Registrado por:') && n.income_id && incomeIds.includes(n.income_id)) return false;
+        return true;
+      });
+      if (filtrada2.length !== antes) saveEvolLocal(patientId, filtrada2);
     }
   } else {
     record.id = savedId || ('local_' + Date.now());
