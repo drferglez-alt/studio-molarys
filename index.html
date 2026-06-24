@@ -4053,14 +4053,83 @@ async function loadPatientHistories(patientId) {
       </div>`;
       return;
     }
-    container.innerHTML = data.map(h => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
-        <div>
-          <div style="font-weight:500;font-size:14px;">${h.motivo_consulta||'Historia clínica'}</div>
-          <div style="font-size:12px;color:var(--text-muted);">${formatDate(h.created_at)}</div>
+    // Mostrar la HC más reciente expandida + listado de anteriores
+    const hcReciente = data[0];
+    const hcAnteriores = data.slice(1);
+
+    function fmtHCField(val, det) {
+      if (!val || val === 'N') return '<span style="color:var(--text-muted);">No</span>';
+      return '<span style="color:#16a34a;font-weight:600;">Sí</span>' + (det ? ' — ' + det : '');
+    }
+    function fmtCheck(val) {
+      return val ? '✅' : '<span style="color:var(--text-muted);">—</span>';
+    }
+
+    const seccion = (titulo, rows) => rows.some(r=>r[1]) ? `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--blue-mid);border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:8px;">${titulo}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
+          ${rows.filter(r=>r[1]).map(r=>`<div style="font-size:12px;padding:3px 0;"><span style="color:var(--text-muted);">${r[0]}: </span>${r[1]}</div>`).join('')}
         </div>
-        <a class="card-link" onclick="viewHistory('${h.id}')">Ver →</a>
-      </div>`).join('');
+      </div>` : '';
+
+    const hcHTML = `
+      <div id="hc-detalle-${hcReciente.id}" style="padding:0 4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">${hcReciente.motivo_consulta||'—'}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${formatDate(hcReciente.created_at)}</div>
+          </div>
+          <button onclick="openNewHistoryModal('${patientId}')" style="background:none;border:1px solid var(--blue-mid);color:var(--blue-mid);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">+ Actualizar HC</button>
+        </div>
+
+        ${seccion('Antecedentes Sistémicos', [
+          ['Tratamiento médico', fmtHCField(hcReciente.trat_medico, hcReciente.trat_medico_det)],
+          ['Alergia medicamentos', fmtHCField(hcReciente.alergia_med, hcReciente.alergia_med_det)],
+          ['Alergia anestesia', fmtHCField(hcReciente.alergia_anest, hcReciente.alergia_anest_det)],
+          ['Cardiovascular', fmtHCField(hcReciente.cardio, hcReciente.cardio_det)],
+          ['Diabetes', fmtHCField(hcReciente.diabetes, '')],
+          ['Sangrado', fmtHCField(hcReciente.sangrado, '')],
+          ['Respiratorio', fmtHCField(hcReciente.respiratorio, hcReciente.respiratorio_det)],
+          ['VIH', fmtCheck(hcReciente.vih)],
+          ['Hepatitis', fmtCheck(hcReciente.hepatitis)],
+          ['Hemofilia', fmtCheck(hcReciente.hemofilia)],
+          ['Medicación', hcReciente.medicacion||''],
+        ])}
+
+        ${seccion('Signos Vitales', [
+          ['Presión arterial', hcReciente.pa||''],
+          ['Frec. cardíaca', hcReciente.fc||''],
+          ['Temperatura', hcReciente.temp||''],
+          ['Frec. respiratoria', hcReciente.fr||''],
+        ])}
+
+        ${seccion('Odontológico', [
+          ['Sangra encías', fmtHCField(hcReciente.sangra_encias,'')],
+          ['Sensibilidad', fmtHCField(hcReciente.sensibilidad,'')],
+          ['Bruxismo', fmtHCField(hcReciente.bruxismo,'')],
+          ['Ortodoncia previa', fmtHCField(hcReciente.ortodoncia,'')],
+          ['Mal aliento', fmtHCField(hcReciente.mal_aliento,'')],
+        ])}
+
+        ${hcReciente.diagnostico ? `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--blue-mid);border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:6px;">Diagnóstico / Plan de tratamiento</div>
+          <div style="font-size:12px;line-height:1.6;">${hcReciente.diagnostico}</div>
+          ${hcReciente.plan ? '<div style="font-size:12px;line-height:1.6;margin-top:4px;color:var(--text-secondary);">' + hcReciente.plan + '</div>' : ''}
+        </div>` : ''}
+
+        ${hcAnteriores.length ? `
+        <div style="margin-top:8px;">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">Historias anteriores (${hcAnteriores.length})</div>
+          ${hcAnteriores.map(h=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:12px;">
+              <span style="color:var(--text-muted);">${formatDate(h.created_at)} — ${h.motivo_consulta||'HC'}</span>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+
+    container.innerHTML = hcHTML;
   } catch(e) {
     console.error(e);
   }
