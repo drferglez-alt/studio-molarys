@@ -5319,8 +5319,7 @@ async function deleteEvolucion(patientId, idOrIdx) {
 async function openAddEvolucionModal(patientId, editNota) {
   const p = patients.find(x => x.id === patientId);
   const nombre = p ? p.nombre + ' ' + p.apellido : '';
-  const now = new Date();
-  const fechaISO = (editNota && editNota.fecha_iso) ? editNota.fecha_iso : now.toISOString().split('T')[0];
+  const fechaISO = (editNota && editNota.fecha_iso) ? editNota.fecha_iso : fechaISOLocal();
   const isEdit = !!editNota;
 
   // Cargar pagos del paciente para vincular
@@ -5348,8 +5347,7 @@ async function openAddEvolucionModal(patientId, editNota) {
     return '<option value="' + val + '" data-ced="' + ced + '" ' + sel + '>' + val + ((d.especialidades && d.especialidades[0]) ? ' — ' + d.especialidades[0].nombre : '') + '</option>';
   }).join('');
 
-  const horaVal = (editNota && editNota.hora) ? editNota.hora
-    : (now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0'));
+  const horaVal = (editNota && editNota.hora) ? editNota.hora : horaLocal();
 
   let m = document.getElementById('modal-add-evolucion');
   if (m) m.remove();
@@ -5705,6 +5703,27 @@ async function printEvolucion(patientId, nombre, expediente) {
 }
 
 // ══════════════════════════════════════════
+// ZONA HORARIA — Helpers CDMX (America/Mexico_City)
+// ══════════════════════════════════════════
+function ahoraCDMX() {
+  // Retorna objeto Date ajustado a CDMX
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+}
+function fechaISOLocal() {
+  const d = ahoraCDMX();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function horaLocal() {
+  const d = ahoraCDMX();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function fechaDisplayLocal() {
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const d = ahoraCDMX();
+  return d.getDate() + ' ' + meses[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ══════════════════════════════════════════
 // NOTAS DE EVOLUCIÓN PENDIENTES
 // Lógica: cobros de esta semana sin nota de evolución en la misma fecha
 // ══════════════════════════════════════════
@@ -5713,9 +5732,9 @@ async function checkNotasPendientes() {
   if (!badge) return;
 
   try {
-    const hoy = new Date();
+    const hoy = ahoraCDMX();
     const lunes = new Date(hoy);
-    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7)); // lunes de esta semana
+    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7)); // lunes de esta semana CDMX
     lunes.setHours(0,0,0,0);
 
     // Filtrar por doctor activo si el perfil lo indica
@@ -6699,7 +6718,10 @@ async function editPago(incomeId, patientId) {
         + '<select id="ep-tratamiento"><option value="">Sin tratamiento</option>' + tratOpts + '</select>'
       + '</div>'
       + '<div class="form-row">'
+        + '<div class="form-field"><label>Fecha</label><input type="date" id="ep-fecha" value="' + (r.created_at ? r.created_at.split('T')[0] : fechaISOLocal()) + '"></div>'
         + '<div class="form-field"><label>Monto ($)</label><input type="number" id="ep-monto" value="' + (r.ingreso_bruto||0) + '"></div>'
+      + '</div>'
+      + '<div class="form-row">'
         + '<div class="form-field"><label>Forma de pago</label><select id="ep-pago">' + pagoOpts + '</select></div>'
       + '</div>'
       + '<div class="form-field" style="margin-bottom:14px;">'
@@ -6727,9 +6749,10 @@ function guardarEditPagoModal() {
 
 async function guardarEditPago(incomeId, patientId) {
   const tratId  = document.getElementById('ep-tratamiento').value;
+  const fecha   = document.getElementById('ep-fecha')?.value;
   const monto   = parseFloat(document.getElementById('ep-monto').value) || 0;
   const pago    = document.getElementById('ep-pago').value;
-  const doctor  = document.getElementById('ep-doctor').value;
+  const doctor  = document.getElementById('ep-doctor')?.value || '';
   const notas   = document.getElementById('ep-notas').value.trim();
 
   if (monto <= 0) { showToast('El monto debe ser mayor a 0', 'error'); return; }
@@ -6742,6 +6765,7 @@ async function guardarEditPago(incomeId, patientId) {
       notas:          notas || null,
     };
     if (tratId) updates.treatment_id = tratId;
+    if (fecha) updates.created_at = fecha + 'T12:00:00-06:00';
 
     const { error } = await db.from('income').update(updates).eq('id', incomeId);
     if (error) throw error;
@@ -7607,11 +7631,11 @@ async function saveRecibirPago() {
     const tratNombre = servicios.map(s => s.cantidad>1?`${s.cantidad}x ${s.nombre}`:s.nombre).join(', ') || 'Consulta';
     const metodosLabel = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia' };
     const now = new Date();
-    const fechaISO = now.toISOString().split('T')[0];
+    const fechaISO = fechaISOLocal();
     const [yy, mm, dd] = fechaISO.split('-');
     const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    const fechaDisplay = `${dd} ${mesesCortos[parseInt(mm)-1]} ${yy}`;
-    const horaDisplay = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+    const fechaDisplay = dd + ' ' + mesesCortos[parseInt(mm)-1] + ' ' + yy;
+    const horaDisplay = horaLocal();
 
     const cobradorNombre = currentUserProfile?.nombre || currentUser?.email || '';
     // Listar todos los servicios cobrados
