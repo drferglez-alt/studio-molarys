@@ -7411,8 +7411,10 @@ function openRecibirPagoModal(prePatientId) {
   window._rpServicios = [{ id:'', nombre:'', precio:0, cantidad:1 }];
   renderRPServicios();
 
-  document.getElementById('rp-presupuesto-block') && (document.getElementById('rp-presupuesto-block').style.display = 'none');
-  document.getElementById('rp-resumen').style.display = 'none';
+  const _block = document.getElementById('rp-presupuesto-block');
+  if (_block) _block.style.display = 'none';
+  const _resumen = document.getElementById('rp-resumen');
+  if (_resumen) _resumen.style.display = 'none';
   document.getElementById('rp-descuento').value = '0';
   document.getElementById('rp-notas').value = '';
   rpIsAbono = false;
@@ -7429,11 +7431,9 @@ function openRecibirPagoModal(prePatientId) {
 }
 
 function checkPresupuestoPaciente() {
-  const pid = document.getElementById('rp-patient').value;
+  const pid = document.getElementById('rp-patient')?.value;
   const block = document.getElementById('rp-presupuesto-block');
-  if (!pid) { block.style.display = 'none'; return; }
-  // For now show placeholder — presupuestos module coming later
-  block.style.display = 'none';
+  if (block) block.style.display = 'none';
 }
 
 function setAbonoMode(isAbono) {
