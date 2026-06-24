@@ -2036,8 +2036,9 @@
                   <input type="text" id="hc-motivo" placeholder="¿Por qué consulta hoy?">
                 </div>
               </div>
-              <div class="form-row triple">
-                <div class="form-field"><label>Nombre</label><input type="text" id="hc-nombre"></div>
+              <div class="form-row" style="grid-template-columns:1fr 1fr 100px 120px;">
+                <div class="form-field"><label>Nombre(s)</label><input type="text" id="hc-nombre" placeholder="Nombre(s)"></div>
+                <div class="form-field"><label>Apellidos</label><input type="text" id="hc-apellido" placeholder="Apellidos"></div>
                 <div class="form-field"><label>Edad</label><input type="text" id="hc-edad"></div>
                 <div class="form-field"><label>Sexo</label><input type="text" id="hc-sexo"></div>
               </div>
@@ -7906,7 +7907,9 @@ function fillPatientData() {
   const id = document.getElementById('hc-patient-id').value;
   const p = patients.find(p => p.id === id);
   if (!p) return;
-  document.getElementById('hc-nombre').value = `${p.nombre} ${p.apellido}`;
+  document.getElementById('hc-nombre').value = p.nombre || '';
+  const apelEl = document.getElementById('hc-apellido');
+  if (apelEl) apelEl.value = p.apellido || '';
   document.getElementById('hc-edad').value = calcAge(p.fecha_nacimiento);
   document.getElementById('hc-sexo').value = p.sexo === 'M' ? 'Masculino' : p.sexo === 'F' ? 'Femenino' : p.sexo || '';
   document.getElementById('hc-tel').value = p.telefono || '';
@@ -7919,7 +7922,7 @@ function fillPatientData() {
 
 function resetHCForm() {
   // Limpiar todos los campos de texto y textarea
-  const textIds = ['hc-motivo','hc-tiempo-enf','hc-signos','hc-relato','hc-funciones',
+  const textIds = ['hc-motivo','hc-apellido','hc-tiempo-enf','hc-signos','hc-relato','hc-funciones',
     'hc-trat-med-det','hc-alergia-det','hc-alergia-an-det','hc-drogas-det','hc-alcohol-det',
     'hc-tabaco-det','hc-cardio-det','hc-cirugia-det','hc-resp-det','hc-ets-det',
     'hc-ant-fam','hc-ant-pers','hc-medico','hc-medicacion','hc-tutor',
@@ -8061,6 +8064,35 @@ async function saveHistory() {
   try {
     const { data, error } = await db.from('clinical_histories').insert([record]).select();
     if (error) throw error;
+
+    // Sincronizar datos del paciente si se modificaron en la HC
+    const nombreHC   = (document.getElementById('hc-nombre')?.value||'').trim();
+    const apellidoHC = (document.getElementById('hc-apellido')?.value||'').trim();
+    const telHC      = (document.getElementById('hc-tel')?.value||'').trim();
+    const emailHC    = (document.getElementById('hc-email')?.value||'').trim();
+    const dirHC      = (document.getElementById('hc-dir')?.value||'').trim();
+    const ocupHC     = (document.getElementById('hc-ocup')?.value||'').trim();
+    const ecivilHC   = (document.getElementById('hc-ecivil')?.value||'').trim();
+
+    const updates = {};
+    if (nombreHC)   updates.nombre       = nombreHC;
+    if (apellidoHC) updates.apellido     = apellidoHC;
+    if (telHC)      updates.telefono     = telHC;
+    if (emailHC)    updates.email        = emailHC;
+    if (dirHC)      updates.direccion    = dirHC;
+    if (ocupHC)     updates.ocupacion    = ocupHC;
+    if (ecivilHC)   updates.estado_civil = ecivilHC;
+
+    if (Object.keys(updates).length > 0) {
+      const { error: upErr } = await db.from('patients').update(updates).eq('id', patientId);
+      if (!upErr) {
+        // Actualizar en memoria local también
+        const idx = patients.findIndex(p => p.id === patientId);
+        if (idx >= 0) patients[idx] = { ...patients[idx], ...updates };
+        renderPatientsTable();
+      }
+    }
+
     showToast('Historia clínica guardada ✓', 'success');
     await loadHistories();
     showHCList();
