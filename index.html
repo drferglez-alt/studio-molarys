@@ -5611,6 +5611,8 @@ async function saveEvolucion(patientId, editId) {
   document.getElementById('modal-add-evolucion')?.remove();
   renderEvolTabla(patientId, lista);
   showToast(editId ? 'Nota actualizada ✓' : 'Nota guardada ✓', 'success');
+  // Actualizar badge de pendientes
+  setTimeout(() => checkNotasPendientes(), 500);
 }
 
 async function printEvolucion(patientId, nombre, expediente) {
@@ -5737,15 +5739,36 @@ async function checkNotasPendientes() {
     }
 
     // Para cada cobro, verificar si hay nota de evolución en esa misma fecha
+    // (Supabase + localStorage como fallback)
     const pendientes = [];
     for (const c of cobros) {
       const fechaCobro = new Date(c.created_at).toISOString().split('T')[0];
-      const { data: notas } = await db.from('patient_evolution')
-        .select('id')
-        .eq('patient_id', c.patient_id)
-        .eq('fecha_iso', fechaCobro)
-        .limit(1);
-      if (!notas || !notas.length) {
+
+      // 1. Buscar en Supabase por fecha_iso
+      let tieneNota = false;
+      try {
+        const { data: notas } = await db.from('patient_evolution')
+          .select('id')
+          .eq('patient_id', c.patient_id)
+          .eq('fecha_iso', fechaCobro)
+          .limit(1);
+        if (notas && notas.length > 0) tieneNota = true;
+      } catch(e2) {}
+
+      // 2. Si no encontró en Supabase, buscar en localStorage
+      if (!tieneNota) {
+        const localNotas = getEvolLocal(c.patient_id);
+        tieneNota = localNotas.some(n => {
+          const fLocal = n.fecha_iso || (n.fecha ? fechaCobro : null);
+          // Comparar por fecha_iso o por fecha formateada del mismo día
+          if (n.fecha_iso === fechaCobro) return true;
+          // También verificar que la nota NO sea automática del cobro (para no autoexcluir)
+          if (n.nota && !n.nota.includes('Registrado por:') && n.fecha_iso === fechaCobro) return true;
+          return false;
+        });
+      }
+
+      if (!tieneNota) {
         pendientes.push(c);
       }
     }
