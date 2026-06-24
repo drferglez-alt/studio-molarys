@@ -6433,21 +6433,138 @@ async function loadPatientPayments(patientId) {
     const fmt = n => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     const pagoIcon = { efectivo: '💵', tarjeta: '💳', transferencia: '📱' };
     container.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 120px 100px 120px;padding:10px 24px;background:var(--cream);border-bottom:1px solid var(--border);">
+      <div style="display:grid;grid-template-columns:1fr 110px 100px 110px 72px;padding:10px 16px;background:var(--cream);border-bottom:1px solid var(--border);">
         <div class="th">Tratamiento</div>
         <div class="th">Fecha</div>
         <div class="th">Pago</div>
         <div class="th">Monto</div>
+        <div class="th"></div>
       </div>
       ${data.map(r => `
-      <div style="display:grid;grid-template-columns:1fr 120px 100px 120px;padding:13px 24px;border-bottom:1px solid rgba(0,0,0,0.04);align-items:center;">
-        <div style="font-size:13px;font-weight:500;">${r.treatments?.nombre||'Sin tratamiento'}</div>
+      <div style="display:grid;grid-template-columns:1fr 110px 100px 110px 72px;padding:11px 16px;border-bottom:1px solid rgba(0,0,0,0.04);align-items:center;">
+        <div style="font-size:13px;font-weight:500;">${r.treatments?.nombre || r.notas || 'Sin tratamiento'}</div>
         <div style="font-size:12px;color:var(--text-muted);">${formatDate(r.created_at)}</div>
         <div style="font-size:13px;">${pagoIcon[r.tipo_pago]||''} ${r.tipo_pago||''}</div>
         <div style="font-size:14px;font-weight:600;color:var(--blue-mid);">${fmt(r.ingreso_bruto)}</div>
+        <div style="display:flex;gap:4px;">
+          <button onclick="editPago('${r.id}','${patientId}')" title="Editar"
+            style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--blue-mid);">✏️</button>
+          <button onclick="deletePago('${r.id}','${patientId}')" title="Eliminar"
+            style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#dc2626;">🗑</button>
+        </div>
       </div>`).join('')}`;
   } catch(e) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">Sin pagos registrados</div>';
+  }
+}
+
+async function deletePago(incomeId, patientId) {
+  if (!confirm('¿Eliminar este registro de pago?\n\nEsta acción no se puede deshacer.')) return;
+  try {
+    const { error } = await db.from('income').delete().eq('id', incomeId);
+    if (error) throw error;
+    showToast('Pago eliminado', 'success');
+    loadPatientPayments(patientId);
+  } catch(e) {
+    showToast('Error al eliminar', 'error');
+  }
+}
+
+async function editPago(incomeId, patientId) {
+  window._editPagoCtx = { incomeId, patientId };
+  // Cargar datos del pago
+  let r = null;
+  try {
+    const { data } = await db.from('income')
+      .select('*, treatments(nombre)')
+      .eq('id', incomeId).single();
+    r = data;
+  } catch(e) {}
+  if (!r) { showToast('No se encontró el registro', 'error'); return; }
+
+  // Construir opciones de tratamientos
+  const tratOpts = treatments.map(t =>
+    '<option value="' + t.id + '" data-precio="' + t.precio + '" ' + (r.treatment_id === t.id ? 'selected' : '') + '>' + t.nombre + ' — $' + (t.precio||0).toLocaleString('es-MX') + '</option>'
+  ).join('');
+
+  const pagoOpts = ['efectivo','tarjeta','transferencia'].map(p =>
+    '<option value="' + p + '" ' + (r.tipo_pago === p ? 'selected' : '') + '>' + (p==='efectivo'?'💵 Efectivo':p==='tarjeta'?'💳 Tarjeta':'📱 Transferencia') + '</option>'
+  ).join('');
+
+  // Construir doctores
+  const drOpts = getDoctors().map(d => {
+    const val = (d.titulo||'Dr.') + ' ' + d.nombre + ' ' + d.apellido;
+    return '<option value="' + val + '" ' + (r.doctor_nombre === val ? 'selected' : '') + '>' + val + '</option>';
+  }).join('');
+
+  let m = document.getElementById('modal-edit-pago');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-edit-pago';
+  m.className = 'modal-overlay open';
+  m.innerHTML = '<div class="modal" style="max-width:480px;">'
+    + '<div class="modal-header">'
+      + '<div class="modal-title">✏️ Editar Pago</div>'
+      + '<button class="modal-close" onclick="document.getElementById(\'modal-edit-pago\').remove()">✕</button>'
+    + '</div>'
+    + '<div class="modal-body">'
+      + '<div class="form-field" style="margin-bottom:14px;">'
+        + '<label>Tratamiento</label>'
+        + '<select id="ep-tratamiento"><option value="">Sin tratamiento</option>' + tratOpts + '</select>'
+      + '</div>'
+      + '<div class="form-row">'
+        + '<div class="form-field"><label>Monto ($)</label><input type="number" id="ep-monto" value="' + (r.ingreso_bruto||0) + '"></div>'
+        + '<div class="form-field"><label>Forma de pago</label><select id="ep-pago">' + pagoOpts + '</select></div>'
+      + '</div>'
+      + '<div class="form-field" style="margin-bottom:14px;">'
+        + '<label>Doctor que atendió</label>'
+        + '<select id="ep-doctor"><option value="">— Sin asignar —</option>' + drOpts + '</select>'
+      + '</div>'
+      + '<div class="form-field">'
+        + '<label>Notas / Descripción</label>'
+        + '<input type="text" id="ep-notas" value="' + (r.notas||'') + '" placeholder="Descripción del cobro">'
+      + '</div>'
+    + '</div>'
+    + '<div class="modal-footer">'
+      + '<button class="btn-secondary" onclick="document.getElementById(\'modal-edit-pago\').remove()">Cancelar</button>'
+      + '<button class="btn-gold" onclick="guardarEditPagoModal()">Guardar cambios</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target === m) m.remove(); };
+}
+
+function guardarEditPagoModal() {
+  const ctx = window._editPagoCtx || {};
+  guardarEditPago(ctx.incomeId, ctx.patientId);
+}
+
+async function guardarEditPago(incomeId, patientId) {
+  const tratId  = document.getElementById('ep-tratamiento').value;
+  const monto   = parseFloat(document.getElementById('ep-monto').value) || 0;
+  const pago    = document.getElementById('ep-pago').value;
+  const doctor  = document.getElementById('ep-doctor').value;
+  const notas   = document.getElementById('ep-notas').value.trim();
+
+  if (monto <= 0) { showToast('El monto debe ser mayor a 0', 'error'); return; }
+
+  try {
+    const updates = {
+      ingreso_bruto:  monto,
+      tipo_pago:      pago,
+      doctor_nombre:  doctor || null,
+      notas:          notas || null,
+    };
+    if (tratId) updates.treatment_id = tratId;
+
+    const { error } = await db.from('income').update(updates).eq('id', incomeId);
+    if (error) throw error;
+    showToast('Pago actualizado ✓', 'success');
+    document.getElementById('modal-edit-pago')?.remove();
+    loadPatientPayments(patientId);
+  } catch(e) {
+    showToast('Error al guardar', 'error');
+    console.error(e);
   }
 }
 
@@ -8399,4 +8516,4 @@ async function saveHistory() {
 }
 </script>
 </body>
-</html>
+      + '<button class="btn-gold" onclick="guardarEditPagoModal()">Guardar cambios</button>'
