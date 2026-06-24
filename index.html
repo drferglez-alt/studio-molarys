@@ -2655,12 +2655,14 @@
 
 <!-- MODAL RECIBIR PAGO -->
 <div class="modal-overlay" id="modal-recibir-pago">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:600px;">
     <div class="modal-header">
       <div class="modal-title">💳 Recibir Pago</div>
       <button class="modal-close" onclick="closeModal('modal-recibir-pago')">✕</button>
     </div>
     <div class="modal-body">
+
+      <!-- Paciente -->
       <div class="form-field" style="margin-bottom:16px;">
         <label>Paciente *</label>
         <select id="rp-patient" onchange="checkPresupuestoPaciente()">
@@ -2668,32 +2670,14 @@
         </select>
       </div>
 
-      <!-- Presupuesto activo (si existe) -->
-      <div id="rp-presupuesto-block" style="display:none;background:var(--blue-xpale);border:1px solid var(--blue-pale);border-radius:6px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:12px;font-weight:600;color:var(--blue-deep);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Presupuesto Activo</div>
-        <div id="rp-presupuesto-info" style="font-size:13px;color:var(--text-secondary);"></div>
-        <div style="margin-top:12px;">
-          <label style="font-size:12px;font-weight:500;color:var(--text-secondary);display:block;margin-bottom:8px;">¿Este pago es abono al presupuesto?</label>
-          <div style="display:flex;gap:8px;">
-            <button id="rp-btn-si" class="hc-yn-btn" onclick="setAbonoMode(true)">SÍ — Es abono</button>
-            <button id="rp-btn-no" class="hc-yn-btn active-no" onclick="setAbonoMode(false)">NO — Cobro independiente</button>
-          </div>
-        </div>
-      </div>
-
+      <!-- Doctor + Forma de pago -->
       <div class="form-row">
         <div class="form-field">
-          <label>Tratamiento *</label>
-          <select id="rp-treatment" onchange="fillRPPrice()">
-            <option value="">Seleccionar...</option>
+          <label>Doctor que atendió</label>
+          <select id="rp-doctor">
+            <option value="">— Seleccionar doctor —</option>
           </select>
         </div>
-        <div class="form-field">
-          <label>Monto ($) *</label>
-          <input type="number" id="rp-monto" placeholder="0.00" oninput="calcRPCascada()">
-        </div>
-      </div>
-      <div class="form-row">
         <div class="form-field">
           <label>Forma de Pago</label>
           <select id="rp-pago" onchange="calcRPCascada()">
@@ -2702,25 +2686,31 @@
             <option value="transferencia">📱 Transferencia</option>
           </select>
         </div>
-        <div class="form-field">
-          <label>Descuento ($)</label>
-          <input type="number" id="rp-descuento" placeholder="0.00" value="0" oninput="calcRPCascada()">
-        </div>
-      </div>
-      <div class="form-field" style="margin-bottom:16px;">
-        <label>Doctor que atendió *</label>
-        <select id="rp-doctor">
-          <option value="">— Seleccionar doctor —</option>
-        </select>
-      </div>
-      <div class="form-field" style="margin-bottom:16px;">
-        <label>Notas</label>
-        <textarea id="rp-notas" placeholder="Observaciones del cobro..."></textarea>
       </div>
 
-      <!-- Resumen rápido -->
-      <div id="rp-resumen" style="display:none;background:var(--cream);border-radius:6px;padding:14px;font-size:13px;">
+      <!-- SERVICIOS MÚLTIPLES -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);">Servicios / Tratamientos *</label>
+          <button type="button" onclick="addRPServicio()" style="background:none;border:1px dashed var(--blue-mid);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--blue-mid);cursor:pointer;font-family:inherit;">+ Agregar servicio</button>
+        </div>
+        <div id="rp-servicios-list"></div>
       </div>
+
+      <!-- Descuento + Notas -->
+      <div class="form-row">
+        <div class="form-field">
+          <label>Descuento total ($)</label>
+          <input type="number" id="rp-descuento" placeholder="0.00" value="0" oninput="calcRPCascada()">
+        </div>
+        <div class="form-field">
+          <label>Notas</label>
+          <textarea id="rp-notas" placeholder="Observaciones..." style="min-height:38px;"></textarea>
+        </div>
+      </div>
+
+      <!-- Resumen -->
+      <div id="rp-resumen" style="display:none;background:var(--cream);border-radius:8px;padding:14px;font-size:13px;margin-top:4px;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('modal-recibir-pago')">Cancelar</button>
@@ -6851,22 +6841,81 @@ function generarReceta() {
 // ============================================================
 let rpIsAbono = false;
 
+// Estado de servicios en el modal de cobro
+window._rpServicios = [];
+
+function addRPServicio(tratId, tratNombre, precio) {
+  window._rpServicios = window._rpServicios || [];
+  window._rpServicios.push({
+    id: tratId || '',
+    nombre: tratNombre || '',
+    precio: precio || 0,
+    cantidad: 1
+  });
+  renderRPServicios();
+}
+
+function removeRPServicio(idx) {
+  window._rpServicios.splice(idx, 1);
+  renderRPServicios();
+  calcRPCascada();
+}
+
+function renderRPServicios() {
+  const cont = document.getElementById('rp-servicios-list');
+  if (!cont) return;
+  const opts = treatments.map(t =>
+    `<option value="${t.id}" data-precio="${t.precio}" data-nombre="${t.nombre}">${t.nombre} — $${(t.precio||0).toLocaleString('es-MX')}</option>`
+  ).join('');
+
+  cont.innerHTML = (window._rpServicios||[]).map((s, i) => `
+    <div style="display:grid;grid-template-columns:1fr 90px 70px 32px;gap:8px;align-items:center;margin-bottom:8px;">
+      <select onchange="updateRPServicio(${i},'id',this.value);updateRPServicio(${i},'nombre',this.options[this.selectedIndex].dataset.nombre);updateRPServicio(${i},'precio',parseFloat(this.options[this.selectedIndex].dataset.precio)||0);calcRPCascada();"
+        style="padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--white);">
+        <option value="">Seleccionar servicio...</option>
+        ${treatments.map(t => `<option value="${t.id}" data-precio="${t.precio}" data-nombre="${t.nombre}" ${s.id===t.id?'selected':''}>${t.nombre} — $${(t.precio||0).toLocaleString('es-MX')}</option>`).join('')}
+      </select>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button onclick="updateRPServicio(${i},'cantidad',Math.max(1,(window._rpServicios[${i}].cantidad||1)-1));calcRPCascada();" style="background:var(--cream);border:1px solid var(--border);border-radius:4px;width:24px;height:32px;cursor:pointer;font-size:14px;">−</button>
+        <input type="number" min="1" value="${s.cantidad||1}"
+          onchange="updateRPServicio(${i},'cantidad',parseInt(this.value)||1);calcRPCascada();"
+          style="width:36px;text-align:center;padding:6px 4px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;">
+        <button onclick="updateRPServicio(${i},'cantidad',(window._rpServicios[${i}].cantidad||1)+1);calcRPCascada();" style="background:var(--cream);border:1px solid var(--border);border-radius:4px;width:24px;height:32px;cursor:pointer;font-size:14px;">+</button>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--blue-deep);text-align:right;">
+        $${((s.precio||0)*(s.cantidad||1)).toLocaleString('es-MX',{minimumFractionDigits:2})}
+      </div>
+      <button onclick="removeRPServicio(${i})" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;cursor:pointer;padding:6px;font-size:14px;">✕</button>
+    </div>`).join('');
+
+  if (!window._rpServicios.length) {
+    cont.innerHTML = '<div style="text-align:center;border:2px dashed var(--border);border-radius:8px;padding:16px;color:var(--text-muted);font-size:13px;">Agrega al menos un servicio</div>';
+  }
+  calcRPCascada();
+}
+
+function updateRPServicio(idx, campo, valor) {
+  if (window._rpServicios && window._rpServicios[idx]) {
+    window._rpServicios[idx][campo] = valor;
+    renderRPServicios();
+  }
+}
+
 function openRecibirPagoModal() {
-  // Populate patients
   const sel = document.getElementById('rp-patient');
   sel.innerHTML = '<option value="">Seleccionar paciente...</option>';
   patients.forEach(p => sel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
-  // Populate treatments
-  const tsel = document.getElementById('rp-treatment');
-  tsel.innerHTML = '<option value="">Seleccionar...</option>';
-  treatments.forEach(t => tsel.innerHTML += `<option value="${t.id}" data-precio="${t.precio}">${t.nombre} — $${t.precio}</option>`);
-  // Reset
-  document.getElementById('rp-presupuesto-block').style.display = 'none';
+
+  // Reset servicios — empezar con uno vacío
+  window._rpServicios = [{ id:'', nombre:'', precio:0, cantidad:1 }];
+  renderRPServicios();
+
+  document.getElementById('rp-presupuesto-block') && (document.getElementById('rp-presupuesto-block').style.display = 'none');
   document.getElementById('rp-resumen').style.display = 'none';
-  document.getElementById('rp-monto').value = '';
   document.getElementById('rp-descuento').value = '0';
   document.getElementById('rp-notas').value = '';
   rpIsAbono = false;
+
   // Poblar doctores
   const dsel = document.getElementById('rp-doctor');
   dsel.innerHTML = '<option value="">— Seleccionar doctor —</option>';
@@ -6874,6 +6923,7 @@ function openRecibirPagoModal() {
     const ced = d.especialidades?.[0]?.cedula || '';
     dsel.innerHTML += `<option value="${d.id}" data-nombre="${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}" data-cedula="${ced}">${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}</option>`;
   });
+
   document.getElementById('modal-recibir-pago').classList.add('open');
 }
 
@@ -6901,11 +6951,13 @@ function fillRPPrice() {
 }
 
 function calcRPCascada() {
-  const bruto = parseFloat(document.getElementById('rp-monto').value) || 0;
-  const descuento = parseFloat(document.getElementById('rp-descuento').value) || 0;
-  const pago = document.getElementById('rp-pago').value;
+  // Calcular bruto sumando todos los servicios
+  const servicios = window._rpServicios || [];
+  const bruto = servicios.reduce((s, sv) => s + (sv.precio||0)*(sv.cantidad||1), 0);
+  const descuento = parseFloat(document.getElementById('rp-descuento')?.value) || 0;
+  const pago = document.getElementById('rp-pago')?.value || 'efectivo';
   const resumen = document.getElementById('rp-resumen');
-  if (bruto === 0) { resumen.style.display = 'none'; return; }
+  if (bruto === 0) { if(resumen) resumen.style.display = 'none'; return; }
 
   const neto1 = bruto - descuento;
   // Calcular internamente para corte de caja (no se muestra al usuario)
@@ -6940,9 +6992,11 @@ function calcRPCascada() {
 
 async function saveRecibirPago() {
   const patientId = document.getElementById('rp-patient').value;
-  const treatmentId = document.getElementById('rp-treatment').value;
-  const bruto = parseFloat(document.getElementById('rp-monto').value) || 0;
-  if (!patientId || bruto === 0) { showToast('Selecciona paciente e ingresa monto', 'error'); return; }
+  const servicios = (window._rpServicios || []).filter(s => s.id && s.precio > 0);
+  const bruto = servicios.reduce((s, sv) => s + (sv.precio||0)*(sv.cantidad||1), 0);
+  if (!patientId) { showToast('Selecciona un paciente', 'error'); return; }
+  if (servicios.length === 0 || bruto === 0) { showToast('Agrega al menos un servicio con precio', 'error'); return; }
+  const treatmentId = servicios[0]?.id || null; // primer servicio como referencia principal
 
   const btn = document.getElementById('btn-save-rp');
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -6962,6 +7016,8 @@ async function saveRecibirPago() {
 
   try {
     // Construir el objeto con solo los campos básicos primero
+    // Nombre de tratamientos para income
+    const tratNombreIncome = servicios.map(s => s.cantidad>1?`${s.cantidad}x ${s.nombre}`:s.nombre).join(', ');
     const incomeData = {
       patient_id: patientId,
       treatment_id: treatmentId || null,
@@ -6969,6 +7025,7 @@ async function saveRecibirPago() {
       ingreso_bruto: r.bruto || bruto,
       tipo_pago: metodoPago,
     };
+    try { incomeData.notas = tratNombreIncome; } catch(e){}
     if (rpDoctorNombre) { try { incomeData.doctor_nombre = rpDoctorNombre; incomeData.doctor_id = rpDoctorId || null; } catch(e){} }
     try { incomeData.cobrador_nombre = currentUserProfile?.nombre || currentUser?.email || ''; } catch(e){}
 
@@ -7010,8 +7067,7 @@ async function saveRecibirPago() {
 
     // ── Crear nota de evolución automática ──
     const notasExtra = document.getElementById('rp-notas').value.trim();
-    const tratSel = document.getElementById('rp-treatment');
-    const tratNombre = tratSel.options[tratSel.selectedIndex]?.text || '';
+    const tratNombre = servicios.map(s => s.cantidad>1?`${s.cantidad}x ${s.nombre}`:s.nombre).join(', ') || 'Consulta';
     const metodosLabel = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia' };
     const now = new Date();
     const fechaISO = now.toISOString().split('T')[0];
@@ -7021,7 +7077,13 @@ async function saveRecibirPago() {
     const horaDisplay = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
 
     const cobradorNombre = currentUserProfile?.nombre || currentUser?.email || '';
-    let notaTexto = tratNombre && tratNombre !== 'Seleccionar...' ? `${tratNombre}` : 'Consulta / Pago registrado';
+    // Listar todos los servicios cobrados
+    const serviciosTexto = servicios.map(s => {
+      const cant = s.cantidad > 1 ? (s.cantidad + 'x ') : '';
+      const subtotal = ((s.precio||0)*(s.cantidad||1)).toLocaleString('es-MX',{minimumFractionDigits:2});
+      return cant + s.nombre + ' — $' + subtotal;
+    }).join('\n');
+    let notaTexto = serviciosTexto || 'Consulta / Pago registrado';
     if (notasExtra) notaTexto += `
 ${notasExtra}`;
     if (cobradorNombre) notaTexto += `
