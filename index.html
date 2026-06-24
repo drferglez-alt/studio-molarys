@@ -5742,29 +5742,42 @@ async function checkNotasPendientes() {
     // (Supabase + localStorage como fallback)
     const pendientes = [];
     for (const c of cobros) {
-      const fechaCobro = new Date(c.created_at).toISOString().split('T')[0];
+      // Usar fecha LOCAL (no UTC) para evitar desfase horario México
+      const _dc = new Date(c.created_at);
+      const fechaCobro = _dc.getFullYear() + '-' +
+        String(_dc.getMonth()+1).padStart(2,'0') + '-' +
+        String(_dc.getDate()).padStart(2,'0');
 
-      // 1. Buscar en Supabase por fecha_iso
+      // 1. Buscar en Supabase en rango ±1 día (para desfase horario)
       let tieneNota = false;
       try {
+        const _d0 = new Date(fechaCobro);
+        const _d1 = new Date(_d0); _d1.setDate(_d1.getDate()-1);
+        const _d2 = new Date(_d0); _d2.setDate(_d2.getDate()+1);
+        const fMin = _d1.toISOString().split('T')[0];
+        const fMax = _d2.toISOString().split('T')[0];
         const { data: notas } = await db.from('patient_evolution')
-          .select('id')
+          .select('id, nota')
           .eq('patient_id', c.patient_id)
-          .eq('fecha_iso', fechaCobro)
-          .limit(1);
-        if (notas && notas.length > 0) tieneNota = true;
+          .gte('fecha_iso', fMin)
+          .lte('fecha_iso', fMax);
+        if (notas && notas.some(n => !n.nota?.includes('Registrado por:'))) tieneNota = true;
+        // También contar notas automáticas si no hay manual
+        if (!tieneNota && notas && notas.length > 0) tieneNota = true;
       } catch(e2) {}
 
-      // 2. Si no encontró en Supabase, buscar en localStorage
+      // 2. Si no encontró en Supabase, buscar en localStorage (con ±1 día)
       if (!tieneNota) {
         const localNotas = getEvolLocal(c.patient_id);
+        const _d0 = new Date(fechaCobro);
+        const _d1 = new Date(_d0); _d1.setDate(_d1.getDate()-1);
+        const _d2 = new Date(_d0); _d2.setDate(_d2.getDate()+1);
+        const fMin = _d1.toISOString().split('T')[0];
+        const fMax = _d2.toISOString().split('T')[0];
         tieneNota = localNotas.some(n => {
-          const fLocal = n.fecha_iso || (n.fecha ? fechaCobro : null);
-          // Comparar por fecha_iso o por fecha formateada del mismo día
-          if (n.fecha_iso === fechaCobro) return true;
-          // También verificar que la nota NO sea automática del cobro (para no autoexcluir)
-          if (n.nota && !n.nota.includes('Registrado por:') && n.fecha_iso === fechaCobro) return true;
-          return false;
+          const fi = n.fecha_iso;
+          if (!fi) return false;
+          return fi >= fMin && fi <= fMax;
         });
       }
 
