@@ -4096,7 +4096,7 @@ async function loadPatientHistories(patientId) {
             <div style="font-size:13px;font-weight:600;">${hcReciente.motivo_consulta||'—'}</div>
             <div style="font-size:11px;color:var(--text-muted);">${formatDate(hcReciente.created_at)}</div>
           </div>
-          <button onclick="openNewHistoryModal('${patientId}')" style="background:none;border:1px solid var(--blue-mid);color:var(--blue-mid);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">+ Actualizar HC</button>
+          <button onclick="editarHC('${hcReciente.id}','${patientId}')" style="background:none;border:1px solid var(--blue-mid);color:var(--blue-mid);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">✏️ Editar HC</button>
         </div>
 
         ${seccion('Antecedentes Sistémicos', [
@@ -8442,9 +8442,160 @@ function renderHistoriesTable(filter = '') {
     </div>`).join('');
 }
 
+async function editarHC(hcId, patientId) {
+  // Cargar la HC existente
+  let hc = null;
+  try {
+    const { data } = await db.from('clinical_histories').select('*').eq('id', hcId).single();
+    hc = data;
+  } catch(e) {}
+  if (!hc) { showToast('No se pudo cargar la historia clínica', 'error'); return; }
+
+  showModule('histories');
+  resetHCForm();
+  showHCForm();
+  populatePatientSelect();
+
+  const now = new Date();
+  document.getElementById('hc-folio').textContent = 'HC-' + String(histories.length + 1).padStart(4, '0');
+  document.getElementById('hc-fecha').textContent = now.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  setTimeout(() => {
+    // Seleccionar paciente
+    const sel = document.getElementById('hc-patient-id');
+    if (sel) { sel.value = patientId; fillPatientData(); }
+
+    // Helper para setear valor
+    const setV = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+    const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+
+    // Helper para botones SÍ/NO
+    const setYN = (field, val) => {
+      const hidden = document.getElementById(field);
+      if (!hidden) return;
+      hidden.value = val || 'N';
+      const group = hidden.closest ? hidden.closest('.form-field')?.querySelectorAll('.hc-yn-btn') : null;
+      if (!group) {
+        // Buscar el grupo por proximidad en el DOM
+        const allBtns = document.querySelectorAll('.hc-yn-btns');
+        allBtns.forEach(g => {
+          if (g.nextElementSibling?.id === field || g.parentElement?.querySelector('#' + field)) {
+            const btns = g.querySelectorAll('.hc-yn-btn');
+            btns.forEach(b => b.classList.remove('active-si','active-no'));
+            if (val === 'S') { btns[0]?.classList.add('active-si'); }
+            else { btns[btns.length-1]?.classList.add('active-no'); }
+          }
+        });
+        return;
+      }
+      group.forEach(b => b.classList.remove('active-si','active-no'));
+      if (val === 'S') { group[0]?.classList.add('active-si'); }
+      else { group[group.length-1]?.classList.add('active-no'); }
+    };
+
+    // --- Motivo y enfermedad actual ---
+    setV('hc-motivo',       hc.motivo_consulta);
+    setV('hc-tiempo-enf',  hc.tiempo_enfermedad);
+    setV('hc-signos',       hc.signos_sintomas);
+    setV('hc-relato',       hc.relato);
+    setV('hc-funciones',    hc.funciones_biologicas);
+
+    // --- Antecedentes ---
+    setV('hc-trat-med',     hc.trat_medico);     setV('hc-trat-med-det',   hc.trat_medico_det);
+    setV('hc-alergia',      hc.alergia_med);      setV('hc-alergia-det',    hc.alergia_med_det);
+    setV('hc-alergia-an',   hc.alergia_anest);    setV('hc-alergia-an-det', hc.alergia_anest_det);
+    setV('hc-drogas',       hc.drogas);           setV('hc-drogas-det',     hc.drogas_det);
+    setV('hc-alcohol',      hc.alcohol);          setV('hc-alcohol-det',    hc.alcohol_det);
+    setV('hc-tabaco',       hc.tabaco);           setV('hc-tabaco-det',     hc.tabaco_det);
+    setV('hc-cardio',       hc.cardio);           setV('hc-cardio-det',     hc.cardio_det);
+    setV('hc-cirugia',      hc.cirugia);          setV('hc-cirugia-det',    hc.cirugia_det);
+    setV('hc-resp',         hc.respiratorio);     setV('hc-resp-det',       hc.respiratorio_det);
+    setV('hc-sangra',       hc.sangrado);
+    setV('hc-ets',          hc.ets);              setV('hc-ets-det',        hc.ets_det);
+    setV('hc-diabetes',     hc.diabetes);
+
+    // Botones SÍ/NO — actualizar visualmente
+    ['trat-med','alergia','alergia-an','drogas','alcohol','tabaco','cardio','cirugia','resp','sangra','ets','diabetes'].forEach(f => {
+      const hidden = document.getElementById('hc-' + f);
+      if (!hidden) return;
+      const v = hidden.value;
+      // Buscar botones en el mismo contenedor
+      let parent = hidden.parentElement;
+      while (parent && !parent.querySelector('.hc-yn-btn')) parent = parent.parentElement;
+      if (!parent) return;
+      const btns = parent.querySelectorAll('.hc-yn-btn');
+      btns.forEach(b => b.classList.remove('active-si','active-no'));
+      if (v === 'S') btns[0]?.classList.add('active-si');
+      else btns[btns.length-1]?.classList.add('active-no');
+    });
+
+    // --- Checkboxes sistémicos ---
+    setCheck('hc-rad',       hc.radiaciones);
+    setCheck('hc-quimio',    hc.quimioterapia);
+    setCheck('hc-esteroides',hc.esteroides);
+    setCheck('hc-bifos',     hc.bifosfonatos);
+    setCheck('hc-hepatitis', hc.hepatitis);
+    setCheck('hc-tuberc',    hc.tuberculosis);
+    setCheck('hc-asma',      hc.asma);
+    setCheck('hc-ulcera',    hc.ulcera);
+    setCheck('hc-tiroides',  hc.tiroides);
+    setCheck('hc-anemia',    hc.anemia);
+    setCheck('hc-leucemia',  hc.leucemia);
+    setCheck('hc-hemofilia', hc.hemofilia);
+    setCheck('hc-vitk',      hc.deficit_vitk);
+    setCheck('hc-vih',       hc.vih);
+    setCheck('hc-gastritis', hc.gastritis);
+
+    // --- Personales / familiares ---
+    setV('hc-ant-fam',   hc.ant_familiares);
+    setV('hc-ant-pers',  hc.ant_personales);
+    setV('hc-medico',    hc.medico);
+    setV('hc-medicacion',hc.medicacion);
+    setV('hc-tutor',     hc.tutor);
+
+    // --- Ginecológicos ---
+    setV('hc-anticoncep',     hc.anticoncep);     setV('hc-anticoncep-det', hc.anticoncep_det);
+    setV('hc-embarazo',       hc.embarazo);       setV('hc-embarazo-det',   hc.embarazo_det);
+    setV('hc-hormonas',       hc.hormonas);       setV('hc-hormonas-det',   hc.hormonas_det);
+
+    // --- Odontológico ---
+    setV('hc-cepilla',    hc.cepilla);      setV('hc-cepilla-det', hc.cepilla_det);
+    setV('hc-sangra-enc', hc.sangra_encias);
+    setV('hc-aliento',    hc.mal_aliento);
+    setV('hc-sensib',     hc.sensibilidad);
+    setV('hc-ortod',      hc.ortodoncia);
+    setV('hc-prob-an',    hc.prob_anestesia);
+    setV('hc-hemorr',     hc.hemorragia_ext);
+    setV('hc-brux',       hc.bruxismo);
+    setV('hc-mandib',     hc.mandibula);
+    setV('hc-conservar',  hc.conservar);
+
+    // --- Signos vitales ---
+    setV('hc-pa',   hc.pa);
+    setV('hc-fc',   hc.fc);
+    setV('hc-temp', hc.temp);
+    setV('hc-fr',   hc.fr);
+
+    // --- Examen físico ---
+    setV('hc-extraoral',     hc.extraoral);
+    setV('hc-intraoral',     hc.intraoral);
+    setV('hc-examenes',      hc.examenes_complementarios);
+    setV('hc-obs-clinicas',  hc.obs_clinicas);
+    setV('hc-diagnostico',   hc.diagnostico);
+    setV('hc-plan',          hc.plan);
+    setV('hc-observaciones', hc.observaciones);
+
+    // Guardar el id de la HC que se está editando
+    window._editandoHCId = hcId;
+
+    showToast('Historia clínica cargada — modifica los campos necesarios', 'info');
+  }, 200);
+}
+
 function openNewHistoryModal(patientId) {
   showModule('histories');
   resetHCForm(); // limpiar siempre antes de abrir
+  window._editandoHCId = null;
   showHCForm();
   populatePatientSelect();
   const now = new Date();
@@ -8625,7 +8776,15 @@ async function saveHistory() {
   };
 
   try {
-    const { data, error } = await db.from('clinical_histories').insert([record]).select();
+    let data, error;
+    if (window._editandoHCId) {
+      // ACTUALIZAR historia existente
+      ({ error } = await db.from('clinical_histories').update(record).eq('id', window._editandoHCId));
+      window._editandoHCId = null;
+    } else {
+      // INSERTAR nueva historia
+      ({ data, error } = await db.from('clinical_histories').insert([record]).select());
+    }
     if (error) throw error;
 
     // Sincronizar datos del paciente si se modificaron en la HC
