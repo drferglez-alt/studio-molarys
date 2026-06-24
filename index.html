@@ -6287,17 +6287,16 @@ async function printExpediente(patientId) {
 
 
 async function printPagos(patientId, nombre) {
-  // Cargar pagos frescos de Supabase — intentar traer doctor_nombre y cobrador_nombre
   let pagos = [];
   try {
     const { data } = await db.from('income')
-      .select('id, ingreso_bruto, tipo_pago, doctor_nombre, cobrador_nombre, created_at, treatments(nombre)')
+      .select('id, ingreso_bruto, tipo_pago, doctor_nombre, cobrador_nombre, created_at, treatments(nombre), notas')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false });
     pagos = data || [];
   } catch(e) {}
 
-  // Complementar con notas de evolución del mismo día para obtener doctor si income no lo tiene
+  // Complementar con notas de evolución del mismo día para doctor
   const evolPorFecha = {};
   try {
     const { data: evolData } = await db.from('patient_evolution')
@@ -6308,21 +6307,58 @@ async function printPagos(patientId, nombre) {
     });
   } catch(e) {}
 
+  // Agrupar cobros del mismo día (para evitar mostrar líneas separadas de una misma cita)
+  const porDia = {};
+  pagos.forEach(r => {
+    const dia = r.created_at ? r.created_at.split('T')[0] : 'sin-fecha';
+    if (!porDia[dia]) porDia[dia] = [];
+    porDia[dia].push(r);
+  });
+
+  // Consolidar: si el mismo día hay varios cobros del mismo doctor, agrupar
+  const pagosConsolidados = [];
+  Object.entries(porDia).sort((a,b) => b[0].localeCompare(a[0])).forEach(([dia, grupo]) => {
+    if (grupo.length === 1) {
+      pagosConsolidados.push({ ...grupo[0], _grupo: false });
+    } else {
+      // Verificar si son del mismo doctor (misma cita)
+      const doctores = [...new Set(grupo.map(g => g.doctor_nombre||'').filter(Boolean))];
+      if (doctores.length <= 1) {
+        // Mismo doctor o sin doctor — consolidar en una fila
+        const totalBruto = grupo.reduce((s,g) => s + (g.ingreso_bruto||0), 0);
+        const servicios = grupo.map(g => {
+          const n = (g.treatments && g.treatments.nombre) ? g.treatments.nombre : (g.notas || 'Servicio');
+          return n;
+        }).join(', ');
+        pagosConsolidados.push({
+          ...grupo[0],
+          ingreso_bruto: totalBruto,
+          _tratamiento: servicios,
+          _grupo: true,
+          _count: grupo.length
+        });
+      } else {
+        // Diferentes doctores — mantener separados
+        grupo.forEach(g => pagosConsolidados.push({ ...g, _grupo: false }));
+      }
+    }
+  });
+
   const cfg = getClinicaConfig();
   const logoHtml = cfg.logo ? '<img src="' + cfg.logo + '" style="height:50px;width:auto;object-fit:contain;margin-right:12px;">' : '';
   const fechaImp = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
   const fmt = n => '$' + (n||0).toLocaleString('es-MX',{minimumFractionDigits:2});
   const pagoLabel = {efectivo:'Efectivo',tarjeta:'Tarjeta',transferencia:'Transferencia'};
 
-  const filas = pagos.length ? pagos.map(r => {
+  const filas = pagosConsolidados.length ? pagosConsolidados.map(r => {
     const fechaISO = r.created_at ? r.created_at.split('T')[0] : '';
     const fechaFmt = r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-    // Doctor: primero de income, luego de evolución del mismo día, luego —
     const doctorMostrar = r.doctor_nombre || evolPorFecha[fechaISO] || '—';
     const cobradorMostrar = r.cobrador_nombre || '—';
+    const tratMostrar = r._tratamiento || (r.treatments && r.treatments.nombre ? r.treatments.nombre : (r.notas || 'Servicio'));
     return '<tr>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + fechaFmt + '</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + (r.treatments?.nombre||'Sin tratamiento') + '</td>'
+      + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + tratMostrar + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + (pagoLabel[r.tipo_pago]||r.tipo_pago||'—') + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + doctorMostrar + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + cobradorMostrar + '</td>'
@@ -6369,7 +6405,7 @@ async function printPagos(patientId, nombre) {
     + '</tr></thead><tbody>'
     + filas
     + '</tbody></table>'
-    + '<div class="footer">Documento confidencial · Studio Molarys · ' + pagos.length + ' registro(s)</div>'
+    + '<div class="footer">Documento confidencial · Studio Molarys · ' + pagosConsolidados.length + ' registro(s)</div>'
     + '<div class="no-print"><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>'
     + '</body></html>';
 
