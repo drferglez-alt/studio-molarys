@@ -5144,7 +5144,7 @@ function renderEvolTabla(patientId, notas) {
       <td style="line-height:1.5;">${(n.nota || '').replace(/\n/g,'<br>')}</td>
       <td>${pagoHTML(n.pago, n.monto)}${n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : ''}</td>
       <td style="display:flex;gap:4px;align-items:center;padding:8px 6px;">
-        <button class="evol-del-btn" onclick="openAddEvolucionModal('${patientId}',${JSON.stringify(n).replace(/'/g,'\\x27')})" title="Editar" style="color:var(--blue-mid);">✏️</button>
+        <button class="evol-del-btn" onclick="editarNota('${patientId}',${i})" title="Editar nota" style="color:var(--blue-mid);">✏️</button>
         <button class="evol-del-btn" onclick="deleteEvolucion('${patientId}','${n.id || i}')" title="Eliminar">🗑</button>
       </td>
     </tr>`).join('');
@@ -5239,7 +5239,13 @@ async function openAddEvolucionModal(patientId, editNota) {
     + '</div>';
 
   // Guardar contexto para saveEvolucionFromModal
-  window._evolModalCtx = { patientId, editId: (editNota && editNota.id) ? editNota.id : null };
+  const lista0 = getEvolLocal(patientId);
+  const editIdx = editNota ? lista0.findIndex(n => n.id === editNota.id) : -1;
+  window._evolModalCtx = {
+    patientId,
+    editId:  (editNota && editNota.id) ? editNota.id : null,
+    editIdx: editIdx  // índice en localStorage para actualizar sin depender del id
+  };
 
   document.body.appendChild(m);
   m.onclick = (e) => { if (e.target === m) m.remove(); };
@@ -5251,6 +5257,14 @@ async function openAddEvolucionModal(patientId, editNota) {
       if (lnk) { lnk.value = editNota.income_id; onEvolPagoChange(); }
     }, 50);
   }
+}
+
+// Abrir edición usando el índice de la nota en el cache local
+function editarNota(patientId, idx) {
+  const lista = getEvolLocal(patientId);
+  const nota = lista[idx];
+  if (!nota) { showToast('No se encontró la nota', 'error'); return; }
+  openAddEvolucionModal(patientId, nota);
 }
 
 function saveEvolucionFromModal() {
@@ -5334,19 +5348,25 @@ async function saveEvolucion(patientId, editId) {
 
   // Actualizar localStorage
   const lista = getEvolLocal(patientId);
+  const ctx = window._evolModalCtx || {};
   if (editId) {
-    const idx = lista.findIndex(n => n.id === editId || n.id === editId.toString());
-    if (idx >= 0) lista[idx] = { ...lista[idx], ...record, id: editId };
-    else lista.unshift({ ...record, id: editId });
+    // Buscar por id O por índice guardado en el contexto
+    let idx = lista.findIndex(n => n.id === editId || n.id === editId.toString());
+    if (idx < 0 && ctx.editIdx >= 0) idx = ctx.editIdx;
+    if (idx >= 0) {
+      lista[idx] = { ...lista[idx], ...record, id: editId };
+    } else {
+      lista.unshift({ ...record, id: editId });
+    }
   } else {
     record.id = savedId || ('local_' + Date.now());
     lista.unshift(record);
   }
   saveEvolLocal(patientId, lista);
 
-  document.getElementById('modal-add-evolucion').remove();
+  document.getElementById('modal-add-evolucion')?.remove();
   renderEvolTabla(patientId, lista);
-  showToast('Nota de evolución guardada ✓', 'success');
+  showToast(editId ? 'Nota actualizada ✓' : 'Nota guardada ✓', 'success');
 }
 
 async function printEvolucion(patientId, nombre, expediente) {
