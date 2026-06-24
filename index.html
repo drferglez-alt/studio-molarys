@@ -3910,8 +3910,8 @@ function showPatientDetail(id) {
     <!-- HISTORIAL CLÍNICO -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
-        <div class="card-title">Historial Clínico</div>
-        <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="openNewHistoryModal('${p.id}')">+ Nueva Historia</button>
+        <div class="card-title">📋 Historial Clínico</div>
+        <button class="btn-gold" style="padding:8px 18px;font-size:13px;font-weight:600;" onclick="openNewHistoryModal('${p.id}')">+ Nueva Historia Clínica</button>
       </div>
       <div id="patient-histories-list" style="padding:24px;">
         <div style="text-align:center;color:var(--text-muted);padding:20px;">Cargando...</div>
@@ -3986,7 +3986,15 @@ async function loadPatientHistories(patientId) {
     const container = document.getElementById('patient-histories-list');
     if (!container) return;
     if (!data || !data.length) {
-      container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">Sin historias clínicas registradas</div>';
+      const pid = patientId;
+      container.innerHTML = `<div style="text-align:center;padding:28px 20px;">
+        <div style="font-size:36px;margin-bottom:12px;">📋</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:6px;">Sin historia clínica</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Este paciente aún no tiene historia clínica registrada</div>
+        <button onclick="openNewHistoryModal('${pid}')" style="background:var(--blue-deep);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;">
+          📋 Llenar Historia Clínica ahora
+        </button>
+      </div>`;
       return;
     }
     container.innerHTML = data.map(h => `
@@ -7871,19 +7879,18 @@ function renderHistoriesTable(filter = '') {
 }
 
 function openNewHistoryModal(patientId) {
-  // Navegar al módulo de historias clínicas
   showModule('histories');
+  resetHCForm(); // limpiar siempre antes de abrir
   showHCForm();
   populatePatientSelect();
   const now = new Date();
   document.getElementById('hc-folio').textContent = 'HC-' + String(histories.length + 1).padStart(4, '0');
   document.getElementById('hc-fecha').textContent = now.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-  // Pre-seleccionar paciente si viene del expediente
   if (patientId) {
     setTimeout(() => {
       const sel = document.getElementById('hc-patient-id');
       if (sel) { sel.value = patientId; fillPatientData(); }
-    }, 100);
+    }, 150);
   }
 }
 
@@ -7910,6 +7917,67 @@ function fillPatientData() {
   document.getElementById('hc-emergencia').value = p.emergencia_nombre ? `${p.emergencia_nombre} — ${p.emergencia_tel || ''}` : '';
 }
 
+function resetHCForm() {
+  // Limpiar todos los campos de texto y textarea
+  const textIds = ['hc-motivo','hc-tiempo-enf','hc-signos','hc-relato','hc-funciones',
+    'hc-trat-med-det','hc-alergia-det','hc-alergia-an-det','hc-drogas-det','hc-alcohol-det',
+    'hc-tabaco-det','hc-cardio-det','hc-cirugia-det','hc-resp-det','hc-ets-det',
+    'hc-ant-fam','hc-ant-pers','hc-medico','hc-medicacion','hc-tutor',
+    'hc-anticoncep-det','hc-embarazo-det','hc-hormonas-det','hc-cepilla-det',
+    'hc-pa','hc-fc','hc-temp','hc-fr','hc-extraoral','hc-intraoral',
+    'hc-examenes','hc-obs-clinicas','hc-diagnostico','hc-plan','hc-observaciones',
+    'hc-nombre','hc-edad','hc-sexo','hc-tel','hc-email','hc-dir','hc-ocup',
+    'hc-ecivil','hc-emergencia'];
+  textIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // Resetear campos hidden a 'N'
+  const ynIds = ['hc-trat-med','hc-alergia','hc-alergia-an','hc-drogas','hc-alcohol',
+    'hc-tabaco','hc-cardio','hc-cirugia','hc-resp','hc-sangra','hc-ets','hc-diabetes',
+    'hc-anticoncep','hc-embarazo','hc-hormonas','hc-cepilla','hc-sangra-enc',
+    'hc-aliento','hc-sensib','hc-ortod','hc-prob-an','hc-hemorr','hc-brux','hc-mandib'];
+  ynIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = 'N';
+  });
+  // conservar = S por defecto
+  const cons = document.getElementById('hc-conservar');
+  if (cons) cons.value = 'S';
+
+  // Resetear botones SÍ/NO — quitar active-si, poner active-no en el botón NO
+  document.querySelectorAll('.hc-yn-btn').forEach(btn => {
+    btn.classList.remove('active-si', 'active-no');
+  });
+  // Volver a aplicar active-no a todos los botones "NO" por defecto
+  document.querySelectorAll('.hc-yn-btns').forEach(group => {
+    const btns = group.querySelectorAll('.hc-yn-btn');
+    if (btns.length === 2) {
+      // El último botón de cada grupo es NO
+      btns[btns.length - 1].classList.add('active-no');
+    }
+  });
+  // Excepción: "conservar dientes" — el primer botón (SÍ) activo
+  const conservarGroup = document.getElementById('hc-conservar')?.previousElementSibling;
+  if (conservarGroup) {
+    conservarGroup.querySelectorAll('.hc-yn-btn').forEach(b => b.classList.remove('active-si','active-no'));
+    conservarGroup.querySelector('.hc-yn-btn')?.classList.add('active-si');
+  }
+
+  // Desmarcar todos los checkboxes
+  ['hc-rad','hc-quimio','hc-esteroides','hc-bifos','hc-hepatitis','hc-tuberc',
+   'hc-asma','hc-ulcera','hc-tiroides','hc-anemia','hc-leucemia','hc-hemofilia',
+   'hc-vitk','hc-vih','hc-gastritis'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+
+  // Reset selector paciente
+  const patSel = document.getElementById('hc-patient-id');
+  if (patSel) patSel.value = '';
+}
+
 function showHCForm() {
   document.getElementById('hc-list-view').style.display = 'none';
   document.getElementById('hc-form-view').style.display = 'block';
@@ -7918,6 +7986,7 @@ function showHCForm() {
 function showHCList() {
   document.getElementById('hc-list-view').style.display = 'block';
   document.getElementById('hc-form-view').style.display = 'none';
+  resetHCForm();
 }
 
 function toggleSidebar() {
