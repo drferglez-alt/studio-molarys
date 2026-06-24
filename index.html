@@ -3870,8 +3870,22 @@ function showPatientDetail(id) {
       </div>
     </div>
 
+    <!-- ALERTA MÉDICA (se llena dinámicamente) -->
+    <div id="alerta-medica-${p.id}"></div>
+
+    <!-- HISTORIAL CLÍNICO — siempre primero -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">📋 Historia Clínica</div>
+        <button class="btn-gold" style="padding:8px 18px;font-size:13px;font-weight:600;" onclick="openNewHistoryModal('${p.id}')">+ Nueva Historia Clínica</button>
+      </div>
+      <div id="patient-histories-list" style="padding:24px;">
+        <div style="text-align:center;color:var(--text-muted);padding:20px;">Cargando...</div>
+      </div>
+    </div>
+
     <!-- NOTAS DE EVOLUCIÓN -->
-    <div class="card" style="margin-bottom:20px;" id="card-evolucion-${p.id}">
+    <div class="card" style="margin-bottom:0;border-radius:12px 12px 0 0;" id="card-evolucion-${p.id}">
       <div class="card-header">
         <div class="card-title">📋 Notas de Evolución</div>
         <div style="display:flex;gap:8px;">
@@ -3898,14 +3912,14 @@ function showPatientDetail(id) {
       </div>
     </div>
 
-    <!-- HISTORIAL CLÍNICO -->
-    <div class="card" style="margin-bottom:20px;">
+    <!-- HISTORIAL DE PAGOS — pegado a notas de evolución -->
+    <div class="card" style="margin-bottom:20px;border-radius:0 0 12px 12px;border-top:2px solid var(--border);">
       <div class="card-header">
-        <div class="card-title">📋 Historial Clínico</div>
-        <button class="btn-gold" style="padding:8px 18px;font-size:13px;font-weight:600;" onclick="openNewHistoryModal('${p.id}')">+ Nueva Historia Clínica</button>
+        <div class="card-title">💳 Historial de Pagos</div>
+        <button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="printPagos('${p.id}','${p.nombre} ${p.apellido}')">🖨 Imprimir</button>
       </div>
-      <div id="patient-histories-list" style="padding:24px;">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;">Cargando...</div>
+      <div id="patient-payments-list" style="padding:0;">
+        <div style="text-align:center;color:var(--text-muted);padding:24px;">Cargando pagos...</div>
       </div>
     </div>
 
@@ -3948,24 +3962,75 @@ function showPatientDetail(id) {
       <div id="archivos-grid-${p.id}" class="archivos-grid">
         <div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:16px;font-size:13px;">Sin archivos registrados</div>
       </div>
-    </div>
-
-    <!-- HISTORIAL DE PAGOS -->
-    <div class="card" style="margin-bottom:20px;">
-      <div class="card-header">
-        <div class="card-title">Historial de Pagos</div>
-        <button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="printPagos('${p.id}','${p.nombre} ${p.apellido}')">🖨 Imprimir</button>
-      </div>
-      <div id="patient-payments-list" style="padding:0;">
-        <div style="text-align:center;color:var(--text-muted);padding:24px;">Cargando pagos...</div>
-      </div>
     </div>`;
 
   loadPatientHistories(id);
   loadPatientPayments(id);
+  loadAlertaMedica(id);
   loadPatientRFC(id);
   loadPatientArchivos(id);
   loadEvolucion(id);
+}
+
+async function loadAlertaMedica(patientId) {
+  const cont = document.getElementById('alerta-medica-' + patientId);
+  if (!cont) return;
+  try {
+    const { data } = await db.from('clinical_histories')
+      .select('alergia_med, alergia_med_det, alergia_anest, alergia_anest_det, cardio, cardio_det, diabetes, sangrado, medicacion, trat_medico, trat_medico_det, hemofilia, deficit_vitk, vih, hepatitis, respiratorio, respiratorio_det')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!data || !data.length) { cont.innerHTML = ''; return; }
+    const hc = data[0];
+
+    const alertas = [];
+
+    if (hc.alergia_med === 'S')
+      alertas.push({ icon:'💊', label:'Alérgico a medicamentos', det: hc.alergia_med_det, color:'#dc2626', bg:'#fef2f2', border:'#fca5a5' });
+    if (hc.alergia_anest === 'S')
+      alertas.push({ icon:'💉', label:'Alérgico a anestesia', det: hc.alergia_anest_det, color:'#dc2626', bg:'#fef2f2', border:'#fca5a5' });
+    if (hc.cardio === 'S')
+      alertas.push({ icon:'❤️', label:'Problema cardiovascular', det: hc.cardio_det, color:'#b91c1c', bg:'#fef2f2', border:'#fca5a5' });
+    if (hc.diabetes === 'S')
+      alertas.push({ icon:'🩺', label:'Diabetes', det: '', color:'#d97706', bg:'#fffbeb', border:'#fcd34d' });
+    if (hc.sangrado === 'S')
+      alertas.push({ icon:'🩸', label:'Problemas de sangrado', det: '', color:'#b91c1c', bg:'#fef2f2', border:'#fca5a5' });
+    if (hc.hemofilia)
+      alertas.push({ icon:'🩸', label:'Hemofilia', det: '', color:'#b91c1c', bg:'#fef2f2', border:'#fca5a5' });
+    if (hc.vih)
+      alertas.push({ icon:'⚠️', label:'VIH positivo', det: '', color:'#7c3aed', bg:'#f5f3ff', border:'#c4b5fd' });
+    if (hc.hepatitis)
+      alertas.push({ icon:'⚠️', label:'Hepatitis', det: '', color:'#d97706', bg:'#fffbeb', border:'#fcd34d' });
+    if (hc.trat_medico === 'S' && hc.medicacion)
+      alertas.push({ icon:'💊', label:'Bajo tratamiento médico', det: hc.medicacion, color:'#0369a1', bg:'#f0f9ff', border:'#7dd3fc' });
+    if (hc.deficit_vitk)
+      alertas.push({ icon:'⚠️', label:'Déficit de Vitamina K', det: '', color:'#d97706', bg:'#fffbeb', border:'#fcd34d' });
+    if (hc.respiratorio === 'S')
+      alertas.push({ icon:'🫁', label:'Problema respiratorio', det: hc.respiratorio_det, color:'#0369a1', bg:'#f0f9ff', border:'#7dd3fc' });
+
+    if (!alertas.length) { cont.innerHTML = ''; return; }
+
+    cont.innerHTML = '<div style="border-radius:10px;overflow:hidden;margin-bottom:20px;border:2px solid #fca5a5;">'
+      + '<div style="background:#dc2626;color:#fff;padding:10px 16px;font-size:12px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;">'
+        + '🚨 ALERTAS MÉDICAS — LEER ANTES DE ATENDER'
+      + '</div>'
+      + '<div style="background:#fef2f2;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;">'
+      + alertas.map(a =>
+          '<div style="display:flex;align-items:flex-start;gap:8px;background:' + a.bg + ';border:1px solid ' + a.border + ';border-radius:8px;padding:8px 12px;min-width:180px;">'
+          + '<span style="font-size:18px;line-height:1;">' + a.icon + '</span>'
+          + '<div>'
+            + '<div style="font-size:12px;font-weight:700;color:' + a.color + ';">' + a.label + '</div>'
+            + (a.det ? '<div style="font-size:11px;color:#555;margin-top:2px;">' + a.det + '</div>' : '')
+          + '</div>'
+          + '</div>'
+        ).join('')
+      + '</div>'
+      + '</div>';
+  } catch(e) {
+    cont.innerHTML = '';
+  }
 }
 
 async function loadPatientHistories(patientId) {
