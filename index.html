@@ -5143,7 +5143,8 @@ function renderEvolTabla(patientId, notas) {
       </td>
       <td style="line-height:1.5;">${(n.nota || '').replace(/\n/g,'<br>')}</td>
       <td>${pagoHTML(n.pago, n.monto)}${n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : ''}</td>
-      <td>
+      <td style="display:flex;gap:4px;align-items:center;padding:8px 6px;">
+        <button class="evol-del-btn" onclick="openAddEvolucionModal('${patientId}',${JSON.stringify(n).replace(/'/g,'\\x27')})" title="Editar" style="color:var(--blue-mid);">✏️</button>
         <button class="evol-del-btn" onclick="deleteEvolucion('${patientId}','${n.id || i}')" title="Eliminar">🗑</button>
       </td>
     </tr>`).join('');
@@ -5161,104 +5162,186 @@ async function deleteEvolucion(patientId, idOrIdx) {
   showToast('Nota eliminada', 'success');
 }
 
-function openAddEvolucionModal(patientId) {
+async function openAddEvolucionModal(patientId, editNota) {
   const p = patients.find(x => x.id === patientId);
   const nombre = p ? p.nombre + ' ' + p.apellido : '';
   const now = new Date();
-  const fechaHoy = now.toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
-  const horaAhora = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
-  const fechaISO = now.toISOString().split('T')[0];
+  const fechaISO = (editNota && editNota.fecha_iso) ? editNota.fecha_iso : now.toISOString().split('T')[0];
+  const isEdit = !!editNota;
+
+  // Cargar pagos del paciente para vincular
+  let pagos = [];
+  try {
+    const { data } = await db.from('income')
+      .select('id, ingreso_bruto, tipo_pago, created_at, treatments(nombre)')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false }).limit(20);
+    pagos = data || [];
+  } catch(e) {}
+
+  const pagoOpts = pagos.map(pg => {
+    const fecha = new Date(pg.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+    const trat  = (pg.treatments && pg.treatments.nombre) ? pg.treatments.nombre : 'Pago';
+    const monto = '$' + (pg.ingreso_bruto||0).toLocaleString('es-MX',{minimumFractionDigits:2});
+    const sel   = (editNota && editNota.income_id === pg.id) ? 'selected' : '';
+    return '<option value="' + pg.id + '" data-monto="' + pg.ingreso_bruto + '" data-metodo="' + (pg.tipo_pago||'') + '" ' + sel + '>' + fecha + ' — ' + trat + ' ' + monto + '</option>';
+  }).join('');
+
+  const doctorOpts = getDoctors().map(d => {
+    const val = (d.titulo||'Dr.') + ' ' + d.nombre + ' ' + d.apellido;
+    const ced = (d.especialidades && d.especialidades[0]) ? (d.especialidades[0].cedula||'') : '';
+    const sel = (editNota && editNota.doctor_nombre === val) ? 'selected' : '';
+    return '<option value="' + val + '" data-ced="' + ced + '" ' + sel + '>' + val + ((d.especialidades && d.especialidades[0]) ? ' — ' + d.especialidades[0].nombre : '') + '</option>';
+  }).join('');
+
+  const horaVal = (editNota && editNota.hora) ? editNota.hora
+    : (now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0'));
 
   let m = document.getElementById('modal-add-evolucion');
   if (m) m.remove();
   m = document.createElement('div');
   m.id = 'modal-add-evolucion';
   m.className = 'modal-overlay open';
-  m.innerHTML = `
-    <div class="modal" style="max-width:560px;">
-      <div class="modal-header">
-        <div class="modal-title">📋 Nueva Nota de Evolución</div>
-        <button class="modal-close" onclick="document.getElementById('modal-add-evolucion').remove()">✕</button>
-      </div>
-      <div class="modal-body">
-        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;"><strong>${nombre}</strong></p>
-        <div class="form-row">
-          <div class="form-field">
-            <label>Fecha *</label>
-            <input id="evol-fecha" type="date" value="${fechaISO}">
-          </div>
-          <div class="form-field">
-            <label>Hora</label>
-            <input id="evol-hora" type="time" value="${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}">
-          </div>
-        </div>
-        <div class="form-field">
-          <label>Doctor que atendió</label>
-          <select id="evol-doctor">
-            <option value="">— Sin asignar —</option>
-            ${getDoctors().map(d => `<option value="${(d.titulo||'Dr.')+' '+d.nombre+' '+d.apellido}" data-ced="${(d.especialidades&&d.especialidades[0])?d.especialidades[0].cedula||'':''}">${d.titulo||'Dr.'} ${d.nombre} ${d.apellido}${d.especialidades&&d.especialidades[0]?' — '+d.especialidades[0].nombre:''}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Procedimiento / Nota clínica *</label>
-          <textarea id="evol-nota" rows="5" placeholder="Ej: Extracción de pieza 46. Paciente sin complicaciones. Se aplicó anestesia local, cicatrización adecuada..." style="resize:vertical;"></textarea>
-        </div>
-        <div style="background:var(--cream);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text-muted);">
-          💡 El pago se registra automáticamente desde <strong>Recibir Pago</strong>. Esta nota es solo para anotaciones clínicas.
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="document.getElementById('modal-add-evolucion').remove()">Cancelar</button>
-        <button class="btn-gold" onclick="saveEvolucion('${patientId}')">Guardar nota</button>
-      </div>
-    </div>`;
+
+  m.innerHTML = '<div class="modal" style="max-width:580px;">'
+    + '<div class="modal-header">'
+      + '<div class="modal-title">' + (isEdit ? '✏️ Editar Nota' : '📋 Nueva Nota de Evolución') + '</div>'
+      + '<button class="modal-close" onclick="document.getElementById(\'modal-add-evolucion\').remove()">✕</button>'
+    + '</div>'
+    + '<div class="modal-body">'
+      + '<p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;"><strong>' + nombre + '</strong></p>'
+      + '<div class="form-row">'
+        + '<div class="form-field"><label>Fecha *</label><input id="evol-fecha" type="date" value="' + fechaISO + '"></div>'
+        + '<div class="form-field"><label>Hora</label><input id="evol-hora" type="time" value="' + horaVal + '"></div>'
+      + '</div>'
+      + '<div class="form-field">'
+        + '<label>Doctor que atendió</label>'
+        + '<select id="evol-doctor"><option value="">— Sin asignar —</option>' + doctorOpts + '</select>'
+      + '</div>'
+      + '<div class="form-field">'
+        + '<label>Procedimiento / Nota clínica *</label>'
+        + '<textarea id="evol-nota" rows="5" style="resize:vertical;">' + ((editNota && editNota.nota) ? editNota.nota.replace(/</g,"&lt;") : '') + '</textarea>'
+      + '</div>'
+      + '<div class="form-field">'
+        + '<label>Vincular con pago registrado <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>'
+        + '<select id="evol-income-link" onchange="onEvolPagoChange()">'
+          + '<option value="">⏳ Sin pago / Pendiente</option>'
+          + (pagos.length ? pagoOpts : '')
+        + '</select>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Selecciona el cobro correspondiente a esta nota para marcarlo como pagado.</div>'
+      + '</div>'
+      + '<div id="evol-pago-preview" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:4px;color:#1a7a40;"></div>'
+    + '</div>'
+    + '<div class="modal-footer">'
+      + '<button class="btn-secondary" onclick="document.getElementById(\'modal-add-evolucion\').remove()">Cancelar</button>'
+      + '<button class="btn-gold" id="btn-save-evol" onclick="saveEvolucionFromModal()">' + (isEdit ? 'Guardar cambios' : 'Guardar nota') + '</button>'
+    + '</div>'
+    + '</div>';
+
+  // Guardar contexto para saveEvolucionFromModal
+  window._evolModalCtx = { patientId, editId: (editNota && editNota.id) ? editNota.id : null };
+
   document.body.appendChild(m);
   m.onclick = (e) => { if (e.target === m) m.remove(); };
   document.getElementById('evol-nota').focus();
+
+  if (isEdit && editNota && editNota.income_id) {
+    setTimeout(() => {
+      const lnk = document.getElementById('evol-income-link');
+      if (lnk) { lnk.value = editNota.income_id; onEvolPagoChange(); }
+    }, 50);
+  }
 }
 
-async function saveEvolucion(patientId) {
-  const fechaInput = document.getElementById('evol-fecha').value;
-  const hora   = document.getElementById('evol-hora').value;
-  const nota   = document.getElementById('evol-nota').value.trim();
-  const pago   = 'no';
-  const monto  = null;
-  const metodo = null;
-  // Doctor
-  const doctorSel = document.getElementById('evol-doctor');
+function saveEvolucionFromModal() {
+  const ctx = window._evolModalCtx || {};
+  saveEvolucion(ctx.patientId, ctx.editId || null);
+}
+
+function onEvolPagoChange() {
+  const sel     = document.getElementById('evol-income-link');
+  const preview = document.getElementById('evol-pago-preview');
+  if (!sel || !preview) return;
+  const opt = sel.options[sel.selectedIndex];
+  if (sel.value && opt.dataset.monto) {
+    const monto  = parseFloat(opt.dataset.monto||0).toLocaleString('es-MX',{minimumFractionDigits:2});
+    const metodo = opt.dataset.metodo ? ' · ' + opt.dataset.metodo : '';
+    preview.style.display = 'block';
+    preview.innerHTML = '💰 Pago vinculado: <strong>$' + monto + '</strong>' + metodo;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+
+async function saveEvolucion(patientId, editId) {
+  const fechaInput   = document.getElementById('evol-fecha').value;
+  const hora         = document.getElementById('evol-hora').value;
+  const nota         = document.getElementById('evol-nota').value.trim();
+  const doctorSel    = document.getElementById('evol-doctor');
   const doctorNombre = doctorSel?.value || '';
   const doctorCedula = doctorSel?.selectedOptions[0]?.dataset?.ced || '';
 
+  // Vincular con pago
+  const incomeSel = document.getElementById('evol-income-link');
+  const incomeId  = incomeSel?.value || null;
+  const incomeOpt = incomeId ? incomeSel.options[incomeSel.selectedIndex] : null;
+  const pagoVinc  = incomeId ? 'si' : 'no';
+  const montoVinc = incomeOpt ? parseFloat(incomeOpt.dataset.monto||0) : null;
+  const metodoVinc = incomeOpt ? (incomeOpt.dataset.metodo||null) : null;
+
   if (!fechaInput || !nota) { showToast('Fecha y nota son obligatorias', 'error'); return; }
 
-  // Formatear fecha para mostrar
+  const btn = document.getElementById('btn-save-evol');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
   const [y, mo, d] = fechaInput.split('-');
   const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const fechaDisplay = `${d} ${meses[parseInt(mo)-1]} ${y}`;
+  const fechaDisplay = d + ' ' + meses[parseInt(mo)-1] + ' ' + y;
 
   const record = {
-    patient_id: patientId,
-    fecha: fechaDisplay,
-    fecha_iso: fechaInput,
-    hora: hora || null,
+    patient_id:    patientId,
+    fecha:         fechaDisplay,
+    fecha_iso:     fechaInput,
+    hora:          hora || null,
     nota,
-    pago,
-    monto: monto ? parseFloat(monto) : null,
-    metodo_pago: metodo || null,
+    pago:          pagoVinc,
+    monto:         montoVinc,
+    metodo_pago:   metodoVinc,
     doctor_nombre: doctorNombre || null,
     doctor_cedula: doctorCedula || null,
+    income_id:     incomeId || null,
   };
 
-  // Intentar guardar en Supabase
-  let savedId = null;
+  let savedId = editId || null;
   try {
-    const { data, error } = await db.from('patient_evolution').insert([record]).select();
-    if (!error && data) savedId = data[0].id;
-  } catch(e) { /* tabla no existe aún — usar localStorage */ }
+    if (editId) {
+      // EDITAR nota existente
+      const { error } = await db.from('patient_evolution').update({
+        fecha: record.fecha, fecha_iso: record.fecha_iso, hora: record.hora,
+        nota: record.nota, pago: record.pago, monto: record.monto,
+        metodo_pago: record.metodo_pago, doctor_nombre: record.doctor_nombre,
+        doctor_cedula: record.doctor_cedula, income_id: record.income_id
+      }).eq('id', editId);
+      if (error) throw error;
+    } else {
+      // NUEVA nota
+      const { data, error } = await db.from('patient_evolution').insert([record]).select();
+      if (!error && data) savedId = data[0].id;
+      else if (error) throw error;
+    }
+  } catch(e) { console.error('saveEvolucion:', e); }
 
-  // Guardar en localStorage también (cache y fallback)
+  // Actualizar localStorage
   const lista = getEvolLocal(patientId);
-  lista.unshift({ ...record, id: savedId || ('local_' + Date.now()) });
+  if (editId) {
+    const idx = lista.findIndex(n => n.id === editId || n.id === editId.toString());
+    if (idx >= 0) lista[idx] = { ...lista[idx], ...record, id: editId };
+    else lista.unshift({ ...record, id: editId });
+  } else {
+    record.id = savedId || ('local_' + Date.now());
+    lista.unshift(record);
+  }
   saveEvolLocal(patientId, lista);
 
   document.getElementById('modal-add-evolucion').remove();
