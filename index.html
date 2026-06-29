@@ -3168,7 +3168,23 @@
 const SUPABASE_URL = 'https://wcykfilqrpvaclrtyjbh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_tTdInog007Dq1WZyQGpHHg_q75CCBlF';
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+// storageKey único para que cada usuario tenga su sesión independiente en el mismo navegador
+// y no haya conflicto entre usuarios simultáneos
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    storageKey: 'molarys-auth-v2',
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+    storage: {
+      // Usar sessionStorage en lugar de localStorage
+      // Así cada pestaña/ventana tiene su propia sesión independiente
+      getItem: (key) => sessionStorage.getItem(key),
+      setItem: (key, value) => sessionStorage.setItem(key, value),
+      removeItem: (key) => sessionStorage.removeItem(key),
+    }
+  }
+});
 
 // ============================================================
 // STATE
@@ -3771,8 +3787,9 @@ async function saveNewPatient() {
     clearNewPatientForm();
     showToast(`Paciente #${expediente} registrado exitosamente ✓`, 'success');
   } catch (e) {
-    showToast('Error al guardar. Verifica la conexión.', 'error');
-    console.error(e);
+    const msg = e?.message || e?.details || JSON.stringify(e) || 'Error desconocido';
+    showToast('Error: ' + msg.slice(0,80), 'error');
+    console.error('saveNewPatient error:', e);
   }
 
   btn.disabled = false;
