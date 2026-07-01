@@ -2563,10 +2563,47 @@
         </div>
 
         <div class="module-page" id="module-reports">
-          <div class="empty-state" style="padding:80px 0">
-            <div class="empty-state-icon">📊</div>
-            <h3>Reportes — Próximamente</h3>
-            <p>Resúmenes semanales y mensuales de actividad clínica y financiera</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;">Reportes</div>
+              <div style="font-size:13px;color:var(--text-muted);">Ingresos reales (después de descuentos)</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <select id="rpt-periodo" onchange="loadReportes()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+                <option value="semana">Esta semana</option>
+                <option value="mes" selected>Este mes</option>
+                <option value="mes_ant">Mes anterior</option>
+                <option value="3m">Últimos 3 meses</option>
+                <option value="año">Este año</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tarjetas resumen -->
+          <div id="rpt-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;"></div>
+
+          <!-- Ingresos por forma de pago -->
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header"><div class="card-title">💰 Ingresos por forma de pago</div></div>
+            <div id="rpt-por-pago" style="padding:16px;"></div>
+          </div>
+
+          <!-- Ingresos por doctor -->
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header"><div class="card-title">👨‍⚕️ Ingresos por doctor</div></div>
+            <div id="rpt-por-doctor" style="padding:16px;"></div>
+          </div>
+
+          <!-- Top tratamientos -->
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header"><div class="card-title">🦷 Servicios más realizados</div></div>
+            <div id="rpt-top-trat" style="padding:16px;"></div>
+          </div>
+
+          <!-- Detalle día a día -->
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header"><div class="card-title">📅 Detalle por día</div></div>
+            <div id="rpt-por-dia" style="padding:16px;overflow-x:auto;"></div>
           </div>
         </div>
 
@@ -3334,6 +3371,7 @@ function showModule(module) {
   if (module === 'doctors') loadDoctors();
   if (module === 'agenda') setTimeout(() => loadGoogleEvents(), 100);
   if (module === 'users') loadUsers();
+  if (module === 'reports') loadReportes();
   if (module === 'income') {
     // Populate selects
     const pSel = document.getElementById('inc-patient');
@@ -8084,40 +8122,85 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(renderBadgePendie
 async function openCorteCajaModal() {
   document.getElementById('modal-corte-caja').classList.add('open');
   const body = document.getElementById('corte-caja-body');
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1).toISOString();
+  // Usar fecha CDMX
+  const hoy = ahoraCDMX();
+  const startLocal = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const endLocal   = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()+1);
   try {
     const { data } = await db.from('income')
-      .select('*, patients(nombre,apellido), treatments(nombre)')
-      .gte('created_at', start).lt('created_at', end)
+      .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, doctor_nombre, notas, created_at, patients(nombre,apellido), treatments(nombre)')
+      .gte('created_at', startLocal.toISOString())
+      .lt('created_at',  endLocal.toISOString())
       .order('created_at');
     const records = data || [];
-    const fmt = n => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const totalBruto = records.reduce((s,r) => s+(r.ingreso_bruto||0), 0);
-    const totalDoctor = records.reduce((s,r) => s+(r.remanente_doctor||0), 0);
-    const efectivo = records.filter(r=>r.tipo_pago==='efectivo').reduce((s,r)=>s+(r.ingreso_bruto||0),0);
-    const tarjeta = records.filter(r=>r.tipo_pago==='tarjeta').reduce((s,r)=>s+(r.ingreso_bruto||0),0);
-    const transferencia = records.filter(r=>r.tipo_pago==='transferencia').reduce((s,r)=>s+(r.ingreso_bruto||0),0);
+    const fmt = n => '$' + (n||0).toLocaleString('es-MX',{minimumFractionDigits:2});
+
+    // Usar ingreso_neto (real = bruto - descuento) para todos los cálculos
+    const neto   = r => (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
+    const bruto  = r => r.ingreso_bruto || 0;
+    const desc   = r => r.descuento || 0;
+
+    const totalBruto  = records.reduce((s,r)=>s+bruto(r),0);
+    const totalDesc   = records.reduce((s,r)=>s+desc(r),0);
+    const totalNeto   = records.reduce((s,r)=>s+neto(r),0);
+
+    const efectivo      = records.filter(r=>r.tipo_pago==='efectivo').reduce((s,r)=>s+neto(r),0);
+    const tarjeta       = records.filter(r=>r.tipo_pago==='tarjeta').reduce((s,r)=>s+neto(r),0);
+    const transferencia = records.filter(r=>r.tipo_pago==='transferencia').reduce((s,r)=>s+neto(r),0);
 
     body.innerHTML = `
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px;">Corte del Día</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--blue-deep);">${today.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px;">Corte del Día</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--blue-deep);">${hoy.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
       </div>
+
       <div style="background:var(--cream);border-radius:8px;padding:16px;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Total cobros</span><span style="font-weight:600;">${records.length}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💵 Efectivo</span><span style="font-weight:500;">${fmt(efectivo)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💳 Tarjeta</span><span style="font-weight:500;">${fmt(tarjeta)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📱 Transferencia</span><span style="font-weight:500;">${fmt(transferencia)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0 0;"><span style="font-weight:600;font-size:15px;">Total del día</span><span style="font-weight:700;font-size:18px;color:var(--blue-mid);">${fmt(totalBruto)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:var(--text-muted);">Total cobros</span><span style="font-weight:600;">${records.length}</span>
+        </div>
+        ${totalDesc > 0 ? `
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:var(--text-muted);">Subtotal (bruto)</span><span>${fmt(totalBruto)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:#dc2626;">Descuentos aplicados</span><span style="color:#dc2626;">-${fmt(totalDesc)}</span>
+        </div>` : ''}
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:var(--text-muted);">💵 Efectivo</span><span style="font-weight:500;">${fmt(efectivo)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:var(--text-muted);">💳 Tarjeta</span><span style="font-weight:500;">${fmt(tarjeta)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:var(--text-muted);">📱 Transferencia</span><span style="font-weight:500;">${fmt(transferencia)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0 0;">
+          <span style="font-weight:700;font-size:15px;">Total del día</span>
+          <span style="font-weight:700;font-size:20px;color:var(--blue-mid);">${fmt(totalNeto)}</span>
+        </div>
       </div>
-      ${records.length ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-weight:500;">Detalle de cobros</div>
-      ${records.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
-        <div><div style="font-size:13px;font-weight:500;">${r.patients?.nombre||''} ${r.patients?.apellido||''}</div><div style="font-size:11px;color:var(--text-muted);">${r.treatments?.nombre||'Sin tratamiento'} · ${r.tipo_pago}</div></div>
-        <div style="font-weight:600;color:var(--blue-deep);">${fmt(r.ingreso_bruto)}</div>
-      </div>`).join('')}` : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Sin cobros registrados hoy</div>'}`;
+
+      ${records.length ? `
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Detalle de cobros</div>
+      ${records.map(r => {
+        const n = neto(r);
+        const b = bruto(r);
+        const d = desc(r);
+        const tratNombre = r.notas || r.treatments?.nombre || 'Sin tratamiento';
+        return `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">${r.patients?.nombre||''} ${r.patients?.apellido||''}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${tratNombre} · ${r.tipo_pago||''}${r.doctor_nombre ? ' · Dr: '+r.doctor_nombre : ''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            ${d > 0 ? `<div style="font-size:10px;color:#999;text-decoration:line-through;">${fmt(b)}</div><div style="font-size:10px;color:#dc2626;">-${fmt(d)}</div>` : ''}
+            <div style="font-weight:700;color:var(--blue-deep);">${fmt(n)}</div>
+          </div>
+        </div>`;
+      }).join('')}` : '<div style="text-align:center;padding:24px;color:var(--text-muted);">Sin cobros registrados hoy</div>'}
+    `;
   } catch(e) {
+    console.error(e);
     body.innerHTML = '<div style="color:var(--error);text-align:center;padding:20px;">Error al cargar el corte</div>';
   }
 }
@@ -8322,6 +8405,171 @@ function showIncomeTab(tab, name) {
 }
 
 // ===== CASCADA =====
+// ══════════════════════════════════════════
+// REPORTES
+// ══════════════════════════════════════════
+async function loadReportes() {
+  const periodo = document.getElementById('rpt-periodo')?.value || 'mes';
+  const hoy = ahoraCDMX();
+  let desde, hasta;
+
+  if (periodo === 'semana') {
+    desde = new Date(hoy); desde.setDate(hoy.getDate() - ((hoy.getDay()+6)%7)); desde.setHours(0,0,0,0);
+    hasta = new Date(hoy); hasta.setHours(23,59,59,999);
+  } else if (periodo === 'mes') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    hasta = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0, 23,59,59);
+  } else if (periodo === 'mes_ant') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+    hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0, 23,59,59);
+  } else if (periodo === '3m') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth()-2, 1);
+    hasta = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0, 23,59,59);
+  } else { // año
+    desde = new Date(hoy.getFullYear(), 0, 1);
+    hasta = new Date(hoy.getFullYear(), 11, 31, 23,59,59);
+  }
+
+  try {
+    const { data } = await db.from('income')
+      .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, doctor_nombre, notas, created_at, treatments(nombre)')
+      .gte('created_at', desde.toISOString())
+      .lte('created_at', hasta.toISOString())
+      .order('created_at');
+    const records = data || [];
+
+    // Helper: ingreso real = neto si existe, sino bruto
+    const neto = r => (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
+    const fmt  = n => '$' + (n||0).toLocaleString('es-MX', {minimumFractionDigits:2});
+    const fmtN = n => (n||0).toLocaleString('es-MX');
+
+    const totalBruto = records.reduce((s,r)=>s+(r.ingreso_bruto||0),0);
+    const totalDesc  = records.reduce((s,r)=>s+(r.descuento||0),0);
+    const totalNeto  = records.reduce((s,r)=>s+neto(r),0);
+    const totalCobros = records.length;
+
+    // ── Tarjetas ──
+    const cards = [
+      { label:'Ingresos del período', value: fmt(totalNeto), sub: totalDesc>0 ? 'Bruto: '+fmt(totalBruto)+' · Desc: -'+fmt(totalDesc) : '', color:'var(--blue-deep)', bg:'var(--blue-xpale)' },
+      { label:'Total cobros', value: fmtN(totalCobros), sub: 'registros', color:'#1d4ed8', bg:'#eff6ff' },
+      { label:'Descuentos', value: fmt(totalDesc), sub: totalDesc>0 ? Math.round(totalDesc/totalBruto*100)+'% del bruto' : 'Sin descuentos', color:'#dc2626', bg:'#fef2f2' },
+      { label:'Promedio por cobro', value: totalCobros>0 ? fmt(totalNeto/totalCobros) : '$0', sub: 'por consulta', color:'#16a34a', bg:'#f0fdf4' },
+    ];
+    document.getElementById('rpt-cards').innerHTML = cards.map(c =>
+      '<div style="background:'+c.bg+';border-radius:10px;padding:16px;min-width:0;">'
+      + '<div style="font-size:11px;color:'+c.color+';font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">'+c.label+'</div>'
+      + '<div style="font-size:22px;font-weight:700;color:'+c.color+';">'+c.value+'</div>'
+      + (c.sub ? '<div style="font-size:11px;color:#888;margin-top:3px;">'+c.sub+'</div>' : '')
+      + '</div>'
+    ).join('');
+
+    // ── Por forma de pago ──
+    const porPago = {};
+    records.forEach(r => {
+      const t = r.tipo_pago || 'otro';
+      if (!porPago[t]) porPago[t] = { total:0, count:0 };
+      porPago[t].total += neto(r);
+      porPago[t].count++;
+    });
+    const iconPago = { efectivo:'💵', tarjeta:'💳', transferencia:'📱' };
+    const labelPago = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia', otro:'Otro' };
+    const maxPago = Math.max(...Object.values(porPago).map(v=>v.total), 1);
+    document.getElementById('rpt-por-pago').innerHTML = Object.entries(porPago)
+      .sort((a,b)=>b[1].total-a[1].total)
+      .map(([t,v]) => '<div style="margin-bottom:12px;">'
+        + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">'
+          + '<span style="font-weight:500;">' + (iconPago[t]||'') + ' ' + (labelPago[t]||t) + ' (' + v.count + ' cobros)</span>'
+          + '<span style="font-weight:700;">' + fmt(v.total) + '</span>'
+        + '</div>'
+        + '<div style="background:#f0f0f0;border-radius:99px;height:8px;overflow:hidden;">'
+          + '<div style="width:' + Math.round(v.total/maxPago*100) + '%;background:var(--blue-mid);height:100%;border-radius:99px;"></div>'
+        + '</div>'
+      + '</div>').join('') || '<div style="color:var(--text-muted);font-size:13px;">Sin datos</div>';
+
+    // ── Por doctor ──
+    const porDoc = {};
+    records.forEach(r => {
+      const d = r.doctor_nombre || '— Sin asignar';
+      if (!porDoc[d]) porDoc[d] = { total:0, count:0 };
+      porDoc[d].total += neto(r);
+      porDoc[d].count++;
+    });
+    const maxDoc = Math.max(...Object.values(porDoc).map(v=>v.total), 1);
+    document.getElementById('rpt-por-doctor').innerHTML = Object.entries(porDoc)
+      .sort((a,b)=>b[1].total-a[1].total)
+      .map(([d,v]) => '<div style="margin-bottom:12px;">'
+        + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">'
+          + '<span style="font-weight:500;">'+d+' ('+v.count+' cobros)</span>'
+          + '<span style="font-weight:700;">'+fmt(v.total)+'</span>'
+        + '</div>'
+        + '<div style="background:#f0f0f0;border-radius:99px;height:8px;overflow:hidden;">'
+          + '<div style="width:'+Math.round(v.total/maxDoc*100)+'%;background:#16a34a;height:100%;border-radius:99px;"></div>'
+        + '</div>'
+      + '</div>').join('') || '<div style="color:var(--text-muted);font-size:13px;">Sin datos</div>';
+
+    // ── Top tratamientos ──
+    const porTrat = {};
+    records.forEach(r => {
+      const t = r.notas || r.treatments?.nombre || 'Sin tratamiento';
+      // Si hay múltiples servicios en notas, separar por coma
+      const items = t.split(',').map(x=>x.trim());
+      items.forEach(item => {
+        if (!porTrat[item]) porTrat[item] = { total:0, count:0 };
+        porTrat[item].count++;
+        porTrat[item].total += neto(r) / items.length;
+      });
+    });
+    document.getElementById('rpt-top-trat').innerHTML = Object.entries(porTrat)
+      .sort((a,b)=>b[1].count-a[1].count).slice(0,8)
+      .map(([t,v]) => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">'
+        + '<span style="font-weight:500;">'+t+'</span>'
+        + '<span style="display:flex;gap:20px;color:var(--text-muted);">'
+          + '<span>'+v.count+'x</span>'
+          + '<span style="font-weight:600;color:var(--text-primary);">'+fmt(v.total)+'</span>'
+        + '</span>'
+      + '</div>').join('') || '<div style="color:var(--text-muted);font-size:13px;">Sin datos</div>';
+
+    // ── Por día ──
+    const porDia = {};
+    records.forEach(r => {
+      const d = ahoraCDMX();
+      const dc = new Date(r.created_at);
+      const key = dc.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+      if (!porDia[key]) porDia[key] = { total:0, count:0, efectivo:0, tarjeta:0, transferencia:0 };
+      porDia[key].total += neto(r);
+      porDia[key].count++;
+      if (r.tipo_pago === 'efectivo') porDia[key].efectivo += neto(r);
+      if (r.tipo_pago === 'tarjeta') porDia[key].tarjeta += neto(r);
+      if (r.tipo_pago === 'transferencia') porDia[key].transferencia += neto(r);
+    });
+    const diasHTML = Object.entries(porDia).reverse().map(([dia, v]) =>
+      '<tr>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;white-space:nowrap;">'+dia+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">'+v.count+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;text-align:right;color:#555;">'+fmt(v.efectivo)+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;text-align:right;color:#555;">'+fmt(v.tarjeta)+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;text-align:right;color:#555;">'+fmt(v.transferencia)+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:700;">'+fmt(v.total)+'</td>'
+      + '</tr>'
+    ).join('');
+    document.getElementById('rpt-por-dia').innerHTML = diasHTML
+      ? '<table style="width:100%;border-collapse:collapse;">'
+        + '<thead><tr style="background:var(--cream);">'
+          + '<th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Fecha</th>'
+          + '<th style="padding:8px 10px;text-align:center;font-size:11px;text-transform:uppercase;">Cobros</th>'
+          + '<th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;">💵 Efectivo</th>'
+          + '<th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;">💳 Tarjeta</th>'
+          + '<th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;">📱 Transfer.</th>'
+          + '<th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;">Total</th>'
+        + '</tr></thead><tbody>' + diasHTML + '</tbody></table>'
+      : '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">Sin datos en este período</div>';
+
+  } catch(e) {
+    console.error('loadReportes:', e);
+    document.getElementById('rpt-cards').innerHTML = '<div style="color:#dc2626;padding:16px;">Error al cargar reportes: ' + e.message + '</div>';
+  }
+}
+
 function calcCascada() {
   const bruto = parseFloat(document.getElementById('inc-precio').value) || 0;
   const descuento = parseFloat(document.getElementById('inc-descuento').value) || 0;
