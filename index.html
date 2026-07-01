@@ -6613,7 +6613,7 @@ async function printPagos(patientId, nombre) {
     const fechaFmt = r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const doctorMostrar = r.doctor_nombre || evolPorFecha[fechaISO] || '—';
     const cobradorMostrar = r.cobrador_nombre || '—';
-    const tratMostrar = r._tratamiento || (r.treatments && r.treatments.nombre ? r.treatments.nombre : (r.notas || 'Servicio'));
+    const tratMostrar = r._tratamiento || r.notas || (r.treatments && r.treatments.nombre ? r.treatments.nombre : 'Sin tratamiento');
     const montoNeto = (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
     const tieneDesc = r.descuento && r.descuento > 0;
     const td = 'padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;vertical-align:top;';
@@ -7713,8 +7713,8 @@ async function saveRecibirPago() {
     let notaTexto = serviciosTexto || 'Consulta / Pago registrado';
     if (notasExtra) notaTexto += `
 ${notasExtra}`;
-    if (cobradorNombre) notaTexto += `
-Registrado por: ${cobradorNombre}`;
+
+
 
     const evolRecord = {
       patient_id: patientId,
@@ -7724,6 +7724,8 @@ Registrado por: ${cobradorNombre}`;
       nota: notaTexto,
       pago: 'si',
       monto: parseFloat(r.neto1 || monto),
+      ingreso_bruto: parseFloat(r.bruto || bruto),
+      descuento: parseFloat(r.descuento || 0),
       metodo_pago: metodosLabel[metodoPago] || metodoPago,
       doctor_nombre: rpDoctorNombre || null,
       doctor_cedula: rpDoctorCedula || null,
