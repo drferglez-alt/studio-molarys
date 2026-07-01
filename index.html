@@ -1765,9 +1765,6 @@
         <a class="nav-item" onclick="showModule('patients')" id="nav-patients">
           <span class="nav-icon">👤</span> Pacientes
         </a>
-        <a class="nav-item" onclick="showModule('histories')" id="nav-histories">
-          <span class="nav-icon">📋</span> Historias Clínicas
-        </a>
         <a class="nav-item" onclick="showModule('consents')" id="nav-consents">
           <span class="nav-icon">✍️</span> Consentimientos
         </a>
@@ -2725,9 +2722,13 @@
       <!-- Paciente -->
       <div class="form-field" style="margin-bottom:16px;">
         <label>Paciente *</label>
-        <select id="rp-patient" onchange="checkPresupuestoPaciente()">
-          <option value="">Seleccionar paciente...</option>
-        </select>
+        <input type="text" id="rp-patient-search" placeholder="Buscar paciente por nombre..."
+          oninput="filtrarPacientesRP(this.value)"
+          autocomplete="off"
+          style="margin-bottom:6px;">
+        <div id="rp-patient-results" style="display:none;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--white);box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+        <input type="hidden" id="rp-patient">
+        <div id="rp-patient-selected" style="display:none;font-size:12px;color:var(--blue-mid);margin-top:4px;font-weight:500;"></div>
       </div>
 
       <!-- Doctor + Forma de pago -->
@@ -2750,11 +2751,11 @@
 
       <!-- SERVICIOS MÚLTIPLES -->
       <div style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="margin-bottom:6px;">
           <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);">Servicios / Tratamientos *</label>
-          <button type="button" onclick="addRPServicio()" style="background:none;border:1px dashed var(--blue-mid);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--blue-mid);cursor:pointer;font-family:inherit;">+ Agregar servicio</button>
         </div>
         <div id="rp-servicios-list"></div>
+        <button type="button" onclick="addRPServicio()" style="margin-top:8px;width:100%;background:none;border:1px dashed var(--blue-mid);border-radius:6px;padding:7px 12px;font-size:12px;color:var(--blue-mid);cursor:pointer;font-family:inherit;text-align:center;">+ Agregar servicio</button>
       </div>
 
       <!-- Descuento + Notas -->
@@ -7931,11 +7932,59 @@ function updateRPServicio(idx, campo, valor) {
   }
 }
 
+function filtrarPacientesRP(query) {
+  const results = document.getElementById('rp-patient-results');
+  const hiddenInput = document.getElementById('rp-patient');
+  if (!query || query.length < 1) { results.style.display = 'none'; return; }
+  const q = query.toLowerCase();
+  const matches = patients.filter(p =>
+    (p.nombre + ' ' + p.apellido).toLowerCase().includes(q) ||
+    String(p.expediente||'').includes(q)
+  ).slice(0, 8);
+  if (!matches.length) { results.style.display = 'none'; return; }
+  results.style.display = 'block';
+  window._rpMatches = matches;
+  results.innerHTML = matches.map((p,i) =>
+    '<div onclick="seleccionarPacienteRPIdx(' + i + ')" '
+    + 'style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);" '
+    + 'onmouseover="this.style.background=\"#f5f7fa\"" onmouseout="this.style.background=\"\"" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);">'
+    + '<span style="font-weight:500;">' + p.nombre + ' ' + p.apellido + '</span>'
+    + ' <span style="color:var(--text-muted);font-size:11px;">#' + (p.expediente||'') + '</span>'
+    + '</div>'
+  ).join('');
+}
+
+function seleccionarPacienteRPIdx(i) {
+  const p = (window._rpMatches||[])[i];
+  if (p) seleccionarPacienteRP(p.id, p.nombre + ' ' + p.apellido);
+}
+
+function seleccionarPacienteRP(id, nombre) {
+  document.getElementById('rp-patient').value = id;
+  document.getElementById('rp-patient-search').value = nombre;
+  document.getElementById('rp-patient-results').style.display = 'none';
+  const sel = document.getElementById('rp-patient-selected');
+  sel.textContent = '✓ ' + nombre;
+  sel.style.display = 'block';
+  checkPresupuestoPaciente();
+}
+
 function openRecibirPagoModal(prePatientId) {
-  const sel = document.getElementById('rp-patient');
-  sel.innerHTML = '<option value="">Seleccionar paciente...</option>';
-  patients.forEach(p => sel.innerHTML += `<option value="${p.id}">#${p.expediente} — ${p.nombre} ${p.apellido}</option>`);
-  if (prePatientId) { sel.value = prePatientId; checkPresupuestoPaciente(); }
+
+  if (prePatientId) {
+    const p = patients.find(x => x.id === prePatientId);
+    if (p) seleccionarPacienteRP(prePatientId, p.nombre + ' ' + p.apellido);
+  }
+
+  // Reset buscador paciente
+  const rpSearch = document.getElementById('rp-patient-search');
+  if (rpSearch) rpSearch.value = '';
+  const rpHidden = document.getElementById('rp-patient');
+  if (rpHidden) rpHidden.value = '';
+  const rpResults = document.getElementById('rp-patient-results');
+  if (rpResults) rpResults.style.display = 'none';
+  const rpSelected = document.getElementById('rp-patient-selected');
+  if (rpSelected) rpSelected.style.display = 'none';
 
   // Reset servicios — empezar con uno vacío
   window._rpServicios = [{ id:'', nombre:'', precio:0, cantidad:1 }];
