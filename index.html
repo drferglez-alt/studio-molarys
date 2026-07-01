@@ -6018,7 +6018,20 @@ async function checkNotasPendientes() {
         String(_dc.getMonth()+1).padStart(2,'0') + '-' +
         String(_dc.getDate()).padStart(2,'0');
 
-      // 1. Buscar en Supabase en rango ±1 día (para desfase horario)
+      // Una nota es "real" si tiene texto clínico escrito por el doctor
+      // NO cuenta la nota automática del cobro (que contiene el listado de servicios)
+      const esNotaReal = nota => {
+        if (!nota) return false;
+        const texto = nota.trim();
+        if (!texto) return false;
+        // Nota automática = solo contiene nombres de servicios con precio
+        // Nota real = tiene descripción clínica del doctor
+        // Heurística: si el texto es solo líneas con " — $" es automático
+        const lineas = texto.split('\n').filter(l => l.trim());
+        const todasSonServicios = lineas.every(l => /^[\dx].*—.*\$/.test(l) || l.startsWith('Registrado'));
+        return !todasSonServicios && lineas.length > 0;
+      };
+
       let tieneNota = false;
       try {
         const _d0 = new Date(fechaCobro);
@@ -6027,16 +6040,15 @@ async function checkNotasPendientes() {
         const fMin = _d1.toISOString().split('T')[0];
         const fMax = _d2.toISOString().split('T')[0];
         const { data: notas } = await db.from('patient_evolution')
-          .select('id, nota')
+          .select('id, nota, income_id')
           .eq('patient_id', c.patient_id)
           .gte('fecha_iso', fMin)
           .lte('fecha_iso', fMax);
-        if (notas && notas.some(n => !n.nota?.includes('Registrado por:'))) tieneNota = true;
-        // También contar notas automáticas si no hay manual
-        if (!tieneNota && notas && notas.length > 0) tieneNota = true;
+        // Solo cuenta si hay una nota con texto clínico real
+        if (notas && notas.some(n => esNotaReal(n.nota))) tieneNota = true;
       } catch(e2) {}
 
-      // 2. Si no encontró en Supabase, buscar en localStorage (con ±1 día)
+      // 2. Buscar también en localStorage
       if (!tieneNota) {
         const localNotas = getEvolLocal(c.patient_id);
         const _d0 = new Date(fechaCobro);
@@ -6045,9 +6057,8 @@ async function checkNotasPendientes() {
         const fMin = _d1.toISOString().split('T')[0];
         const fMax = _d2.toISOString().split('T')[0];
         tieneNota = localNotas.some(n => {
-          const fi = n.fecha_iso;
-          if (!fi) return false;
-          return fi >= fMin && fi <= fMax;
+          if (!n.fecha_iso || n.fecha_iso < fMin || n.fecha_iso > fMax) return false;
+          return esNotaReal(n.nota);
         });
       }
 
