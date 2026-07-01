@@ -4009,11 +4009,11 @@ function showPatientDetail(id) {
     <!-- PRESUPUESTOS -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
-        <div class="card-title">Presupuestos</div>
-        <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="showModule('budgets')">+ Nuevo Presupuesto</button>
+        <div class="card-title">📋 Presupuestos</div>
+        <button class="btn-gold" style="padding:6px 16px;font-size:12px;" onclick="openNuevoPresupuesto('${p.id}')">+ Nuevo Presupuesto</button>
       </div>
-      <div id="patient-budgets-list" style="padding:24px;">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;">Sin presupuestos registrados</div>
+      <div id="patient-budgets-list-${p.id}" style="padding:0;">
+        <div style="text-align:center;color:var(--text-muted);padding:24px;">Cargando presupuestos...</div>
       </div>
     </div>
 
@@ -4050,6 +4050,7 @@ function showPatientDetail(id) {
   loadPatientHistories(id);
   loadPatientPayments(id);
   loadAlertaMedica(id);
+  loadBudgets(id);
 
 
   loadPatientRFC(id);
@@ -5664,6 +5665,19 @@ function saveEvolucionFromModal() {
   saveEvolucion(ctx.patientId, ctx.editId || null);
 }
 
+function onRPBudgetChange() {
+  const bsel = document.getElementById('rp-budget');
+  const saldoDiv = document.getElementById('rp-budget-saldo');
+  if (!bsel || !saldoDiv) return;
+  const opt = bsel.options[bsel.selectedIndex];
+  if (bsel.value && opt.text.includes('Saldo:')) {
+    saldoDiv.style.display = 'block';
+    saldoDiv.innerHTML = '📋 Pago abonado al presupuesto: <strong>' + opt.text.split(' — ')[0] + '</strong>';
+  } else {
+    saldoDiv.style.display = 'none';
+  }
+}
+
 function onEvolPagoChange() {
   const preview = document.getElementById('evol-pago-preview');
   if (!preview) return;
@@ -6065,6 +6079,355 @@ async function printEvolucion(patientId, nombre, expediente, modo) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
+
+// ══════════════════════════════════════════
+// PRESUPUESTOS
+// ══════════════════════════════════════════
+
+async function loadBudgets(patientId) {
+  const cont = document.getElementById('patient-budgets-list-' + patientId);
+  if (!cont) return;
+  try {
+    const { data: budgets } = await db.from('budgets')
+      .select('*, budget_phases(*, budget_items(*, treatments(nombre)))')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false });
+
+    if (!budgets || !budgets.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;font-size:13px;">Sin presupuestos. Crea el primero con el botón +</div>';
+      return;
+    }
+
+    const fmt = n => '$' + (n||0).toLocaleString('es-MX', {minimumFractionDigits:2});
+    const estadoColor = { activo:'#16a34a', completado:'#2563eb', cancelado:'#dc2626' };
+    const estadoLabel = { activo:'Activo', completado:'Completado', cancelado:'Cancelado' };
+
+    cont.innerHTML = budgets.map(b => {
+      const pagado = b.total_pagado || 0;
+      const total  = b.total || 0;
+      const saldo  = total - pagado;
+      const pct    = total > 0 ? Math.min(100, Math.round(pagado/total*100)) : 0;
+      const fases  = b.budget_phases || [];
+
+      const fasesHTML = fases.sort((a,z) => a.orden-z.orden).map(f => {
+        const items = f.budget_items || [];
+        const subtotalFase = items.reduce((s,i) => s + (i.precio||0)*(i.cantidad||1), 0);
+        return '<div style="margin:8px 0 4px;padding:8px 12px;background:var(--cream);border-radius:6px;">'
+          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-mid);margin-bottom:6px;">' + f.nombre + '</div>'
+          + items.map(i => '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">'
+            + '<span>' + (i.cantidad>1?i.cantidad+'x ':'')+i.nombre+'</span>'
+            + '<span style="font-weight:500;">' + fmt((i.precio||0)*(i.cantidad||1)) + '</span>'
+            + '</div>').join('')
+          + '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;">'
+            + '<span>Subtotal fase</span><span>' + fmt(subtotalFase) + '</span>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+
+      return '<div style="padding:16px;border-bottom:1px solid var(--border);">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
+          + '<div>'
+            + '<div style="font-size:14px;font-weight:600;">' + b.titulo + '</div>'
+            + (b.descripcion ? '<div style="font-size:12px;color:var(--text-muted);">' + b.descripcion + '</div>' : '')
+          + '</div>'
+          + '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">'
+            + '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:' + (estadoColor[b.estado]||'#888') + '22;color:' + (estadoColor[b.estado]||'#888') + ';">' + (estadoLabel[b.estado]||b.estado) + '</span>'
+            + '<button onclick="presupuestoAccion(\"' + b.id + '\",\'edit\',\''+patientId+'\')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;">✏️</button>'
+            + '<button onclick="presupuestoAccion(\"' + b.id + '\",\'delete\',\''+patientId+'\')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;color:#dc2626;">🗑</button>'
+          + '</div>'
+        + '</div>'
+        + fasesHTML
+        + (b.descuento > 0 ? '<div style="display:flex;justify-content:space-between;font-size:13px;color:#dc2626;padding:4px 0;">'
+            + '<span>Descuento</span><span>-' + fmt(b.descuento) + '</span>'
+          + '</div>' : '')
+        + '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:6px 0 8px;border-top:1px solid var(--border);margin-top:6px;">'
+          + '<span>Total presupuesto</span><span>' + fmt(total) + '</span>'
+        + '</div>'
+        + '<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-top:4px;">'
+          + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">'
+            + '<span style="color:var(--text-muted);">Pagado</span><span style="color:#16a34a;font-weight:600;">' + fmt(pagado) + '</span>'
+          + '</div>'
+          + '<div style="background:#e5e7eb;border-radius:99px;height:6px;margin-bottom:6px;">'
+            + '<div style="width:' + pct + '%;background:#16a34a;height:100%;border-radius:99px;"></div>'
+          + '</div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;">'
+            + '<span>Saldo pendiente</span>'
+            + '<span style="color:' + (saldo<=0?'#16a34a':'#dc2626') + ';">' + (saldo<=0?'✓ Liquidado':fmt(saldo)) + '</span>'
+          + '</div>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+  } catch(e) {
+    console.error('loadBudgets:', e);
+    const cont2 = document.getElementById('patient-budgets-list-' + patientId);
+    if (cont2) cont2.innerHTML = '<div style="color:#dc2626;padding:16px;font-size:13px;">Error al cargar presupuestos</div>';
+  }
+}
+
+function presupuestoAccion(budgetId, accion, patientId) {
+  if (accion === 'edit') openEditarPresupuesto(budgetId);
+  if (accion === 'delete') eliminarPresupuesto(budgetId, patientId);
+}
+
+async function openNuevoPresupuesto(patientId) {
+  window._budgetCtx = { patientId, budgetId: null, fases: [{ id: null, nombre: 'Fase 1', orden: 1, items: [] }] };
+  renderModalPresupuesto('Nuevo Presupuesto');
+}
+
+async function openEditarPresupuesto(budgetId) {
+  try {
+    const { data: b } = await db.from('budgets')
+      .select('*, budget_phases(*, budget_items(*, treatments(nombre)))')
+      .eq('id', budgetId).single();
+    if (!b) return;
+    window._budgetCtx = {
+      patientId: b.patient_id,
+      budgetId: b.id,
+      titulo: b.titulo,
+      descripcion: b.descripcion || '',
+      descuento: b.descuento || 0,
+      estado: b.estado,
+      fases: (b.budget_phases||[]).sort((a,z)=>a.orden-z.orden).map(f => ({
+        id: f.id,
+        nombre: f.nombre,
+        orden: f.orden,
+        items: (f.budget_items||[]).map(i => ({
+          id: i.id, nombre: i.nombre,
+          precio: i.precio, cantidad: i.cantidad,
+          treatment_id: i.treatment_id
+        }))
+      }))
+    };
+    renderModalPresupuesto('Editar Presupuesto');
+  } catch(e) { showToast('Error al cargar presupuesto', 'error'); }
+}
+
+function renderModalPresupuesto(titulo) {
+  let m = document.getElementById('modal-presupuesto');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'modal-presupuesto';
+  m.className = 'modal-overlay open';
+
+  const ctx = window._budgetCtx;
+
+  const fasesHTML = () => ctx.fases.map((f, fi) => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <input type="text" value="${f.nombre}" onchange="window._budgetCtx.fases[${fi}].nombre=this.value"
+          style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;font-weight:600;">
+        ${ctx.fases.length > 1 ? '<button onclick="eliminarFase('+fi+')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:4px 8px;color:#dc2626;cursor:pointer;font-size:12px;">✕ Fase</button>' : ''}
+      </div>
+      <div id="items-fase-${fi}">
+        ${f.items.map((item, ii) => renderItemRow(fi, ii, item)).join('')}
+      </div>
+      <button onclick="agregarItem(${fi})" style="margin-top:6px;background:none;border:1px dashed var(--blue-mid);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--blue-mid);cursor:pointer;width:100%;">+ Agregar tratamiento</button>
+    </div>`).join('');
+
+  m.innerHTML = `
+    <div class="modal" style="max-width:620px;max-height:90vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <div class="modal-title">📋 ${titulo}</div>
+        <button class="modal-close" onclick="document.getElementById('modal-presupuesto').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="overflow-y:auto;flex:1;">
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-field">
+            <label>Título del presupuesto *</label>
+            <input type="text" id="bgt-titulo" value="${ctx.titulo||''}" placeholder="Ej: Rehabilitación oral completa">
+          </div>
+          <div class="form-field">
+            <label>Estado</label>
+            <select id="bgt-estado">
+              <option value="activo" ${ctx.estado==='activo'||!ctx.estado?'selected':''}>Activo</option>
+              <option value="completado" ${ctx.estado==='completado'?'selected':''}>Completado</option>
+              <option value="cancelado" ${ctx.estado==='cancelado'?'selected':''}>Cancelado</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:12px;">
+          <label>Descripción (opcional)</label>
+          <textarea id="bgt-desc" placeholder="Notas adicionales..." style="min-height:50px;">${ctx.descripcion||''}</textarea>
+        </div>
+
+        <div id="bgt-fases">${fasesHTML()}</div>
+
+        <button onclick="agregarFase()" style="width:100%;margin-bottom:12px;background:none;border:1px dashed var(--border);border-radius:8px;padding:8px;font-size:13px;color:var(--text-muted);cursor:pointer;">+ Agregar fase</button>
+
+        <div class="form-field">
+          <label>Descuento total ($) <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
+          <input type="number" id="bgt-descuento" value="${ctx.descuento||0}" placeholder="0" oninput="recalcTotalPresupuesto()">
+        </div>
+
+        <div id="bgt-total-preview" style="background:var(--blue-xpale);border-radius:8px;padding:12px;margin-top:8px;font-size:13px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-presupuesto').remove()">Cancelar</button>
+        <button class="btn-gold" onclick="guardarPresupuesto()">💾 Guardar presupuesto</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(m);
+  m.onclick = e => { if (e.target === m) m.remove(); };
+  recalcTotalPresupuesto();
+}
+
+function renderItemRow(fi, ii, item) {
+  const tratOpts = (window._treatments||treatments||[]).map(t =>
+    '<option value="'+t.id+'" data-precio="'+t.precio+'" data-nombre="'+t.nombre+'" '+(item.treatment_id===t.id?'selected':'')+'>'+t.nombre+' — $'+Number(t.precio||0).toLocaleString('es-MX')+'</option>'
+  ).join('');
+  return '<div style="display:grid;grid-template-columns:1fr 80px 80px 32px;gap:6px;align-items:center;margin-bottom:6px;" id="item-'+fi+'-'+ii+'">'
+    + '<select onchange="selItemTrat('+fi+','+ii+',this)" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;">'
+      + '<option value="">Seleccionar...</option>' + tratOpts
+    + '</select>'
+    + '<input type="number" value="'+(item.precio||0)+'" placeholder="Precio" onchange="window._budgetCtx.fases['+fi+'].items['+ii+'].precio=parseFloat(this.value)||0;recalcTotalPresupuesto()" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;">'
+    + '<input type="number" value="'+(item.cantidad||1)+'" min="1" placeholder="Cant." onchange="window._budgetCtx.fases['+fi+'].items['+ii+'].cantidad=parseInt(this.value)||1;recalcTotalPresupuesto()" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;">'
+    + '<button onclick="eliminarItem('+fi+','+ii+')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:4px;color:#dc2626;cursor:pointer;font-size:13px;">✕</button>'
+  + '</div>';
+}
+
+function selItemTrat(fi, ii, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  window._budgetCtx.fases[fi].items[ii].treatment_id = sel.value;
+  window._budgetCtx.fases[fi].items[ii].nombre = opt.dataset.nombre || opt.text;
+  window._budgetCtx.fases[fi].items[ii].precio = parseFloat(opt.dataset.precio||0);
+  renderFaseItems(fi);
+  recalcTotalPresupuesto();
+}
+
+function renderFaseItems(fi) {
+  const cont = document.getElementById('items-fase-'+fi);
+  if (!cont) return;
+  cont.innerHTML = window._budgetCtx.fases[fi].items.map((item,ii) => renderItemRow(fi,ii,item)).join('');
+  recalcTotalPresupuesto();
+}
+
+function agregarItem(fi) {
+  window._budgetCtx.fases[fi].items.push({ id:null, nombre:'', precio:0, cantidad:1, treatment_id:null });
+  renderFaseItems(fi);
+}
+
+function eliminarItem(fi, ii) {
+  window._budgetCtx.fases[fi].items.splice(ii,1);
+  renderFaseItems(fi);
+}
+
+function agregarFase() {
+  const ctx = window._budgetCtx;
+  ctx.fases.push({ id:null, nombre:'Fase '+(ctx.fases.length+1), orden:ctx.fases.length+1, items:[] });
+  document.getElementById('bgt-fases').innerHTML = ctx.fases.map((f,fi) => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <input type="text" value="${f.nombre}" onchange="window._budgetCtx.fases[${fi}].nombre=this.value"
+          style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;font-weight:600;">
+        ${ctx.fases.length > 1 ? '<button onclick="eliminarFase('+fi+')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:4px 8px;color:#dc2626;cursor:pointer;font-size:12px;">✕ Fase</button>' : ''}
+      </div>
+      <div id="items-fase-${fi}">${f.items.map((item,ii) => renderItemRow(fi,ii,item)).join('')}</div>
+      <button onclick="agregarItem(${fi})" style="margin-top:6px;background:none;border:1px dashed var(--blue-mid);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--blue-mid);cursor:pointer;width:100%;">+ Agregar tratamiento</button>
+    </div>`).join('');
+}
+
+function eliminarFase(fi) {
+  window._budgetCtx.fases.splice(fi,1);
+  agregarFase(); agregarFase(); // rerender — quitar las que se agregaron
+  window._budgetCtx.fases.splice(-2,2);
+  document.getElementById('bgt-fases').innerHTML = window._budgetCtx.fases.map((f,fi2) => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <input type="text" value="${f.nombre}" onchange="window._budgetCtx.fases[${fi2}].nombre=this.value"
+          style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;font-weight:600;">
+        ${window._budgetCtx.fases.length > 1 ? '<button onclick="eliminarFase('+fi2+')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:4px 8px;color:#dc2626;cursor:pointer;font-size:12px;">✕ Fase</button>' : ''}
+      </div>
+      <div id="items-fase-${fi2}">${f.items.map((item,ii) => renderItemRow(fi2,ii,item)).join('')}</div>
+      <button onclick="agregarItem(${fi2})" style="margin-top:6px;background:none;border:1px dashed var(--blue-mid);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--blue-mid);cursor:pointer;width:100%;">+ Agregar tratamiento</button>
+    </div>`).join('');
+}
+
+function recalcTotalPresupuesto() {
+  const ctx = window._budgetCtx;
+  if (!ctx) return;
+  const desc = parseFloat(document.getElementById('bgt-descuento')?.value||0) || 0;
+  ctx.descuento = desc;
+  const subtotal = ctx.fases.reduce((s,f) => s + f.items.reduce((s2,i) => s2 + (i.precio||0)*(i.cantidad||1), 0), 0);
+  const total = Math.max(0, subtotal - desc);
+  const fmt = n => '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2});
+  const prev = document.getElementById('bgt-total-preview');
+  if (prev) prev.innerHTML = (desc>0
+    ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--text-muted);">Subtotal</span><span>'+fmt(subtotal)+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#dc2626;">Descuento</span><span style="color:#dc2626;">-'+fmt(desc)+'</span></div>'
+    : '')
+    + '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;"><span>Total</span><span>'+fmt(total)+'</span></div>';
+}
+
+async function guardarPresupuesto() {
+  const ctx = window._budgetCtx;
+  const titulo = document.getElementById('bgt-titulo')?.value.trim();
+  const desc   = document.getElementById('bgt-desc')?.value.trim();
+  const estado = document.getElementById('bgt-estado')?.value || 'activo';
+  const descuento = parseFloat(document.getElementById('bgt-descuento')?.value||0) || 0;
+  if (!titulo) { showToast('El título es obligatorio', 'error'); return; }
+
+  const subtotal = ctx.fases.reduce((s,f) => s + f.items.reduce((s2,i) => s2 + (i.precio||0)*(i.cantidad||1), 0), 0);
+  const total = Math.max(0, subtotal - descuento);
+
+  try {
+    let budgetId = ctx.budgetId;
+    if (budgetId) {
+      await db.from('budgets').update({ titulo, descripcion:desc, estado, descuento, total, updated_at: new Date().toISOString() }).eq('id', budgetId);
+      await db.from('budget_phases').delete().eq('budget_id', budgetId);
+    } else {
+      const { data } = await db.from('budgets').insert([{
+        patient_id: ctx.patientId, usuario_id: currentUser?.id,
+        titulo, descripcion: desc, estado, descuento, total, total_pagado: 0
+      }]).select();
+      budgetId = data[0].id;
+    }
+
+    for (const [i, fase] of ctx.fases.entries()) {
+      const { data: ph } = await db.from('budget_phases').insert([{
+        budget_id: budgetId, nombre: fase.nombre, orden: i+1
+      }]).select();
+      const phId = ph[0].id;
+      const validItems = fase.items.filter(it => it.nombre || it.treatment_id);
+      if (validItems.length) {
+        await db.from('budget_items').insert(validItems.map(it => ({
+          budget_id: budgetId, phase_id: phId,
+          treatment_id: it.treatment_id || null,
+          nombre: it.nombre || 'Tratamiento',
+          precio: it.precio || 0, cantidad: it.cantidad || 1
+        })));
+      }
+    }
+
+    showToast('Presupuesto guardado ✓', 'success');
+    document.getElementById('modal-presupuesto')?.remove();
+    loadBudgets(ctx.patientId);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+async function eliminarPresupuesto(budgetId, patientId) {
+  if (!confirm('¿Eliminar este presupuesto?\nSe eliminará con todas sus fases e items.')) return;
+  try {
+    await db.from('budgets').delete().eq('id', budgetId);
+    showToast('Presupuesto eliminado', 'success');
+    loadBudgets(patientId);
+  } catch(e) { showToast('Error al eliminar', 'error'); }
+}
+
+// Actualizar total_pagado al registrar un cobro vinculado al presupuesto
+async function actualizarTotalPagadoBudget(budgetId) {
+  if (!budgetId) return;
+  try {
+    const { data } = await db.from('income')
+      .select('ingreso_neto, ingreso_bruto')
+      .eq('budget_id', budgetId);
+    const total = (data||[]).reduce((s,r) => s + ((r.ingreso_neto&&r.ingreso_neto>0)?r.ingreso_neto:r.ingreso_bruto||0), 0);
+    await db.from('budgets').update({ total_pagado: total }).eq('id', budgetId);
+  } catch(e) {}
+}
 
 // ══════════════════════════════════════════
 // ZONA HORARIA — Helpers CDMX (America/Mexico_City)
@@ -7996,6 +8359,10 @@ function openRecibirPagoModal(prePatientId) {
   if (_resumen) _resumen.style.display = 'none';
   document.getElementById('rp-descuento').value = '0';
   document.getElementById('rp-notas').value = '';
+  const bselReset = document.getElementById('rp-budget');
+  if (bselReset) bselReset.innerHTML = '<option value="">— Sin presupuesto / Cobro normal —</option>';
+  const bsaldo = document.getElementById('rp-budget-saldo');
+  if (bsaldo) bsaldo.style.display = 'none';
   rpIsAbono = false;
 
   // Poblar doctores
@@ -8009,8 +8376,24 @@ function openRecibirPagoModal(prePatientId) {
   document.getElementById('modal-recibir-pago').classList.add('open');
 }
 
-function checkPresupuestoPaciente() {
+async function checkPresupuestoPaciente() {
   const pid = document.getElementById('rp-patient')?.value;
+  // Cargar presupuestos activos del paciente
+  const bsel = document.getElementById('rp-budget');
+  if (bsel && pid) {
+    bsel.innerHTML = '<option value="">— Sin presupuesto / Cobro normal —</option>';
+    try {
+      const { data: bgs } = await db.from('budgets')
+        .select('id, titulo, total, total_pagado')
+        .eq('patient_id', pid).eq('estado', 'activo');
+      (bgs||[]).forEach(b => {
+        const saldo = (b.total||0) - (b.total_pagado||0);
+        bsel.innerHTML += '<option value="'+b.id+'">'+b.titulo+' — Saldo: $'+saldo.toLocaleString('es-MX')+'</option>';
+      });
+    } catch(e) {}
+  } else if (bsel) {
+    bsel.innerHTML = '<option value="">— Sin presupuesto / Cobro normal —</option>';
+  }
   const block = document.getElementById('rp-presupuesto-block');
   if (block) block.style.display = 'none';
 }
@@ -8121,6 +8504,8 @@ async function saveRecibirPago() {
     };
     try { incomeData.notas = tratNombreIncome; } catch(e){}
     if (rpDoctorNombre) { try { incomeData.doctor_nombre = rpDoctorNombre; incomeData.doctor_id = rpDoctorId || null; } catch(e){} }
+    const rpBudgetId = document.getElementById('rp-budget')?.value || null;
+    if (rpBudgetId) { try { incomeData.budget_id = rpBudgetId; } catch(e){} }
     try { incomeData.cobrador_nombre = currentUserProfile?.nombre || currentUser?.email || ''; } catch(e){}
 
     // Agregar campos opcionales uno a uno (si la columna no existe, Supabase ignora o lanza error manejable)
@@ -8156,6 +8541,8 @@ async function saveRecibirPago() {
     if (error) throw error;
 
     showToast('Pago registrado exitosamente ✓', 'success');
+    // Actualizar total pagado del presupuesto si está vinculado
+    if (rpBudgetId) actualizarTotalPagadoBudget(rpBudgetId);
     closeModal('modal-recibir-pago');
     updateStats();
 
