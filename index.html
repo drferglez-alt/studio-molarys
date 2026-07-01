@@ -4004,16 +4004,6 @@ function showPatientDetail(id) {
       </div>
     </div>
 
-    <!-- HISTORIAL DE PAGOS — pegado a notas de evolución -->
-    <div class="card" style="margin-bottom:20px;border-radius:0 0 12px 12px;border-top:2px solid var(--border);">
-      <div class="card-header">
-        <div class="card-title">💳 Historial de Pagos</div>
-        <button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="printPagos('${p.id}','${p.nombre} ${p.apellido}')">🖨 Imprimir</button>
-      </div>
-      <div id="patient-payments-list" style="padding:0;">
-        <div style="text-align:center;color:var(--text-muted);padding:24px;">Cargando pagos...</div>
-      </div>
-    </div>
 
     <!-- PRESUPUESTOS -->
     <div class="card" style="margin-bottom:20px;">
@@ -5342,13 +5332,65 @@ async function loadEvolucion(patientId) {
       .order('fecha_iso', { ascending: false }).order('created_at', { ascending: false });
     if (!error && data) {
       notas = data;
-      saveEvolLocal(patientId, data); // cache local
+      saveEvolLocal(patientId, data);
     } else { notas = getEvolLocal(patientId); }
   } catch(e) { notas = getEvolLocal(patientId); }
 
-  // Limpiar automáticamente notas duplicadas (auto + manual en la misma fecha)
+  // Limpiar duplicados
   const eliminados = await limpiarNotasDuplicadas(patientId);
   if (eliminados > 0) notas = getEvolLocal(patientId);
+
+  // Traer cobros sin nota vinculada y añadirlos como filas pendientes
+  try {
+    const { data: cobros } = await db.from('income')
+      .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, notas, created_at, treatments(nombre)')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false });
+
+    if (cobros && cobros.length) {
+      const notasIncomeIds = new Set(notas.filter(n=>n.income_id).map(n=>n.income_id));
+      const notasFechas    = new Set(notas.filter(n=>n.fecha_iso).map(n=>n.fecha_iso));
+
+      cobros.forEach(c => {
+        // Si ya hay nota vinculada a este cobro, saltar
+        if (notasIncomeIds.has(c.id)) return;
+        // Si ya hay nota en la misma fecha con texto clínico real, saltar
+        const fechaCobro = new Date(c.created_at).toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'}).split('/').reverse().map((v,i)=>i===1?String(parseInt(v)).padStart(2,'0'):v.padStart(2,'0')).join('-');
+        const tieneNota = notas.some(n => n.fecha_iso === fechaCobro && n.nota && !n.nota.includes('Registrado por:'));
+        if (tieneNota) return;
+
+        // Crear fila virtual de cobro pendiente de nota
+        const neto = (c.ingreso_neto && c.ingreso_neto > 0) ? c.ingreso_neto : c.ingreso_bruto;
+        const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        const dc = new Date(c.created_at);
+        const fechaDisplay = dc.getDate() + ' ' + meses[dc.getMonth()] + ' ' + dc.getFullYear();
+        const hora = dc.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'});
+        const tratNombre = c.notas || (c.treatments && c.treatments.nombre) || 'Consulta';
+
+        notas.push({
+          _esCobro: true,      // fila virtual — no es nota real
+          _incomeId: c.id,
+          fecha: fechaDisplay,
+          fecha_iso: fechaCobro,
+          hora: hora,
+          nota: tratNombre,
+          pago: 'si',
+          monto: neto,
+          ingreso_bruto: c.ingreso_bruto,
+          descuento: c.descuento || 0,
+          metodo_pago: c.tipo_pago,
+          doctor_nombre: null,
+          doctor_cedula: null,
+        });
+      });
+
+      // Reordenar por fecha descendente
+      notas.sort((a,b) => {
+        const fa = a.fecha_iso || ''; const fb = b.fecha_iso || '';
+        return fb.localeCompare(fa);
+      });
+    }
+  } catch(e) { console.warn('loadEvolucion cobros:', e); }
 
   renderEvolTabla(patientId, notas);
 }
@@ -5376,21 +5418,51 @@ function renderEvolTabla(patientId, notas) {
     if (pago === 'parcial') return '<span class="evol-pago-parcial">⚠️ Parcial' + montoLabel + '</span>' + descHTML;
     return '<span class="evol-pago-no">⏳ Pendiente</span>';
   };
-  tbody.innerHTML = notas.map((n, i) => `
-    <tr>
-      <td style="font-weight:500;white-space:nowrap;font-size:12px;">${n.fecha || '—'}</td>
-      <td style="color:var(--text-muted);white-space:nowrap;font-size:12px;">${n.hora || '—'}</td>
-      <td style="font-size:12px;">
-        ${n.doctor_nombre ? `<span style="font-weight:500;">${n.doctor_nombre}</span>` : '<span style="color:var(--text-muted);">—</span>'}
-        ${n.doctor_cedula ? `<br><span style="font-size:10px;color:var(--text-muted);">Céd. ${n.doctor_cedula}</span>` : ''}
-      </td>
-      <td style="line-height:1.5;">${(n.nota || '').replace(/\n/g,'<br>')}</td>
-      <td>${pagoHTML(n.pago, n.monto, n.descuento, n.ingreso_bruto)}${n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : ''}</td>
-      <td style="display:flex;gap:4px;align-items:center;padding:8px 6px;">
-        <button class="evol-del-btn" onclick="editarNota('${patientId}',${i})" title="Editar nota" style="color:var(--blue-mid);">✏️</button>
-        <button class="evol-del-btn" onclick="deleteEvolucion('${patientId}','${n.id || i}')" title="Eliminar">🗑</button>
-      </td>
-    </tr>`).join('');
+  tbody.innerHTML = notas.map((n, i) => {
+    const esCobro = n._esCobro === true;
+    const rowBg = esCobro ? 'background:rgba(251,191,36,.06);' : '';
+    const pagoCell = pagoHTML(n.pago, n.monto, n.descuento, n.ingreso_bruto)
+      + (n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : '');
+
+    if (esCobro) {
+      // Fila de cobro sin nota — mostrar con alerta de nota pendiente
+      return '<tr style="' + rowBg + '">'
+        + '<td style="font-weight:500;white-space:nowrap;font-size:12px;">' + (n.fecha||'—') + '</td>'
+        + '<td style="color:var(--text-muted);white-space:nowrap;font-size:12px;">' + (n.hora||'—') + '</td>'
+        + '<td style="font-size:12px;color:var(--text-muted);">—</td>'
+        + '<td style="line-height:1.5;">'
+          + '<div style="font-size:12px;color:var(--text-muted);">' + n.nota + '</div>'
+          + '<div style="margin-top:6px;">'
+            + '<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;border:1px solid #fcd34d;">⚠️ Nota pendiente</span>'
+            + ' <button onclick="abrirNotaParaCobro(\"' + patientId + '\",\"' + n._incomeId + '\")" '
+              + 'style="margin-left:6px;background:var(--blue-deep);color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;">✏️ Llenar nota</button>'
+          + '</div>'
+        + '</td>'
+        + '<td>' + pagoCell + '</td>'
+        + '<td style="padding:8px 6px;"></td>'
+        + '</tr>';
+    }
+
+    return '<tr>'
+      + '<td style="font-weight:500;white-space:nowrap;font-size:12px;">' + (n.fecha||'—') + '</td>'
+      + '<td style="color:var(--text-muted);white-space:nowrap;font-size:12px;">' + (n.hora||'—') + '</td>'
+      + '<td style="font-size:12px;">'
+        + (n.doctor_nombre ? '<span style="font-weight:500;">'+n.doctor_nombre+'</span>' : '<span style="color:var(--text-muted);">—</span>')
+        + (n.doctor_cedula ? '<br><span style="font-size:10px;color:var(--text-muted);">Céd. '+n.doctor_cedula+'</span>' : '')
+      + '</td>'
+      + '<td style="line-height:1.5;">' + (n.nota||'').replace(/\n/g,'<br>') + '</td>'
+      + '<td>' + pagoCell + '</td>'
+      + '<td style="display:flex;gap:4px;align-items:center;padding:8px 6px;">'
+        + '<button class="evol-del-btn" onclick="editarNota(\"' + patientId + '\",' + i + ')" title="Editar nota" style="color:var(--blue-mid);">✏️</button>'
+        + '<button class="evol-del-btn" onclick="deleteEvolucion(\"' + patientId + '\",\"' + (n.id||i) + '\")" title="Eliminar">🗑</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function abrirNotaParaCobro(patientId, incomeId) {
+  // Abrir modal de nueva nota pre-vinculada al cobro
+  openAddEvolucionModal(patientId, null, incomeId);
 }
 
 async function deleteEvolucion(patientId, idOrIdx) {
@@ -5405,7 +5477,7 @@ async function deleteEvolucion(patientId, idOrIdx) {
   showToast('Nota eliminada', 'success');
 }
 
-async function openAddEvolucionModal(patientId, editNota) {
+async function openAddEvolucionModal(patientId, editNota, preIncomeId) {
   const p = patients.find(x => x.id === patientId);
   const nombre = p ? p.nombre + ' ' + p.apellido : '';
   const fechaISO = (editNota && editNota.fecha_iso) ? editNota.fecha_iso : fechaISOLocal();
@@ -5483,6 +5555,14 @@ async function openAddEvolucionModal(patientId, editNota) {
   document.body.appendChild(m);
   m.onclick = (e) => { if (e.target === m) m.remove(); };
   document.getElementById('evol-nota').focus();
+
+  // Pre-vincular con cobro si viene de botón "Llenar nota"
+  if (preIncomeId) {
+    setTimeout(() => {
+      const checks = document.querySelectorAll('#evol-pagos-checks input[type=checkbox]');
+      checks.forEach(ch => { if (ch.value === preIncomeId) { ch.checked = true; onEvolPagoChange(); } });
+    }, 100);
+  }
 
   if (isEdit && editNota && editNota.income_id) {
     setTimeout(() => {
@@ -7877,8 +7957,7 @@ ${notasExtra}`;
     // Si el perfil del paciente está abierto, refrescar notas Y pagos
     const tbody = document.getElementById('evolucion-tbody-' + patientId);
     if (tbody) renderEvolTabla(patientId, evolLocal);
-    const payContainer = document.getElementById('patient-payments-list');
-    if (payContainer) loadPatientPayments(patientId);
+
     setTimeout(() => checkNotasPendientes(), 800);
 
     // ── Buscar RFC del paciente para pre-llenar ──
