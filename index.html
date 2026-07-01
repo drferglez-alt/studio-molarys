@@ -5504,11 +5504,12 @@ async function openAddEvolucionModal(patientId, editNota, preIncomeId) {
   const pagoOpts = pagos.map(pg => {
     const fecha = new Date(pg.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
     const trat  = (pg.treatments && pg.treatments.nombre) ? pg.treatments.nombre : 'Pago';
-    const monto = '$' + (pg.ingreso_bruto||0).toLocaleString('es-MX',{minimumFractionDigits:2});
+    const netoP  = (pg.ingreso_neto && pg.ingreso_neto > 0) ? pg.ingreso_neto : pg.ingreso_bruto;
+    const descP   = pg.descuento || 0;
+    const monto = '$' + netoP.toLocaleString('es-MX',{minimumFractionDigits:2}) + (descP > 0 ? ' (-$'+descP.toLocaleString('es-MX')+' desc)' : '');
     const sel   = (editNota && editNota.income_id === pg.id) ? 'selected' : '';
-    return '<option value="' + pg.id + '" data-monto="' + pg.ingreso_bruto + '" data-metodo="' + (pg.tipo_pago||'') + '" ' + sel + '>' + fecha + ' — ' + trat + ' ' + monto + '</option>';
+    return '<option value="' + pg.id + '" data-monto="' + netoP + '" data-metodo="' + (pg.tipo_pago||'') + '" ' + sel + '>' + fecha + ' — ' + trat + ' ' + monto + '</option>';
   }).join('');
-
   const doctorOpts = getDoctors().map(d => {
     const val = (d.titulo||'Dr.') + ' ' + d.nombre + ' ' + d.apellido;
     const ced = (d.especialidades && d.especialidades[0]) ? (d.especialidades[0].cedula||'') : '';
@@ -8012,6 +8013,8 @@ async function saveRecibirPago() {
 
   const btn = document.getElementById('btn-save-rp');
   btn.disabled = true; btn.textContent = 'Guardando...';
+  // Recalcular siempre para garantizar valores correctos
+  calcRPCascada();
   const r = window._rpResult || {};
   const metodoPago = document.getElementById('rp-pago').value;
 
@@ -8035,7 +8038,7 @@ async function saveRecibirPago() {
       treatment_id: treatmentId || null,
       usuario_id: currentUser.id,
       ingreso_bruto: r.bruto || bruto,
-      ingreso_neto: r.neto1 || (r.bruto || bruto),
+      ingreso_neto: (r.neto1 !== undefined) ? r.neto1 : (r.bruto || bruto),
       tipo_pago: metodoPago,
     };
     try { incomeData.notas = tratNombreIncome; } catch(e){}
@@ -8045,7 +8048,7 @@ async function saveRecibirPago() {
     // Agregar campos opcionales uno a uno (si la columna no existe, Supabase ignora o lanza error manejable)
     const notasVal = document.getElementById('rp-notas').value.trim();
     if (notasVal) incomeData.notas = notasVal;
-    if (r.descuento) incomeData.descuento = r.descuento;
+    incomeData.descuento = r.descuento || 0;  // siempre guardar, aunque sea 0
     if (r.tpv)    incomeData.comision_tpv = r.tpv;
     if (r.impF)   incomeData.impuesto_federal = r.impF;
     if (r.impE)   incomeData.impuesto_estatal = r.impE;
