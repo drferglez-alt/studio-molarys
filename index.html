@@ -5679,43 +5679,59 @@ async function printEvolucion(patientId, nombre, expediente) {
   const fmt = v => '$' + Number(v||0).toLocaleString('es-MX', {minimumFractionDigits:2});
 
   const filas = notas.length ? notas.map(n => {
-    // Columna pago
-    const tieneDesc = n.descuento && n.descuento > 0 && n.ingreso_bruto && n.ingreso_bruto > n.monto;
-    const pagoColor = n.pago === 'si' ? '#16a34a' : n.pago === 'parcial' ? '#d97706' : '#6b7280';
-    const pagoLabel = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Pago parcial' : 'Pendiente';
+    const bruto     = n.ingreso_bruto || n.monto || 0;
+    const desc      = n.descuento || 0;
+    const total     = n.monto || bruto;
+    const pendiente = n.pago === 'si' ? 0 : total;
+    const pagado    = n.pago === 'si' ? total : (n.pago === 'parcial' ? (total - pendiente) : 0);
+    const tieneDesc = desc > 0 && bruto > total;
 
-    let pagoHTML = '<div style="font-weight:700;color:' + pagoColor + ';">' + pagoLabel + '</div>';
-    if (n.monto && !tieneDesc) {
-      pagoHTML += '<div style="font-size:13px;margin-top:2px;">' + fmt(n.monto) + '</div>';
-    }
-    if (tieneDesc) {
-      pagoHTML += '<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:11px;">'
-        + '<tr><td style="color:#666;padding:1px 0;">Subtotal</td><td style="text-align:right;color:#666;">' + fmt(n.ingreso_bruto) + '</td></tr>'
-        + '<tr><td style="color:#dc2626;padding:1px 0;">Descuento</td><td style="text-align:right;color:#dc2626;">-' + fmt(n.descuento) + '</td></tr>'
-        + '<tr style="border-top:1px solid #ccc;"><td style="font-weight:700;padding:2px 0;">Total</td><td style="text-align:right;font-weight:700;">' + fmt(n.monto) + '</td></tr>'
-        + '</table>';
-    }
-    if (n.metodo_pago) {
-      pagoHTML += '<div style="font-size:10px;color:#888;margin-top:3px;">' + n.metodo_pago + '</div>';
-    }
+    // Columna PAGO — estado
+    const pagoColor = n.pago === 'si' ? '#16a34a' : n.pago === 'parcial' ? '#d97706' : '#6b7280';
+    const pagoLabel = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Parcial' : 'Pendiente';
+    const metodHTML = n.metodo_pago ? '<br><span style="font-size:10px;color:#888;">' + n.metodo_pago + '</span>' : '';
+
+    const td = 'padding:10px 8px;border:1px solid #e0e0e0;vertical-align:top;font-size:12px;';
+    const tdNum = td + 'text-align:right;';
 
     return '<tr>'
-      + '<td style="white-space:nowrap;padding:10px;border:1px solid #ddd;vertical-align:top;font-size:12px;">'
+      // Fecha / Hora
+      + '<td style="' + td + 'white-space:nowrap;">'
         + '<strong>' + (n.fecha||'—') + '</strong>'
-        + (n.hora ? '<br><span style="color:#666;font-size:11px;">' + n.hora + '</span>' : '')
+        + (n.hora ? '<br><span style="color:#888;font-size:11px;">' + n.hora + '</span>' : '')
       + '</td>'
-      + '<td style="padding:10px;border:1px solid #ddd;vertical-align:top;font-size:12px;min-width:130px;">'
-        + (n.doctor_nombre || '—')
+      // Doctor
+      + '<td style="' + td + '">'
+        + (n.doctor_nombre||'—')
         + (n.doctor_cedula ? '<br><span style="font-size:10px;color:#888;">Céd. ' + n.doctor_cedula + '</span>' : '')
       + '</td>'
-      + '<td style="padding:10px;border:1px solid #ddd;vertical-align:top;line-height:1.6;font-size:12px;">'
+      // Procedimiento / Nota
+      + '<td style="' + td + 'line-height:1.6;">'
         + (n.nota||'').replace(/\n/g,'<br>')
       + '</td>'
-      + '<td style="padding:10px;border:1px solid #ddd;vertical-align:top;min-width:140px;">'
-        + pagoHTML
+      // Costo (bruto antes de descuento)
+      + '<td style="' + tdNum + 'color:#444;">'
+        + (bruto > 0 ? fmt(bruto) : '—')
       + '</td>'
-      + '</tr>';
-  }).join('') : '<tr><td colspan="4" style="padding:20px;text-align:center;color:#999;">Sin notas de evolución registradas</td></tr>';
+      // Descuento
+      + '<td style="' + tdNum + 'color:' + (tieneDesc ? '#dc2626' : '#aaa') + ';">'
+        + (tieneDesc ? '-' + fmt(desc) : '—')
+      + '</td>'
+      // Total (después de descuento)
+      + '<td style="' + tdNum + 'font-weight:700;">'
+        + (total > 0 ? fmt(total) : '—')
+      + '</td>'
+      // Pagó
+      + '<td style="' + tdNum + 'color:' + pagoColor + ';font-weight:600;">'
+        + '<div>' + pagoLabel + metodHTML + '</div>'
+        + (n.pago !== 'no' && total > 0 ? '<div style="font-size:11px;margin-top:2px;">' + fmt(n.pago === 'si' ? total : pagado) + '</div>' : '')
+      + '</td>'
+      // Pendiente
+      + '<td style="' + tdNum + 'color:' + (pendiente > 0 ? '#dc2626' : '#16a34a') + ';font-weight:600;">'
+        + (pendiente > 0 ? fmt(pendiente) : '✓ 0')
+      + '</td>'
+    + '</tr>';
+  }).join('') : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#999;">Sin notas registradas</td></tr>';
 
   const cfgE = getClinicaConfig();
   const logoE = cfgE.logo ? '<img src="' + cfgE.logo + '" style="height:50px;width:auto;object-fit:contain;margin-right:14px;">' : '';
@@ -5723,23 +5739,25 @@ async function printEvolucion(patientId, nombre, expediente) {
   const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     + '<title>Notas de Evolución — ' + nombre + '</title>'
     + '<style>'
+    + '*{margin:0;padding:0;box-sizing:border-box;}'
     + 'body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:24px 28px;}'
     + '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2D3A52;}'
     + '.clinic-name{font-size:16px;font-weight:700;color:#2D3A52;}'
     + '.clinic-sub{font-size:11px;color:#666;margin-top:2px;}'
     + '.paciente-box{background:#f7f7f7;border:1px solid #ddd;border-radius:6px;padding:10px 14px;margin-bottom:18px;font-size:12px;}'
-    + 'table.main{width:100%;border-collapse:collapse;}'
-    + 'table.main th{background:#2D3A52;color:#fff;padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}'
-    + 'table.main td{vertical-align:top;}'
-    + '.footer{margin-top:28px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px;display:flex;justify-content:space-between;}'
+    + 'table{width:100%;border-collapse:collapse;}'
+    + 'thead th{background:#2D3A52;color:#fff;padding:9px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border:1px solid #2D3A52;}'
+    + 'thead th.right{text-align:right;}'
+    + 'tbody tr:nth-child(even){background:#fafafa;}'
+    + '.footer{margin-top:24px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px;display:flex;justify-content:space-between;}'
     + '.no-print{margin-top:20px;text-align:center;}'
-    + '@media print{.no-print{display:none;}}'
+    + '@media print{.no-print{display:none!important;}}'
     + '</style></head><body>'
     + '<div class="header">'
       + '<div style="display:flex;align-items:center;">' + logoE
         + '<div>'
           + '<div class="clinic-name">' + (cfgE.nombre||'STUDIO MOLARYS') + '</div>'
-          + '<div class="clinic-sub">' + (cfgE.doctor||'') + (cfgE.cedula?' · Céd. '+cfgE.cedula:'') + '</div>'
+          + '<div class="clinic-sub">' + (cfgE.doctor||'') + (cfgE.cedula ? ' · Céd. ' + cfgE.cedula : '') + '</div>'
           + (cfgE.direccion ? '<div class="clinic-sub">' + cfgE.direccion + '</div>' : '')
           + (cfgE.telefono  ? '<div class="clinic-sub">Tel. ' + cfgE.telefono + '</div>' : '')
         + '</div>'
@@ -5751,12 +5769,16 @@ async function printEvolucion(patientId, nombre, expediente) {
       + (p && p.fecha_nacimiento ? ' &nbsp;·&nbsp; <strong>Edad:</strong> ' + calcAge(p.fecha_nacimiento) + ' años' : '')
       + (p && p.telefono ? ' &nbsp;·&nbsp; <strong>Tel:</strong> ' + p.telefono : '')
     + '</div>'
-    + '<table class="main">'
+    + '<table>'
       + '<thead><tr>'
-        + '<th style="width:90px;">Fecha / Hora</th>'
-        + '<th style="width:150px;">Doctor</th>'
+        + '<th style="width:85px;">Fecha / Hora</th>'
+        + '<th style="width:140px;">Doctor</th>'
         + '<th>Procedimiento / Nota clínica</th>'
-        + '<th style="width:150px;">Pago</th>'
+        + '<th class="right" style="width:80px;">Costo</th>'
+        + '<th class="right" style="width:80px;">Descuento</th>'
+        + '<th class="right" style="width:80px;">Total</th>'
+        + '<th class="right" style="width:90px;">Pagó</th>'
+        + '<th class="right" style="width:80px;">Pendiente</th>'
       + '</tr></thead>'
       + '<tbody>' + filas + '</tbody>'
     + '</table>'
@@ -5767,12 +5789,13 @@ async function printEvolucion(patientId, nombre, expediente) {
     + '<div class="no-print"><button onclick="window.print()" style="padding:10px 28px;background:#2D3A52;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ Imprimir / Guardar PDF</button></div>'
     + '</body></html>';
 
-  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.target = '_blank'; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
+
 
 // ══════════════════════════════════════════
 // ZONA HORARIA — Helpers CDMX (America/Mexico_City)
