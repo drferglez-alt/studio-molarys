@@ -5495,7 +5495,7 @@ async function openAddEvolucionModal(patientId, editNota, preIncomeId) {
   let pagos = [];
   try {
     const { data } = await db.from('income')
-      .select('id, ingreso_bruto, tipo_pago, created_at, treatments(nombre)')
+      .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, notas, created_at, treatments(nombre)')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false }).limit(20);
     pagos = data || [];
@@ -5543,7 +5543,7 @@ async function openAddEvolucionModal(patientId, editNota, preIncomeId) {
         + '<label>Procedimiento / Nota clínica *</label>'
         + '<textarea id="evol-nota" rows="5" style="resize:vertical;">' + ((editNota && editNota.nota) ? editNota.nota.replace(/</g,"&lt;") : '') + '</textarea>'
       + '</div>'
-      + '<div class="form-field">'        + '<label>Vincular con pagos registrados <span style="color:var(--text-muted);font-weight:400;">(opcional — selecciona uno o varios)</span></label>'        + '<div id="evol-pagos-checks" style="max-height:160px;overflow-y:auto;background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">'          + (pagos.length ? pagos.map(function(pg) {              var fecha = new Date(pg.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});              var trat = (pg.treatments && pg.treatments.nombre) ? pg.treatments.nombre : 'Pago';              var monto = '$' + (pg.ingreso_bruto||0).toLocaleString('es-MX',{minimumFractionDigits:2});              var chk = (editNota && editNota.income_ids && editNota.income_ids.indexOf(pg.id)>=0) ? 'checked' : '';              return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;">'                + '<input type="checkbox" value="' + pg.id + '" data-monto="' + pg.ingreso_bruto + '" data-metodo="' + (pg.tipo_pago||'') + '" ' + chk + ' onchange="onEvolPagoChange()" style="accent-color:var(--blue-mid);width:15px;height:15px;">'                + '<span>' + fecha + ' — ' + trat + ' <strong>' + monto + '</strong></span>'                + '</label>';            }).join('') : '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Sin pagos registrados para este paciente</div>')        + '</div>'        + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Selecciona los cobros que corresponden a esta visita.</div>'      + '</div>'      + '<div id="evol-pago-preview" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:4px;color:#1a7a40;"></div>'
+      + '<div class="form-field">'        + '<label>Vincular con pagos registrados <span style="color:var(--text-muted);font-weight:400;">(opcional — selecciona uno o varios)</span></label>'        + '<div id="evol-pagos-checks" style="max-height:160px;overflow-y:auto;background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">'          + (pagos.length ? pagos.map(function(pg) {              var fecha = new Date(pg.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});              var trat = (pg.treatments && pg.treatments.nombre) ? pg.treatments.nombre : 'Pago';              var neto = (pg.ingreso_neto && pg.ingreso_neto > 0) ? pg.ingreso_neto : pg.ingreso_bruto;              var desc = pg.descuento || 0;              var monto = '$' + neto.toLocaleString('es-MX',{minimumFractionDigits:2});              var descLabel = desc > 0 ? ' (-$' + desc.toLocaleString('es-MX') + ' desc)' : '';              var chk = (editNota && editNota.income_ids && editNota.income_ids.indexOf(pg.id)>=0) ? 'checked' : '';              return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;">'                + '<input type="checkbox" value="' + pg.id + '" data-monto="' + pg.ingreso_bruto + '" data-metodo="' + (pg.tipo_pago||'') + '" ' + chk + ' onchange="onEvolPagoChange()" style="accent-color:var(--blue-mid);width:15px;height:15px;">'                + '<span>' + fecha + ' — ' + trat + ' <strong>' + monto + '</strong>' + descLabel + '</span>'                + '</label>';            }).join('') : '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Sin pagos registrados para este paciente</div>')        + '</div>'        + '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Selecciona los cobros que corresponden a esta visita.</div>'      + '</div>'      + '<div id="evol-pago-preview" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:4px;color:#1a7a40;"></div>'
     + '</div>'
     + '<div class="modal-footer">'
       + '<button class="btn-secondary" onclick="document.getElementById(\'modal-add-evolucion\').remove()">Cancelar</button>'
@@ -5671,10 +5671,11 @@ async function saveEvolucion(patientId, editId) {
 
   // Vincular con pagos (múltiples checkboxes)
   const checks = document.querySelectorAll('#evol-pagos-checks input[type=checkbox]:checked');
-  const incomeIds = Array.from(checks).map(c => c.value).filter(Boolean);
-  const incomeId  = incomeIds[0] || null; // primer id como referencia principal
-  const pagoVinc  = incomeIds.length > 0 ? 'si' : 'no';
-  const montoVinc = incomeIds.length > 0
+  const incomeIds  = Array.from(checks).map(c => c.value).filter(Boolean);
+  const incomeId   = incomeIds[0] || null;
+  const pagoVinc   = incomeIds.length > 0 ? 'si' : 'no';
+  // montoVinc = suma de ingreso_neto (ya con descuento aplicado)
+  const montoVinc  = incomeIds.length > 0
     ? Array.from(checks).reduce((s,c) => s + parseFloat(c.dataset.monto||0), 0)
     : null;
   const metodoVinc = checks.length > 0 ? (checks[0].dataset.metodo||null) : null;
