@@ -8067,18 +8067,10 @@ async function saveRecibirPago() {
     if (r.neto3)  incomeData.neto_final = r.neto3;
     try { incomeData.es_abono = rpIsAbono; } catch(e){}
 
-    // LOG para debuggear
-    console.log('💰 GUARDANDO COBRO:', JSON.stringify({
-      bruto: incomeData.ingreso_bruto,
-      neto: incomeData.ingreso_neto,
-      descuento: incomeData.descuento
-    }));
-
     // Intentar con todos los campos; si falla, intentar solo con básicos
     let insertError = null;
     let insertResult = await db.from('income').insert([incomeData]);
     insertError = insertResult.error;
-    console.log('📦 RESULTADO:', insertResult.error ? insertResult.error.message : 'OK');
 
     if (insertError) {
       // Fallback: solo campos mínimos garantizados
