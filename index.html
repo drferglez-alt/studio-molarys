@@ -5324,12 +5324,18 @@ function renderEvolTabla(patientId, notas) {
   }
   const pagoHTML = (pago, monto, descuento, bruto) => {
     const fmtM = n => '$' + Number(n).toLocaleString('es-MX', {minimumFractionDigits:2});
-    const descHTML = (descuento && descuento > 0 && bruto)
-      ? '<br><span style="font-size:10px;color:#999;text-decoration:line-through;">' + fmtM(bruto) + '</span>'
-        + '<span style="font-size:10px;color:#dc2626;"> -' + fmtM(descuento) + '</span>'
+    const tieneDesc = descuento && descuento > 0 && bruto && bruto > monto;
+    // Orden: Subtotal → Descuento → Total con descuento
+    const descHTML = tieneDesc
+      ? '<div style="font-size:10px;margin-top:3px;line-height:1.6;">'
+        + '<span style="color:#666;">Subtotal: ' + fmtM(bruto) + '</span><br>'
+        + '<span style="color:#dc2626;">Desc: -' + fmtM(descuento) + '</span><br>'
+        + '<span style="font-weight:600;">Total: ' + fmtM(monto) + '</span>'
+        + '</div>'
       : '';
-    if (pago === 'si')      return '<span class="evol-pago-si">💰 Pagó' + (monto ? ' ' + fmtM(monto) : '') + '</span>' + descHTML;
-    if (pago === 'parcial') return '<span class="evol-pago-parcial">⚠️ Parcial' + (monto ? ' ' + fmtM(monto) : '') + '</span>' + descHTML;
+    const montoLabel = tieneDesc ? '' : (monto ? ' ' + fmtM(monto) : '');
+    if (pago === 'si')      return '<span class="evol-pago-si">💰 Pagó' + montoLabel + '</span>' + descHTML;
+    if (pago === 'parcial') return '<span class="evol-pago-parcial">⚠️ Parcial' + montoLabel + '</span>' + descHTML;
     return '<span class="evol-pago-no">⏳ Pendiente</span>';
   };
   tbody.innerHTML = notas.map((n, i) => `
@@ -5681,8 +5687,8 @@ async function printEvolucion(patientId, nombre, expediente) {
     const pagoTxt = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Pago parcial' : 'Pendiente';
     const montoFmt = v => '$' + Number(v).toLocaleString('es-MX', {minimumFractionDigits:2});
     const montoTxt = n.monto ? ' — ' + montoFmt(n.monto) : '';
-    const descTxt = (n.descuento && n.descuento > 0 && n.ingreso_bruto)
-      ? ' (Bruto: ' + montoFmt(n.ingreso_bruto) + ' | Desc: -' + montoFmt(n.descuento) + ')'
+    const descTxt = (n.descuento && n.descuento > 0 && n.ingreso_bruto && n.ingreso_bruto > n.monto)
+      ? ' | Subtotal: ' + montoFmt(n.ingreso_bruto) + ' — Desc: -' + montoFmt(n.descuento) + ' — Total: ' + montoFmt(n.monto)
       : '';
     const metodTxt = n.metodo_pago ? ' (' + n.metodo_pago + ')' : '';
     return `<tr>
@@ -6696,33 +6702,33 @@ async function loadPatientPayments(patientId) {
       return;
     }
 
-    const fmt = n => '$' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const fmt = n => '$' + (n||0).toLocaleString('es-MX',{minimumFractionDigits:2});
     const pagoIcon = { efectivo: '💵', tarjeta: '💳', transferencia: '📱' };
-    container.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 110px 100px 110px 72px;padding:10px 16px;background:var(--cream);border-bottom:1px solid var(--border);">
-        <div class="th">Tratamiento</div>
-        <div class="th">Fecha</div>
-        <div class="th">Pago</div>
-        <div class="th">Monto</div>
-        <div class="th"></div>
-      </div>
-      ${data.map(r => `
-      <div style="display:grid;grid-template-columns:1fr 110px 100px 110px 72px;padding:11px 16px;border-bottom:1px solid rgba(0,0,0,0.04);align-items:center;">
-        <div style="font-size:13px;font-weight:500;">${r.treatments?.nombre || r.notas || 'Sin tratamiento'}</div>
-        <div style="font-size:12px;color:var(--text-muted);">${formatDate(r.created_at)}</div>
-        <div style="font-size:13px;">${pagoIcon[r.tipo_pago]||''} ${r.tipo_pago||''}</div>
-        <div>
-          <div style="font-size:14px;font-weight:600;color:var(--blue-mid);">${fmt(r.ingreso_neto || r.ingreso_bruto)}</div>
-          ${r.descuento > 0 ? `<div style="font-size:11px;color:#dc2626;">Desc: -${fmt(r.descuento)}</div>` : ''}
-          ${(r.ingreso_neto && r.ingreso_neto < r.ingreso_bruto) ? `<div style="font-size:10px;color:var(--text-muted);">Bruto: ${fmt(r.ingreso_bruto)}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:4px;">
-          <button onclick="editPago('${r.id}','${patientId}')" title="Editar"
-            style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--blue-mid);">✏️</button>
-          <button onclick="deletePago('${r.id}','${patientId}')" title="Eliminar"
-            style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#dc2626;">🗑</button>
-        </div>
-      </div>`).join('')}`;
+    const header = '<div style="display:grid;grid-template-columns:1fr 100px 90px 140px 72px;padding:10px 16px;background:var(--cream);border-bottom:1px solid var(--border);">'
+      + '<div class="th">Tratamiento</div><div class="th">Fecha</div><div class="th">Forma Pago</div><div class="th">Monto</div><div class="th"></div></div>';
+    const filasPagos = data.map(r => {
+      const neto = (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
+      const tieneDesc = r.descuento && r.descuento > 0 && r.ingreso_bruto > neto;
+      const montoHTML = tieneDesc
+        ? '<div style="font-size:11px;color:#888;">Subtotal: ' + fmt(r.ingreso_bruto) + '</div>'
+          + '<div style="font-size:11px;color:#dc2626;">Desc: -' + fmt(r.descuento) + '</div>'
+          + '<div style="font-size:14px;font-weight:700;color:var(--blue-mid);">Total: ' + fmt(neto) + '</div>'
+        : '<div style="font-size:14px;font-weight:600;color:var(--blue-mid);">' + fmt(neto) + '</div>';
+      const tratNombre = r.notas || (r.treatments && r.treatments.nombre ? r.treatments.nombre : 'Sin tratamiento');
+      const docLabel = r.doctor_nombre ? '<div style="font-size:10px;color:var(--text-muted);">Dr: ' + r.doctor_nombre + '</div>' : '';
+      const cobrLabel = r.cobrador_nombre ? '<div style="font-size:10px;color:var(--text-muted);">Cobró: ' + r.cobrador_nombre + '</div>' : '';
+      return '<div style="display:grid;grid-template-columns:1fr 100px 90px 140px 72px;padding:11px 16px;border-bottom:1px solid rgba(0,0,0,0.04);align-items:start;">'
+        + '<div><div style="font-size:13px;font-weight:500;">' + tratNombre + '</div>' + docLabel + cobrLabel + '</div>'
+        + '<div style="font-size:12px;color:var(--text-muted);">' + formatDate(r.created_at) + '</div>'
+        + '<div style="font-size:13px;">' + (pagoIcon[r.tipo_pago]||'') + ' ' + (r.tipo_pago||'—') + '</div>'
+        + '<div>' + montoHTML + '</div>'
+        + '<div style="display:flex;gap:4px;">'
+          + '<button onclick="editPago(\"' + r.id + '\",\"' + patientId + '\")" title="Editar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--blue-mid);">✏️</button>'
+          + '<button onclick="deletePago(\"' + r.id + '\",\"' + patientId + '\")" title="Eliminar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#dc2626;">🗑</button>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+    container.innerHTML = header + filasPagos;
   } catch(e) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">Sin pagos registrados</div>';
   }
