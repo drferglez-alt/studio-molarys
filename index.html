@@ -5852,7 +5852,24 @@ async function printEvolucion(patientId, nombre, expediente, modo) {
   const esCuenta = modo === 'cuenta';
   const colCount = esCuenta ? 6 : 8;
 
-  const filas = notas.length ? notas.map(n => {
+  // En modo cuenta cargar también los cobros para mostrar tratamiento real
+  const cobrosMap = {};
+  if (esCuenta) {
+    try {
+      const { data: cobros } = await db.from('income')
+        .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, notas, treatments(nombre)')
+        .eq('patient_id', patientId);
+      (cobros||[]).forEach(c => {
+        cobrosMap[c.id] = c;
+        // También indexar por fecha para notas sin income_id
+        const fecha = c.created_at ? c.created_at.split('T')[0] : '';
+        if (fecha) cobrosMap['fecha_'+fecha] = c;
+      });
+    } catch(e) {}
+  }
+
+  const notasFiltradas = esCuenta ? notas.filter(n => n.pago === 'si' || n.pago === 'parcial' || (n.monto && n.monto > 0)) : notas;
+  const filas = notasFiltradas.length ? notasFiltradas.map(n => {
     const bruto     = n.ingreso_bruto || n.monto || 0;
     const desc      = n.descuento || 0;
     const total     = n.monto || bruto;
@@ -5865,8 +5882,22 @@ async function printEvolucion(patientId, nombre, expediente, modo) {
     const tdR = td + 'text-align:right;';
 
     // Procedimiento: en modo cuenta solo el resumen, en completo la nota completa
+    // En modo cuenta: usar nombre del tratamiento del cobro, no la nota clínica
+    let tratNombreCuenta = '';
+    if (esCuenta) {
+      const cobro = cobrosMap[n.income_id] || cobrosMap['fecha_'+(n.fecha_iso||'')];
+      if (cobro) {
+        tratNombreCuenta = cobro.notas || (cobro.treatments && cobro.treatments.nombre) || '';
+      }
+      if (!tratNombreCuenta) {
+        // Fallback: tomar solo la primera línea de la nota si parece un tratamiento (no nota clínica)
+        const primeraLinea = (n.nota||'').split('\n')[0];
+        const esServicio = primeraLinea.match(/^.+—\s*\$[\d,.]+/);
+        tratNombreCuenta = esServicio ? primeraLinea.replace(/\s*—.*$/, '').trim() : primeraLinea;
+      }
+    }
     const procHTML = esCuenta
-      ? (n.nota||'').split('\n')[0]  // solo primera línea
+      ? tratNombreCuenta
       : (n.nota||'').replace(/\n/g,'<br>');
 
     let row = '<tr>';
@@ -5895,7 +5926,7 @@ async function printEvolucion(patientId, nombre, expediente, modo) {
       + (pendiente > 0 ? fmt(pendiente) : '✓') + '</td>';
     row += '</tr>';
     return row;
-  }).join('') : '<tr><td colspan="' + colCount + '" style="padding:20px;text-align:center;color:#999;">Sin registros</td></tr>';
+  }).join('') : '<tr><td colspan="' + colCount + '" style="padding:20px;text-align:center;color:#999;">Sin registros de pago</td></tr>';
 
   const cfgE = getClinicaConfig();
   const logoE = cfgE.logo ? '<img src="' + cfgE.logo + '" style="height:50px;width:auto;object-fit:contain;margin-right:14px;">' : '';
