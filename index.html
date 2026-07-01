@@ -5457,8 +5457,8 @@ function renderEvolTabla(patientId, notas) {
       + '<td style="line-height:1.5;">' + (n.nota||'').replace(/\n/g,'<br>') + '</td>'
       + '<td>' + pagoCell + '</td>'
       + '<td style="display:flex;gap:4px;align-items:center;padding:8px 6px;">'
-        + '<button class="evol-del-btn" onclick="editarNota(\"' + patientId + '\",' + i + ')" title="Editar nota" style="color:var(--blue-mid);">✏️</button>'
-        + '<button class="evol-del-btn" onclick="deleteEvolucion(\"' + patientId + '\",\"' + (n.id||i) + '\")" title="Eliminar">🗑</button>'
+        + '<button class="evol-del-btn" onclick="notaAccion(' + i + ',\'edit\')">✏️</button>'
+        + '<button class="evol-del-btn" onclick="notaAccion(' + i + ',\'delete\')">🗑</button>'
       + '</td>'
       + '</tr>';
   }).join('');
@@ -5581,6 +5581,16 @@ async function openAddEvolucionModal(patientId, editNota, preIncomeId) {
 }
 
 // Abrir edición usando el índice de la nota en el cache local
+function notaAccion(idx, accion) {
+  const patientId = window._notasPatientId;
+  if (!patientId) return;
+  if (accion === 'edit')   editarNota(patientId, idx);
+  if (accion === 'delete') {
+    const n = (window._notasRender || [])[idx];
+    if (n) deleteEvolucion(patientId, n.id || idx);
+  }
+}
+
 function editarNota(patientId, idx) {
   // Buscar primero en el render actual (que incluye filas virtuales)
   const nota = (window._notasRender || [])[idx];
@@ -6001,7 +6011,7 @@ async function checkNotasPendientes() {
   try {
     const hoy = ahoraCDMX();
     const lunes = new Date(hoy);
-    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7)); // lunes de esta semana CDMX
+    lunes.setDate(hoy.getDate() - 6); // últimos 7 días (no solo esta semana)
     lunes.setHours(0,0,0,0);
 
     // Filtrar por doctor activo si el perfil lo indica
@@ -6035,17 +6045,20 @@ async function checkNotasPendientes() {
         String(_dc.getDate()).padStart(2,'0');
 
       // Una nota es "real" si tiene texto clínico escrito por el doctor
-      // NO cuenta la nota automática del cobro (que contiene el listado de servicios)
+      // NO cuenta si todas las líneas son solo servicios con precio o "Registrado por:"
       const esNotaReal = nota => {
         if (!nota) return false;
         const texto = nota.trim();
         if (!texto) return false;
-        // Nota automática = solo contiene nombres de servicios con precio
-        // Nota real = tiene descripción clínica del doctor
-        // Heurística: si el texto es solo líneas con " — $" es automático
-        const lineas = texto.split('\n').filter(l => l.trim());
-        const todasSonServicios = lineas.every(l => /^[\dx].*—.*\$/.test(l) || l.startsWith('Registrado'));
-        return !todasSonServicios && lineas.length > 0;
+        const lineas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+        // Si alguna línea NO es un servicio con precio ni "Registrado por:", es nota real
+        const tieneTextoClinico = lineas.some(l =>
+          !l.match(/^[\dxX]+x?\s+.+—\s*\$/) &&   // no es "2x RESINA — $500"
+          !l.match(/^.+—\s*\$[\d,]+/) &&           // no es "LIMPIEZA — $1,500"
+          !l.startsWith('Registrado por:') &&
+          l.length > 2
+        );
+        return tieneTextoClinico;
       };
 
       let tieneNota = false;
