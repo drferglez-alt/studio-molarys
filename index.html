@@ -6087,7 +6087,7 @@ async function checkNotasPendientes() {
     const rol = currentUserProfile?.rol || '';
 
     let query = db.from('income')
-      .select('id, patient_id, ingreso_bruto, tipo_pago, doctor_nombre, created_at, patients(nombre, apellido, telefono), treatments(nombre)')
+      .select('id, patient_id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, doctor_nombre, created_at, patients(nombre, apellido, telefono), treatments(nombre)')
       .gte('created_at', lunes.toISOString())
       .order('created_at', { ascending: false });
 
