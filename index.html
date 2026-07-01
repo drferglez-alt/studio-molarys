@@ -5418,6 +5418,10 @@ function renderEvolTabla(patientId, notas) {
     if (pago === 'parcial') return '<span class="evol-pago-parcial">⚠️ Parcial' + montoLabel + '</span>' + descHTML;
     return '<span class="evol-pago-no">⏳ Pendiente</span>';
   };
+  // Guardar notas en global para que los botones accedan por índice
+  window._notasRender = notas;
+  window._notasPatientId = patientId;
+
   tbody.innerHTML = notas.map((n, i) => {
     const esCobro = n._esCobro === true;
     const rowBg = esCobro ? 'background:rgba(251,191,36,.06);' : '';
@@ -5467,11 +5471,15 @@ function abrirNotaParaCobro(patientId, incomeId) {
 
 async function deleteEvolucion(patientId, idOrIdx) {
   if (!confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.')) return;
+  // Buscar la nota real por id o por índice en el render
+  const notaRender = (window._notasRender || []).find(n => n.id === idOrIdx);
+  const realId = notaRender?.id || idOrIdx;
   try {
-    await db.from('patient_evolution').delete().eq('id', idOrIdx);
-  } catch(e) {}
-  // También del local
-  const lista = getEvolLocal(patientId).filter((n, i) => n.id !== idOrIdx && String(i) !== String(idOrIdx));
+    if (realId && !String(realId).startsWith('local_')) {
+      await db.from('patient_evolution').delete().eq('id', realId);
+    }
+  } catch(e) { console.warn('deleteEvolucion:', e); }
+  const lista = getEvolLocal(patientId).filter(n => n.id !== realId && String(n.id) !== String(idOrIdx));
   saveEvolLocal(patientId, lista);
   loadEvolucion(patientId);
   showToast('Nota eliminada', 'success');
@@ -5574,9 +5582,17 @@ async function openAddEvolucionModal(patientId, editNota, preIncomeId) {
 
 // Abrir edición usando el índice de la nota en el cache local
 function editarNota(patientId, idx) {
-  const lista = getEvolLocal(patientId);
-  const nota = lista[idx];
-  if (!nota) { showToast('No se encontró la nota', 'error'); return; }
+  // Buscar primero en el render actual (que incluye filas virtuales)
+  const nota = (window._notasRender || [])[idx];
+  if (!nota || nota._esCobro) {
+    // Si es fila de cobro, abrir modal de nueva nota vinculada
+    if (nota && nota._esCobro) {
+      abrirNotaParaCobro(patientId, nota._incomeId);
+    } else {
+      showToast('No se encontró la nota', 'error');
+    }
+    return;
+  }
   openAddEvolucionModal(patientId, nota);
 }
 
