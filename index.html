@@ -7798,9 +7798,12 @@ ${notasExtra}`;
     evolLocal.unshift({ ...evolRecord, id: evolRecord.id || ('local_' + Date.now()) });
     saveEvolLocal(patientId, evolLocal);
 
-    // Si el perfil del paciente está abierto, refrescar la tabla
+    // Si el perfil del paciente está abierto, refrescar notas Y pagos
     const tbody = document.getElementById('evolucion-tbody-' + patientId);
     if (tbody) renderEvolTabla(patientId, evolLocal);
+    const payContainer = document.getElementById('patient-payments-list');
+    if (payContainer) loadPatientPayments(patientId);
+    setTimeout(() => checkNotasPendientes(), 800);
 
     // ── Buscar RFC del paciente para pre-llenar ──
     let razonSocial = '', correoFactura = '', regimenFiscal = '';
