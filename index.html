@@ -5674,11 +5674,27 @@ async function saveEvolucion(patientId, editId) {
   const incomeIds  = Array.from(checks).map(c => c.value).filter(Boolean);
   const incomeId   = incomeIds[0] || null;
   const pagoVinc   = incomeIds.length > 0 ? 'si' : 'no';
-  // montoVinc = suma de ingreso_neto (ya con descuento aplicado)
-  const montoVinc  = incomeIds.length > 0
-    ? Array.from(checks).reduce((s,c) => s + parseFloat(c.dataset.monto||0), 0)
-    : null;
   const metodoVinc = checks.length > 0 ? (checks[0].dataset.metodo||null) : null;
+
+  // Obtener monto REAL de Supabase para garantizar que es el neto con descuento
+  let montoVinc = null;
+  let ingresoBrutoVinc = null;
+  let descuentoVinc = null;
+  if (incomeIds.length > 0) {
+    try {
+      const { data: incomeData } = await db.from('income')
+        .select('ingreso_bruto, ingreso_neto, descuento')
+        .in('id', incomeIds);
+      if (incomeData && incomeData.length > 0) {
+        ingresoBrutoVinc = incomeData.reduce((s,r) => s + (r.ingreso_bruto||0), 0);
+        descuentoVinc    = incomeData.reduce((s,r) => s + (r.descuento||0), 0);
+        montoVinc        = incomeData.reduce((s,r) => s + ((r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto), 0);
+      }
+    } catch(e) {
+      // Fallback al data-monto del checkbox
+      montoVinc = Array.from(checks).reduce((s,c) => s + parseFloat(c.dataset.monto||0), 0);
+    }
+  }
 
   if (!fechaInput || !nota) { showToast('Fecha y nota son obligatorias', 'error'); return; }
 
@@ -5697,6 +5713,8 @@ async function saveEvolucion(patientId, editId) {
     nota,
     pago:          pagoVinc,
     monto:         montoVinc,
+    ingreso_bruto: ingresoBrutoVinc,
+    descuento:     descuentoVinc,
     metodo_pago:   metodoVinc,
     doctor_nombre: doctorNombre || null,
     doctor_cedula: doctorCedula || null,
@@ -5883,18 +5901,35 @@ async function printEvolucion(patientId, nombre, expediente, modo) {
     const tdR = td + 'text-align:right;';
 
     // Procedimiento: en modo cuenta solo el resumen, en completo la nota completa
-    // En modo cuenta: usar nombre del tratamiento del cobro, no la nota clínica
+    // En modo cuenta: usar todos los tratamientos del cobro vinculado
     let tratNombreCuenta = '';
     if (esCuenta) {
       const cobro = cobrosMap[n.income_id] || cobrosMap['fecha_'+(n.fecha_iso||'')];
       if (cobro) {
-        tratNombreCuenta = cobro.notas || (cobro.treatments && cobro.treatments.nombre) || '';
+        // cobro.notas contiene todos los servicios separados por coma (ej: "CONSULTA, RESINA")
+        // cobro.treatments.nombre solo tiene el primero — preferir notas
+        if (cobro.notas) {
+          // Las notas pueden ser "CONSULTA, 2x RESINA" — limpiar precios si los hay
+          tratNombreCuenta = cobro.notas
+            .split(',')
+            .map(s => s.replace(/\s*—\s*\$[\d,.]+/g,'').trim())
+            .filter(Boolean)
+            .join(', ');
+        } else if (cobro.treatments && cobro.treatments.nombre) {
+          tratNombreCuenta = cobro.treatments.nombre;
+        }
       }
       if (!tratNombreCuenta) {
-        // Fallback: tomar solo la primera línea de la nota si parece un tratamiento (no nota clínica)
-        const primeraLinea = (n.nota||'').split('\n')[0];
-        const esServicio = primeraLinea.match(/^.+—\s*\$[\d,.]+/);
-        tratNombreCuenta = esServicio ? primeraLinea.replace(/\s*—.*$/, '').trim() : primeraLinea;
+        // Fallback: extraer nombres de servicios de la nota automática
+        // La nota tiene formato "CONSULTA — $600.00\nRESINA — $2,500.00"
+        const lineas = (n.nota||'').split('\n').filter(l => l.match(/^.+—\s*\$/));
+        if (lineas.length > 0) {
+          tratNombreCuenta = lineas
+            .map(l => l.replace(/\s*—\s*\$[\d,.]+.*/, '').trim())
+            .join(', ');
+        } else {
+          tratNombreCuenta = (n.nota||'').split('\n')[0];
+        }
       }
     }
     const procHTML = esCuenta
