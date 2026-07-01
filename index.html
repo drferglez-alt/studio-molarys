@@ -6721,9 +6721,12 @@ async function loadPatientPayments(patientId) {
 
     const fmt = n => '$' + (n||0).toLocaleString('es-MX',{minimumFractionDigits:2});
     const pagoIcon = { efectivo: '💵', tarjeta: '💳', transferencia: '📱' };
+    // Guardar datos en global para que los botones puedan acceder por índice
+    window._pagosData = data;
+    window._pagosPatientId = patientId;
     const header = '<div style="display:grid;grid-template-columns:1fr 100px 90px 140px 72px;padding:10px 16px;background:var(--cream);border-bottom:1px solid var(--border);">'
       + '<div class="th">Tratamiento</div><div class="th">Fecha</div><div class="th">Forma Pago</div><div class="th">Monto</div><div class="th"></div></div>';
-    const filasPagos = data.map(r => {
+    const filasPagos = data.map((r, idx) => {
       const neto = (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
       const tieneDesc = r.descuento && r.descuento > 0 && r.ingreso_bruto > neto;
       const montoHTML = tieneDesc
@@ -6740,8 +6743,8 @@ async function loadPatientPayments(patientId) {
         + '<div style="font-size:13px;">' + (pagoIcon[r.tipo_pago]||'') + ' ' + (r.tipo_pago||'—') + '</div>'
         + '<div>' + montoHTML + '</div>'
         + '<div style="display:flex;gap:4px;">'
-          + '<button onclick="editPago(\"' + r.id + '\",\"' + patientId + '\")" title="Editar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--blue-mid);">✏️</button>'
-          + '<button onclick="deletePago(\"' + r.id + '\",\"' + patientId + '\")" title="Eliminar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#dc2626;">🗑</button>'
+          + '<button onclick="pagoAccion(' + idx + ',\'edit\')" title="Editar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--blue-mid);">✏️</button>'
+          + '<button onclick="pagoAccion(' + idx + ',\'delete\')" title="Eliminar" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#dc2626;">🗑</button>'
         + '</div>'
       + '</div>';
     }).join('');
@@ -6749,6 +6752,14 @@ async function loadPatientPayments(patientId) {
   } catch(e) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">Sin pagos registrados</div>';
   }
+}
+
+function pagoAccion(idx, accion) {
+  const r = (window._pagosData || [])[idx];
+  const pid = window._pagosPatientId;
+  if (!r) return;
+  if (accion === 'delete') deletePago(r.id, pid);
+  if (accion === 'edit') editPago(r.id, pid);
 }
 
 async function deletePago(incomeId, patientId) {
