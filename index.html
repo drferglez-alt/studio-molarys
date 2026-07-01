@@ -6535,7 +6535,7 @@ async function printPagos(patientId, nombre) {
   let pagos = [];
   try {
     const { data } = await db.from('income')
-      .select('id, ingreso_bruto, tipo_pago, doctor_nombre, cobrador_nombre, created_at, treatments(nombre), notas')
+      .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, doctor_nombre, cobrador_nombre, created_at, treatments(nombre), notas')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false });
     pagos = data || [];
@@ -6601,8 +6601,10 @@ async function printPagos(patientId, nombre) {
     const doctorMostrar = r.doctor_nombre || evolPorFecha[fechaISO] || '—';
     const cobradorMostrar = r.cobrador_nombre || '—';
     const tratMostrar = r._tratamiento || (r.treatments && r.treatments.nombre ? r.treatments.nombre : (r.notas || 'Servicio'));
-    const montoNeto = r.ingreso_neto || r.ingreso_bruto;
-    const descStr = (r.descuento && r.descuento > 0) ? '<br><span style="font-size:10px;color:#dc2626;">Desc: -' + fmt(r.descuento) + '</span>' : '';
+    const montoNeto = (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
+    const descStr = (r.descuento && r.descuento > 0)
+      ? '<br><span style="color:#dc2626;font-size:10px;">Desc: -' + fmt(r.descuento) + ' | Bruto: ' + fmt(r.ingreso_bruto) + '</span>'
+      : '';
     return '<tr>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + fechaFmt + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + tratMostrar + '</td>'
@@ -7594,7 +7596,7 @@ function calcRPCascada() {
     </div>`;
 
   // Guardar internamente para corte de caja
-  window._rpResult = { bruto, descuento, tpv, impF, impE, doctor, neto3 };
+  window._rpResult = { bruto, descuento, neto1, tpv, impF, impE, doctor, neto3 };
 }
 
 async function saveRecibirPago() {
@@ -7630,7 +7632,7 @@ async function saveRecibirPago() {
       treatment_id: treatmentId || null,
       usuario_id: currentUser.id,
       ingreso_bruto: r.bruto || bruto,
-      ingreso_neto: r.neto3 || (r.bruto || bruto),
+      ingreso_neto: r.neto1 || (r.bruto || bruto),
       tipo_pago: metodoPago,
     };
     try { incomeData.notas = tratNombreIncome; } catch(e){}
@@ -7704,7 +7706,7 @@ Registrado por: ${cobradorNombre}`;
       hora: horaDisplay,
       nota: notaTexto,
       pago: 'si',
-      monto: parseFloat(monto),
+      monto: parseFloat(r.neto1 || monto),
       metodo_pago: metodosLabel[metodoPago] || metodoPago,
       doctor_nombre: rpDoctorNombre || null,
       doctor_cedula: rpDoctorCedula || null,
