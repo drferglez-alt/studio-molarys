@@ -5664,7 +5664,34 @@ async function saveEvolucion(patientId, editId) {
   setTimeout(() => checkNotasPendientes(), 500);
 }
 
-async function printEvolucion(patientId, nombre, expediente) {
+async function printEvolucion(patientId, nombre, expediente, modo) {
+  // Si no se especifica modo, preguntar
+  if (!modo) {
+    let m = document.getElementById('modal-print-mode');
+    if (m) m.remove();
+    m = document.createElement('div');
+    window._printModeData = { pid: patientId, nom: nombre, exp: expediente||'' };
+    m.id = 'modal-print-mode';
+    m.className = 'modal-overlay open';
+    m.innerHTML = '<div class="modal" style="max-width:420px;">'
+      + '<div class="modal-header"><div class="modal-title">🖨️ ¿Qué deseas imprimir?</div></div>'
+      + '<div class="modal-body" style="display:flex;flex-direction:column;gap:12px;padding-top:8px;">'
+        + '<button onclick="window._pm=window._printModeData;printEvolucion(_pm.pid,_pm.nom,_pm.exp,\'completo\')" '
+          + 'style="padding:16px;background:var(--blue-deep);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;">'
+          + '📋 Historial completo<br><span style="font-size:11px;font-weight:400;opacity:.85;">Fecha · Doctor · Nota clínica · Costo · Descuento · Total · Pagó · Pendiente</span>'
+        + '</button>'
+        + '<button onclick="window._pm=window._printModeData;printEvolucion(_pm.pid,_pm.nom,_pm.exp,\'cuenta\')" '
+          + 'style="padding:16px;background:var(--cream);color:var(--text-primary);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;">'
+          + '💳 Solo estado de cuenta<br><span style="font-size:11px;font-weight:400;color:var(--text-muted);">Fecha · Procedimiento · Costo · Descuento · Total · Pagó · Pendiente</span>'
+        + '</button>'
+        + '<button onclick="document.getElementById(\'modal-print-mode\').remove()" '
+          + 'style="padding:10px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;">Cancelar</button>'
+      + '</div></div>';
+    document.body.appendChild(m);
+    m.onclick = e => { if (e.target === m) m.remove(); };
+    return;
+  }
+
   let notas = [];
   try {
     const { data, error } = await db.from('patient_evolution')
@@ -5678,63 +5705,73 @@ async function printEvolucion(patientId, nombre, expediente) {
   const fechaImp = new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'long',year:'numeric'});
   const fmt = v => '$' + Number(v||0).toLocaleString('es-MX', {minimumFractionDigits:2});
 
+  const esCuenta = modo === 'cuenta';
+  const colCount = esCuenta ? 6 : 8;
+
   const filas = notas.length ? notas.map(n => {
     const bruto     = n.ingreso_bruto || n.monto || 0;
     const desc      = n.descuento || 0;
     const total     = n.monto || bruto;
     const pendiente = n.pago === 'si' ? 0 : total;
-    const pagado    = n.pago === 'si' ? total : (n.pago === 'parcial' ? (total - pendiente) : 0);
     const tieneDesc = desc > 0 && bruto > total;
-
-    // Columna PAGO — estado
-    const pagoColor = n.pago === 'si' ? '#16a34a' : n.pago === 'parcial' ? '#d97706' : '#6b7280';
+    const pagoColor = n.pago === 'si' ? '#16a34a' : n.pago === 'parcial' ? '#d97706' : '#dc2626';
     const pagoLabel = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Parcial' : 'Pendiente';
     const metodHTML = n.metodo_pago ? '<br><span style="font-size:10px;color:#888;">' + n.metodo_pago + '</span>' : '';
+    const td = 'padding:9px 8px;border:1px solid #e0e0e0;vertical-align:top;font-size:12px;';
+    const tdR = td + 'text-align:right;';
 
-    const td = 'padding:10px 8px;border:1px solid #e0e0e0;vertical-align:top;font-size:12px;';
-    const tdNum = td + 'text-align:right;';
+    // Procedimiento: en modo cuenta solo el resumen, en completo la nota completa
+    const procHTML = esCuenta
+      ? (n.nota||'').split('\n')[0]  // solo primera línea
+      : (n.nota||'').replace(/\n/g,'<br>');
 
-    return '<tr>'
-      // Fecha / Hora
-      + '<td style="' + td + 'white-space:nowrap;">'
-        + '<strong>' + (n.fecha||'—') + '</strong>'
-        + (n.hora ? '<br><span style="color:#888;font-size:11px;">' + n.hora + '</span>' : '')
-      + '</td>'
-      // Doctor
-      + '<td style="' + td + '">'
-        + (n.doctor_nombre||'—')
-        + (n.doctor_cedula ? '<br><span style="font-size:10px;color:#888;">Céd. ' + n.doctor_cedula + '</span>' : '')
-      + '</td>'
-      // Procedimiento / Nota
-      + '<td style="' + td + 'line-height:1.6;">'
-        + (n.nota||'').replace(/\n/g,'<br>')
-      + '</td>'
-      // Costo (bruto antes de descuento)
-      + '<td style="' + tdNum + 'color:#444;">'
-        + (bruto > 0 ? fmt(bruto) : '—')
-      + '</td>'
-      // Descuento
-      + '<td style="' + tdNum + 'color:' + (tieneDesc ? '#dc2626' : '#aaa') + ';">'
-        + (tieneDesc ? '-' + fmt(desc) : '—')
-      + '</td>'
-      // Total (después de descuento)
-      + '<td style="' + tdNum + 'font-weight:700;">'
-        + (total > 0 ? fmt(total) : '—')
-      + '</td>'
-      // Pagó
-      + '<td style="' + tdNum + 'color:' + pagoColor + ';font-weight:600;">'
-        + '<div>' + pagoLabel + metodHTML + '</div>'
-        + (n.pago !== 'no' && total > 0 ? '<div style="font-size:11px;margin-top:2px;">' + fmt(n.pago === 'si' ? total : pagado) + '</div>' : '')
-      + '</td>'
-      // Pendiente
-      + '<td style="' + tdNum + 'color:' + (pendiente > 0 ? '#dc2626' : '#16a34a') + ';font-weight:600;">'
-        + (pendiente > 0 ? fmt(pendiente) : '✓ 0')
-      + '</td>'
-    + '</tr>';
-  }).join('') : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#999;">Sin notas registradas</td></tr>';
+    let row = '<tr>';
+    // Fecha
+    row += '<td style="' + td + 'white-space:nowrap;"><strong>' + (n.fecha||'—') + '</strong>'
+      + (n.hora ? '<br><span style="color:#888;font-size:11px;">' + n.hora + '</span>' : '') + '</td>';
+    // Doctor (solo en modo completo)
+    if (!esCuenta) {
+      row += '<td style="' + td + '">' + (n.doctor_nombre||'—')
+        + (n.doctor_cedula ? '<br><span style="font-size:10px;color:#888;">Céd. ' + n.doctor_cedula + '</span>' : '') + '</td>';
+    }
+    // Procedimiento
+    row += '<td style="' + td + 'line-height:1.5;">' + procHTML + '</td>';
+    // Costo
+    row += '<td style="' + tdR + 'color:#555;">' + (bruto > 0 ? fmt(bruto) : '—') + '</td>';
+    // Descuento
+    row += '<td style="' + tdR + 'color:' + (tieneDesc ? '#dc2626' : '#aaa') + ';">'
+      + (tieneDesc ? '-' + fmt(desc) : '—') + '</td>';
+    // Total
+    row += '<td style="' + tdR + 'font-weight:700;">' + (total > 0 ? fmt(total) : '—') + '</td>';
+    // Pagó
+    row += '<td style="' + tdR + 'color:' + pagoColor + ';font-weight:600;">'
+      + pagoLabel + metodHTML + '</td>';
+    // Pendiente
+    row += '<td style="' + tdR + 'color:' + (pendiente > 0 ? '#dc2626' : '#16a34a') + ';font-weight:700;">'
+      + (pendiente > 0 ? fmt(pendiente) : '✓') + '</td>';
+    row += '</tr>';
+    return row;
+  }).join('') : '<tr><td colspan="' + colCount + '" style="padding:20px;text-align:center;color:#999;">Sin registros</td></tr>';
 
   const cfgE = getClinicaConfig();
   const logoE = cfgE.logo ? '<img src="' + cfgE.logo + '" style="height:50px;width:auto;object-fit:contain;margin-right:14px;">' : '';
+
+  function totalesHTML() {
+    const totBruto = notas.filter(n=>n.monto||n.ingreso_bruto).reduce((s,n)=>s+(n.ingreso_bruto||n.monto||0),0);
+    const totDesc  = notas.reduce((s,n)=>s+(n.descuento||0),0);
+    const totTotal = notas.filter(n=>n.monto).reduce((s,n)=>s+(n.monto||0),0);
+    const totPend  = notas.filter(n=>n.pago!=='si').reduce((s,n)=>s+(n.monto||0),0);
+    const totPago  = totTotal - totPend;
+    return '<table style="width:100%;border-collapse:collapse;margin-top:0;border-top:2px solid #2D3A52;">'
+      + '<tr style="background:#2D3A52;color:#fff;font-weight:700;font-size:11px;">'
+      + '<td style="padding:9px 8px;" colspan="2">TOTALES</td>'
+      + '<td style="padding:9px 8px;text-align:right;">' + fmt(totBruto) + '</td>'
+      + '<td style="padding:9px 8px;text-align:right;color:#fca5a5;">' + (totDesc>0?'-'+fmt(totDesc):'—') + '</td>'
+      + '<td style="padding:9px 8px;text-align:right;">' + fmt(totTotal) + '</td>'
+      + '<td style="padding:9px 8px;text-align:right;color:#86efac;">' + fmt(totPago) + '</td>'
+      + '<td style="padding:9px 8px;text-align:right;color:' + (totPend>0?'#fca5a5':'#86efac') + ';">' + (totPend>0?fmt(totPend):'✓ 0') + '</td>'
+      + '</tr></table>';
+  }
 
   const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     + '<title>Notas de Evolución — ' + nombre + '</title>'
@@ -5772,18 +5809,19 @@ async function printEvolucion(patientId, nombre, expediente) {
     + '<table>'
       + '<thead><tr>'
         + '<th style="width:85px;">Fecha / Hora</th>'
-        + '<th style="width:140px;">Doctor</th>'
-        + '<th>Procedimiento / Nota clínica</th>'
-        + '<th class="right" style="width:80px;">Costo</th>'
-        + '<th class="right" style="width:80px;">Descuento</th>'
-        + '<th class="right" style="width:80px;">Total</th>'
-        + '<th class="right" style="width:90px;">Pagó</th>'
-        + '<th class="right" style="width:80px;">Pendiente</th>'
+        + (esCuenta ? '' : '<th style="width:135px;">Doctor</th>')
+        + '<th>' + (esCuenta ? 'Procedimiento' : 'Procedimiento / Nota clínica') + '</th>'
+        + '<th class="right" style="width:75px;">Costo</th>'
+        + '<th class="right" style="width:75px;">Descuento</th>'
+        + '<th class="right" style="width:75px;">Total</th>'
+        + '<th class="right" style="width:75px;">Pagó</th>'
+        + '<th class="right" style="width:75px;">Pendiente</th>'
       + '</tr></thead>'
       + '<tbody>' + filas + '</tbody>'
     + '</table>'
+    + (esCuenta ? totalesHTML() : '')
     + '<div class="footer">'
-      + '<span>Este documento es confidencial y de uso médico-legal exclusivo.</span>'
+      + '<span>' + (esCuenta ? 'Estado de cuenta · Documento confidencial' : 'Historial clínico confidencial') + '</span>'
       + '<span>Total de notas: ' + notas.length + '</span>'
     + '</div>'
     + '<div class="no-print"><button onclick="window.print()" style="padding:10px 28px;background:#2D3A52;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ Imprimir / Guardar PDF</button></div>'
