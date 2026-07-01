@@ -6982,14 +6982,49 @@ function pagoAccion(idx, accion) {
 }
 
 async function deletePago(incomeId, patientId) {
-  if (!confirm('¿Eliminar este registro de pago?\n\nEsta acción no se puede deshacer.')) return;
+  if (!confirm('¿Eliminar este registro de pago?\n\nTambién se eliminará la nota de evolución automática vinculada.')) return;
   try {
+    // 1. Eliminar notas de evolución vinculadas a este cobro
+    try {
+      // Por income_id directo
+      await db.from('patient_evolution').delete().eq('income_id', incomeId);
+      // También buscar notas automáticas (solo servicios + precio) del mismo paciente/fecha
+      const { data: incoData } = await db.from('income').select('created_at,patient_id').eq('id', incomeId).single();
+      if (incoData) {
+        const fecha = incoData.created_at.split('T')[0];
+        const { data: autoNotas } = await db.from('patient_evolution')
+          .select('id, nota').eq('patient_id', incoData.patient_id).eq('fecha_iso', fecha);
+        if (autoNotas) {
+          const autoIds = autoNotas
+            .filter(n => !n.nota || n.nota.split('\n').every(l =>
+              l.match(/^.+—\s*\$[\d,\.]+/) || l.startsWith('Registrado') || !l.trim()
+            ))
+            .map(n => n.id);
+          if (autoIds.length) await db.from('patient_evolution').delete().in('id', autoIds);
+        }
+      }
+    } catch(e2) { console.warn('No se pudo limpiar nota vinculada:', e2); }
+
+    // 2. Limpiar localStorage del paciente
+    if (patientId) {
+      const local = getEvolLocal(patientId).filter(n =>
+        n.income_id !== incomeId && !(n.nota && n.nota.split('\n').every(l =>
+          l.match(/^.+—\s*\$[\d,\.]+/) || l.startsWith('Registrado') || !l.trim()
+        ))
+      );
+      saveEvolLocal(patientId, local);
+    }
+
+    // 3. Eliminar el cobro de income
     const { error } = await db.from('income').delete().eq('id', incomeId);
     if (error) throw error;
-    showToast('Pago eliminado', 'success');
-    loadPatientPayments(patientId);
+
+    showToast('Pago eliminado ✓', 'success');
+    loadEvolucion(patientId);
+    setTimeout(() => checkNotasPendientes(), 500);
   } catch(e) {
-    showToast('Error al eliminar', 'error');
+    showToast('Error al eliminar: ' + (e.message||''), 'error');
+    console.error(e);
   }
 }
 
