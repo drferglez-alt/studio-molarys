@@ -8013,9 +8013,20 @@ async function saveRecibirPago() {
 
   const btn = document.getElementById('btn-save-rp');
   btn.disabled = true; btn.textContent = 'Guardando...';
-  // Recalcular siempre para garantizar valores correctos
+
+  // Capturar valores del modal ANTES de cualquier cierre
+  const _descuentoCapturado = parseFloat(document.getElementById('rp-descuento')?.value) || 0;
+  const _brutoCapturado = bruto; // ya calculado arriba de los servicios
+  const _netoCapturado = _brutoCapturado - _descuentoCapturado;
+
+  // Recalcular para actualizar _rpResult
   calcRPCascada();
   const r = window._rpResult || {};
+  // Sobrescribir con valores capturados directamente (más confiable)
+  r.bruto = _brutoCapturado;
+  r.descuento = _descuentoCapturado;
+  r.neto1 = _netoCapturado;
+
   const metodoPago = document.getElementById('rp-pago').value;
 
   // ── Capturar datos ANTES de cerrar el modal ──
