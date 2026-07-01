@@ -6601,13 +6601,15 @@ async function printPagos(patientId, nombre) {
     const doctorMostrar = r.doctor_nombre || evolPorFecha[fechaISO] || '—';
     const cobradorMostrar = r.cobrador_nombre || '—';
     const tratMostrar = r._tratamiento || (r.treatments && r.treatments.nombre ? r.treatments.nombre : (r.notas || 'Servicio'));
+    const montoNeto = r.ingreso_neto || r.ingreso_bruto;
+    const descStr = (r.descuento && r.descuento > 0) ? '<br><span style="font-size:10px;color:#dc2626;">Desc: -' + fmt(r.descuento) + '</span>' : '';
     return '<tr>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + fechaFmt + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + tratMostrar + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + (pagoLabel[r.tipo_pago]||r.tipo_pago||'—') + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + doctorMostrar + '</td>'
       + '<td style="padding:7px 10px;border-bottom:1px solid #eee;">' + cobradorMostrar + '</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">' + fmt(r.ingreso_bruto) + '</td>'
+      + '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">' + fmt(montoNeto) + descStr + '</td>'
       + '</tr>';
   }).join('') : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#999;">Sin pagos registrados</td></tr>';
 
@@ -6666,7 +6668,7 @@ async function loadPatientPayments(patientId) {
   if (!container) return;
   try {
     const { data } = await db.from('income')
-      .select('*, treatments(nombre)')
+      .select('id, ingreso_bruto, ingreso_neto, descuento, tipo_pago, doctor_nombre, cobrador_nombre, notas, created_at, treatments(nombre)')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false });
 
@@ -6690,7 +6692,11 @@ async function loadPatientPayments(patientId) {
         <div style="font-size:13px;font-weight:500;">${r.treatments?.nombre || r.notas || 'Sin tratamiento'}</div>
         <div style="font-size:12px;color:var(--text-muted);">${formatDate(r.created_at)}</div>
         <div style="font-size:13px;">${pagoIcon[r.tipo_pago]||''} ${r.tipo_pago||''}</div>
-        <div style="font-size:14px;font-weight:600;color:var(--blue-mid);">${fmt(r.ingreso_bruto)}</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--blue-mid);">${fmt(r.ingreso_neto || r.ingreso_bruto)}</div>
+          ${r.descuento > 0 ? `<div style="font-size:11px;color:#dc2626;">Desc: -${fmt(r.descuento)}</div>` : ''}
+          ${(r.ingreso_neto && r.ingreso_neto < r.ingreso_bruto) ? `<div style="font-size:10px;color:var(--text-muted);">Bruto: ${fmt(r.ingreso_bruto)}</div>` : ''}
+        </div>
         <div style="display:flex;gap:4px;">
           <button onclick="editPago('${r.id}','${patientId}')" title="Editar"
             style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--blue-mid);">✏️</button>
@@ -7624,6 +7630,7 @@ async function saveRecibirPago() {
       treatment_id: treatmentId || null,
       usuario_id: currentUser.id,
       ingreso_bruto: r.bruto || bruto,
+      ingreso_neto: r.neto3 || (r.bruto || bruto),
       tipo_pago: metodoPago,
     };
     try { incomeData.notas = tratNombreIncome; } catch(e){}
