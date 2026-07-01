@@ -5665,95 +5665,112 @@ async function saveEvolucion(patientId, editId) {
 }
 
 async function printEvolucion(patientId, nombre, expediente) {
-  // Intentar cargar de Supabase para tener datos frescos con doctor
   let notas = [];
   try {
     const { data, error } = await db.from('patient_evolution')
       .select('*').eq('patient_id', patientId)
       .order('fecha_iso', { ascending: false }).order('created_at', { ascending: false });
-    if (!error && data && data.length) {
-      notas = data;
-      saveEvolLocal(patientId, data); // actualizar cache
-    } else {
-      notas = getEvolLocal(patientId);
-    }
-  } catch(e) {
-    notas = getEvolLocal(patientId);
-  }
+    if (!error && data && data.length) { notas = data; saveEvolLocal(patientId, data); }
+    else { notas = getEvolLocal(patientId); }
+  } catch(e) { notas = getEvolLocal(patientId); }
+
   const p = patients.find(x => x.id === patientId);
   const fechaImp = new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'long',year:'numeric'});
+  const fmt = v => '$' + Number(v||0).toLocaleString('es-MX', {minimumFractionDigits:2});
 
   const filas = notas.length ? notas.map(n => {
-    const pagoTxt = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Pago parcial' : 'Pendiente';
-    const montoFmt = v => '$' + Number(v).toLocaleString('es-MX', {minimumFractionDigits:2});
-    const montoTxt = n.monto ? ' — ' + montoFmt(n.monto) : '';
-    const descTxt = (n.descuento && n.descuento > 0 && n.ingreso_bruto && n.ingreso_bruto > n.monto)
-      ? ' | Subtotal: ' + montoFmt(n.ingreso_bruto) + ' — Desc: -' + montoFmt(n.descuento) + ' — Total: ' + montoFmt(n.monto)
-      : '';
-    const metodTxt = n.metodo_pago ? ' (' + n.metodo_pago + ')' : '';
-    return `<tr>
-      <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${n.fecha || ''}${n.hora ? '<br><span style="font-size:10px;color:#666;">'+n.hora+'</span>' : ''}</td>
-      <td style="padding:8px 10px;border:1px solid #ccc;">${n.doctor_nombre||'—'}${n.doctor_cedula?'<br><span style="font-size:9px;color:#888;">Céd. '+n.doctor_cedula+'</span>':''}</td>
-      <td style="padding:8px 10px;border:1px solid #ccc;line-height:1.5;">${(n.nota||'').replace(/\n/g,'<br>')}</td>
-      <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${pagoTxt}${montoTxt}${metodTxt}${descTxt}</td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:#999;">Sin notas</td></tr>';
+    // Columna pago
+    const tieneDesc = n.descuento && n.descuento > 0 && n.ingreso_bruto && n.ingreso_bruto > n.monto;
+    const pagoColor = n.pago === 'si' ? '#16a34a' : n.pago === 'parcial' ? '#d97706' : '#6b7280';
+    const pagoLabel = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Pago parcial' : 'Pendiente';
+
+    let pagoHTML = '<div style="font-weight:700;color:' + pagoColor + ';">' + pagoLabel + '</div>';
+    if (n.monto && !tieneDesc) {
+      pagoHTML += '<div style="font-size:13px;margin-top:2px;">' + fmt(n.monto) + '</div>';
+    }
+    if (tieneDesc) {
+      pagoHTML += '<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:11px;">'
+        + '<tr><td style="color:#666;padding:1px 0;">Subtotal</td><td style="text-align:right;color:#666;">' + fmt(n.ingreso_bruto) + '</td></tr>'
+        + '<tr><td style="color:#dc2626;padding:1px 0;">Descuento</td><td style="text-align:right;color:#dc2626;">-' + fmt(n.descuento) + '</td></tr>'
+        + '<tr style="border-top:1px solid #ccc;"><td style="font-weight:700;padding:2px 0;">Total</td><td style="text-align:right;font-weight:700;">' + fmt(n.monto) + '</td></tr>'
+        + '</table>';
+    }
+    if (n.metodo_pago) {
+      pagoHTML += '<div style="font-size:10px;color:#888;margin-top:3px;">' + n.metodo_pago + '</div>';
+    }
+
+    return '<tr>'
+      + '<td style="white-space:nowrap;padding:10px;border:1px solid #ddd;vertical-align:top;font-size:12px;">'
+        + '<strong>' + (n.fecha||'—') + '</strong>'
+        + (n.hora ? '<br><span style="color:#666;font-size:11px;">' + n.hora + '</span>' : '')
+      + '</td>'
+      + '<td style="padding:10px;border:1px solid #ddd;vertical-align:top;font-size:12px;min-width:130px;">'
+        + (n.doctor_nombre || '—')
+        + (n.doctor_cedula ? '<br><span style="font-size:10px;color:#888;">Céd. ' + n.doctor_cedula + '</span>' : '')
+      + '</td>'
+      + '<td style="padding:10px;border:1px solid #ddd;vertical-align:top;line-height:1.6;font-size:12px;">'
+        + (n.nota||'').replace(/\n/g,'<br>')
+      + '</td>'
+      + '<td style="padding:10px;border:1px solid #ddd;vertical-align:top;min-width:140px;">'
+        + pagoHTML
+      + '</td>'
+      + '</tr>';
+  }).join('') : '<tr><td colspan="4" style="padding:20px;text-align:center;color:#999;">Sin notas de evolución registradas</td></tr>';
 
   const cfgE = getClinicaConfig();
-  const logoE = cfgE.logo ? '<img src="'+cfgE.logo+'" style="height:50px;width:auto;object-fit:contain;margin-right:12px;">' : '';
+  const logoE = cfgE.logo ? '<img src="' + cfgE.logo + '" style="height:50px;width:auto;object-fit:contain;margin-right:14px;">' : '';
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Historial de Evolución — ${nombre}</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 24px; }
-    h1 { font-size: 18px; margin-bottom: 2px; }
-    .sub { color: #555; font-size: 12px; margin-bottom: 4px; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f0f0f0; text-align: left; padding: 8px 10px; border: 1px solid #ccc; font-size: 11px; text-transform: uppercase; }
-    .footer { margin-top: 40px; font-size: 11px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
-    @media print { button { display:none; } }
-  </style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2D3A52;">
-    <div style="display:flex;align-items:center;">${logoE}
-      <div>
-        <h1>${cfgE.nombre||'STUDIO MOLARYS'}</h1>
-        <div class="sub">${cfgE.doctor||''}${cfgE.cedula?' · Céd. '+cfgE.cedula:''}</div>
-        ${cfgE.direccion?'<div class="sub">'+cfgE.direccion+'</div>':''}
-        ${cfgE.telefono?'<div class="sub">Tel. '+cfgE.telefono+'</div>':''}
-      </div>
-    </div>
-    <div style="text-align:right;font-size:12px;color:#555;">
-      Impreso: ${fechaImp}
-    </div>
-  </div>
-  <div style="background:#f7f7f7;border:1px solid #ddd;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px;">
-    <strong>Paciente:</strong> ${nombre} &nbsp;|&nbsp;
-    ${p && p.fecha_nacimiento ? ' &nbsp;|&nbsp; <strong>Edad:</strong> ' + calcAge(p.fecha_nacimiento) : ''}
-    ${p && p.telefono ? ' &nbsp;|&nbsp; <strong>Tel:</strong> ' + p.telefono : ''}
-  </div>
-  <table>
-    <thead><tr>
-      <th style="width:100px;">Fecha / Hora</th>
-      <th style="width:140px;">Doctor</th>
-      <th>Procedimiento / Nota clínica</th>
-      <th style="width:140px;">Pago</th>
-    </tr></thead>
-    <tbody>${filas}</tbody>
-  </table>
-  <div class="footer">
-    Este documento es confidencial y de uso médico-legal exclusivo. &nbsp;|&nbsp; Total de notas: ${notas.length}
-  </div>
-  <div style="margin-top:20px;text-align:center;">
-    <button onclick="window.print()" style="padding:10px 24px;background:#2D3A52;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨 Imprimir</button>
-  </div>
-  </body></html>`;
+  const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+    + '<title>Notas de Evolución — ' + nombre + '</title>'
+    + '<style>'
+    + 'body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:24px 28px;}'
+    + '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2D3A52;}'
+    + '.clinic-name{font-size:16px;font-weight:700;color:#2D3A52;}'
+    + '.clinic-sub{font-size:11px;color:#666;margin-top:2px;}'
+    + '.paciente-box{background:#f7f7f7;border:1px solid #ddd;border-radius:6px;padding:10px 14px;margin-bottom:18px;font-size:12px;}'
+    + 'table.main{width:100%;border-collapse:collapse;}'
+    + 'table.main th{background:#2D3A52;color:#fff;padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}'
+    + 'table.main td{vertical-align:top;}'
+    + '.footer{margin-top:28px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px;display:flex;justify-content:space-between;}'
+    + '.no-print{margin-top:20px;text-align:center;}'
+    + '@media print{.no-print{display:none;}}'
+    + '</style></head><body>'
+    + '<div class="header">'
+      + '<div style="display:flex;align-items:center;">' + logoE
+        + '<div>'
+          + '<div class="clinic-name">' + (cfgE.nombre||'STUDIO MOLARYS') + '</div>'
+          + '<div class="clinic-sub">' + (cfgE.doctor||'') + (cfgE.cedula?' · Céd. '+cfgE.cedula:'') + '</div>'
+          + (cfgE.direccion ? '<div class="clinic-sub">' + cfgE.direccion + '</div>' : '')
+          + (cfgE.telefono  ? '<div class="clinic-sub">Tel. ' + cfgE.telefono + '</div>' : '')
+        + '</div>'
+      + '</div>'
+      + '<div style="text-align:right;font-size:11px;color:#666;">Impreso: ' + fechaImp + '</div>'
+    + '</div>'
+    + '<div class="paciente-box">'
+      + '<strong>Paciente:</strong> ' + nombre
+      + (p && p.fecha_nacimiento ? ' &nbsp;·&nbsp; <strong>Edad:</strong> ' + calcAge(p.fecha_nacimiento) + ' años' : '')
+      + (p && p.telefono ? ' &nbsp;·&nbsp; <strong>Tel:</strong> ' + p.telefono : '')
+    + '</div>'
+    + '<table class="main">'
+      + '<thead><tr>'
+        + '<th style="width:90px;">Fecha / Hora</th>'
+        + '<th style="width:150px;">Doctor</th>'
+        + '<th>Procedimiento / Nota clínica</th>'
+        + '<th style="width:150px;">Pago</th>'
+      + '</tr></thead>'
+      + '<tbody>' + filas + '</tbody>'
+    + '</table>'
+    + '<div class="footer">'
+      + '<span>Este documento es confidencial y de uso médico-legal exclusivo.</span>'
+      + '<span>Total de notas: ' + notas.length + '</span>'
+    + '</div>'
+    + '<div class="no-print"><button onclick="window.print()" style="padding:10px 28px;background:#2D3A52;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ Imprimir / Guardar PDF</button></div>'
+    + '</body></html>';
 
   const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.target   = '_blank';
-  a.click();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
