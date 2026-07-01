@@ -5322,9 +5322,14 @@ function renderEvolTabla(patientId, notas) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">Sin notas de evolución registradas</td></tr>';
     return;
   }
-  const pagoHTML = (pago, monto) => {
-    if (pago === 'si')      return `<span class="evol-pago-si">💰 Pagó${monto ? ' $'+Number(monto).toLocaleString('es-MX') : ''}</span>`;
-    if (pago === 'parcial') return `<span class="evol-pago-parcial">⚠️ Parcial${monto ? ' $'+Number(monto).toLocaleString('es-MX') : ''}</span>`;
+  const pagoHTML = (pago, monto, descuento, bruto) => {
+    const fmtM = n => '$' + Number(n).toLocaleString('es-MX', {minimumFractionDigits:2});
+    const descHTML = (descuento && descuento > 0 && bruto)
+      ? '<br><span style="font-size:10px;color:#999;text-decoration:line-through;">' + fmtM(bruto) + '</span>'
+        + '<span style="font-size:10px;color:#dc2626;"> -' + fmtM(descuento) + '</span>'
+      : '';
+    if (pago === 'si')      return '<span class="evol-pago-si">💰 Pagó' + (monto ? ' ' + fmtM(monto) : '') + '</span>' + descHTML;
+    if (pago === 'parcial') return '<span class="evol-pago-parcial">⚠️ Parcial' + (monto ? ' ' + fmtM(monto) : '') + '</span>' + descHTML;
     return '<span class="evol-pago-no">⏳ Pendiente</span>';
   };
   tbody.innerHTML = notas.map((n, i) => `
@@ -5336,7 +5341,7 @@ function renderEvolTabla(patientId, notas) {
         ${n.doctor_cedula ? `<br><span style="font-size:10px;color:var(--text-muted);">Céd. ${n.doctor_cedula}</span>` : ''}
       </td>
       <td style="line-height:1.5;">${(n.nota || '').replace(/\n/g,'<br>')}</td>
-      <td>${pagoHTML(n.pago, n.monto)}${n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : ''}</td>
+      <td>${pagoHTML(n.pago, n.monto, n.descuento, n.ingreso_bruto)}${n.metodo_pago ? '<br><span style="font-size:10px;color:var(--text-muted);">'+n.metodo_pago+'</span>' : ''}</td>
       <td style="display:flex;gap:4px;align-items:center;padding:8px 6px;">
         <button class="evol-del-btn" onclick="editarNota('${patientId}',${i})" title="Editar nota" style="color:var(--blue-mid);">✏️</button>
         <button class="evol-del-btn" onclick="deleteEvolucion('${patientId}','${n.id || i}')" title="Eliminar">🗑</button>
@@ -5674,13 +5679,17 @@ async function printEvolucion(patientId, nombre, expediente) {
 
   const filas = notas.length ? notas.map(n => {
     const pagoTxt = n.pago === 'si' ? 'Sí pagó' : n.pago === 'parcial' ? 'Pago parcial' : 'Pendiente';
-    const montoTxt = n.monto ? ' — $' + Number(n.monto).toLocaleString('es-MX') : '';
+    const montoFmt = v => '$' + Number(v).toLocaleString('es-MX', {minimumFractionDigits:2});
+    const montoTxt = n.monto ? ' — ' + montoFmt(n.monto) : '';
+    const descTxt = (n.descuento && n.descuento > 0 && n.ingreso_bruto)
+      ? ' (Bruto: ' + montoFmt(n.ingreso_bruto) + ' | Desc: -' + montoFmt(n.descuento) + ')'
+      : '';
     const metodTxt = n.metodo_pago ? ' (' + n.metodo_pago + ')' : '';
     return `<tr>
       <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${n.fecha || ''}${n.hora ? '<br><span style="font-size:10px;color:#666;">'+n.hora+'</span>' : ''}</td>
       <td style="padding:8px 10px;border:1px solid #ccc;">${n.doctor_nombre||'—'}${n.doctor_cedula?'<br><span style="font-size:9px;color:#888;">Céd. '+n.doctor_cedula+'</span>':''}</td>
       <td style="padding:8px 10px;border:1px solid #ccc;line-height:1.5;">${(n.nota||'').replace(/\n/g,'<br>')}</td>
-      <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${pagoTxt}${montoTxt}${metodTxt}</td>
+      <td style="white-space:nowrap;padding:8px 10px;border:1px solid #ccc;">${pagoTxt}${montoTxt}${metodTxt}${descTxt}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:#999;">Sin notas</td></tr>';
 
@@ -6607,18 +6616,21 @@ async function printPagos(patientId, nombre) {
     const tratMostrar = r._tratamiento || (r.treatments && r.treatments.nombre ? r.treatments.nombre : (r.notas || 'Servicio'));
     const montoNeto = (r.ingreso_neto && r.ingreso_neto > 0) ? r.ingreso_neto : r.ingreso_bruto;
     const tieneDesc = r.descuento && r.descuento > 0;
-    const td = 'padding:7px 10px;border-bottom:1px solid #eee;font-size:12px;';
+    const td = 'padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;vertical-align:top;';
+    const celdaMonto = tieneDesc
+      ? '<div style="text-decoration:line-through;color:#999;font-size:11px;">' + fmt(r.ingreso_bruto) + '</div>'
+        + '<div style="color:#dc2626;font-size:10px;">Desc: -' + fmt(r.descuento) + '</div>'
+        + '<div style="font-weight:700;">' + fmt(montoNeto) + '</div>'
+      : '<div style="font-weight:700;">' + fmt(montoNeto) + '</div>';
     return '<tr>'
       + '<td style="' + td + '">' + fechaFmt + '</td>'
       + '<td style="' + td + '">' + tratMostrar + '</td>'
       + '<td style="' + td + '">' + (pagoLabel[r.tipo_pago]||r.tipo_pago||'—') + '</td>'
       + '<td style="' + td + '">' + doctorMostrar + '</td>'
       + '<td style="' + td + '">' + cobradorMostrar + '</td>'
-      + '<td style="' + td + 'text-align:right;color:#666;">' + fmt(r.ingreso_bruto) + (tieneDesc ? '<br><span style="color:#dc2626;font-size:10px;">Desc: -' + fmt(r.descuento) + '</span>' : '') + '</td>'
-      + '<td style="' + td + 'text-align:right;font-weight:700;color:#1a1a1a;">' + fmt(montoNeto) + '</td>'
+      + '<td style="' + td + 'text-align:right;">' + celdaMonto + '</td>'
       + '</tr>';
-  }).join('') : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#999;">Sin pagos registrados</td></tr>';
-
+  }).join('') : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#999;">Sin pagos registrados</td></tr>';
   const cfg2 = cfg; // alias para el template
   const html = '<!DOCTYPE html><html lang="es"><head>'
     + '<meta charset="UTF-8">'
@@ -6651,12 +6663,12 @@ async function printPagos(patientId, nombre) {
     + '<table><thead><tr>'
     + '<th style="width:90px;">Fecha</th>'
     + '<th>Tratamiento</th>'
-    + '<th style="width:100px;">Forma Pago</th>'
-    + '<th style="width:130px;">Doctor</th>'
-    + '<th style="width:120px;">Registró</th>'
+    + '<th style="width:95px;">Forma Pago</th>'
+    + '<th style="width:120px;">Doctor</th>'
     + '<th style="width:100px;">Registró</th>'
-    + '<th style="width:70px;text-align:right;">Bruto</th>'
-    + '<th style="width:70px;text-align:right;">Total</th>'
+    + '<th style="width:90px;text-align:right;">Monto</th>'
+    + '</tr></thead><tbody>'
+
     + filas
     + '</tbody></table>'
     + '<div class="footer">Documento confidencial · Studio Molarys · ' + pagosConsolidados.length + ' registro(s)</div>'
