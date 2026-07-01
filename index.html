@@ -5608,9 +5608,26 @@ function editarNota(patientId, idx) {
 }
 
 // Limpiar notas automáticas duplicadas (para datos ya existentes)
+// Detectar si una nota es automática (generada por el sistema al cobrar)
+function esNotaAutomatica(nota) {
+  if (!nota) return false;
+  const texto = nota.trim();
+  if (!texto) return false;
+  const lineas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lineas.length === 0) return false;
+  // Es automática si TODAS las líneas tienen formato "ALGO — $NUMERO"
+  // o "Nx ALGO — $NUMERO" o "Registrado por:"
+  return lineas.every(l => {
+    if (!l) return true;
+    if (l.startsWith('Registrado por:')) return true;
+    // Buscar el patrón "texto — $número" con variaciones del guión
+    if (l.includes(' — $') || l.includes(' — $') || l.match(/—\s*\$/)) return true;
+    return false;
+  });
+}
+
 async function limpiarNotasDuplicadas(patientId) {
   const lista = getEvolLocal(patientId);
-  // Agrupar por fecha
   const porFecha = {};
   lista.forEach(n => {
     const k = n.fecha_iso || n.fecha || 'sin-fecha';
@@ -5621,8 +5638,8 @@ async function limpiarNotasDuplicadas(patientId) {
   const aEliminar = [];
   Object.values(porFecha).forEach(grupo => {
     if (grupo.length < 2) return;
-    const tieneManual = grupo.some(n => n.nota && !n.nota.includes('Registrado por:'));
-    const automaticas = grupo.filter(n => n.nota && n.nota.includes('Registrado por:'));
+    const tieneManual = grupo.some(n => n.nota && !esNotaAutomatica(n.nota));
+    const automaticas = grupo.filter(n => esNotaAutomatica(n.nota));
     if (tieneManual && automaticas.length > 0) {
       automaticas.forEach(n => aEliminar.push(n.id));
     }
@@ -5630,13 +5647,11 @@ async function limpiarNotasDuplicadas(patientId) {
 
   if (aEliminar.length === 0) return 0;
 
-  // Eliminar de localStorage
   const limpia = lista.filter(n => !aEliminar.includes(n.id));
   saveEvolLocal(patientId, limpia);
 
-  // Eliminar de Supabase
   try {
-    const ids = aEliminar.filter(id => !String(id).startsWith('local_'));
+    const ids = aEliminar.filter(id => id && !String(id).startsWith('local_'));
     if (ids.length > 0) await db.from('patient_evolution').delete().in('id', ids);
   } catch(e) {}
 
@@ -5769,17 +5784,20 @@ async function saveEvolucion(patientId, editId) {
             }
           }
 
-          // 3. También buscar en Supabase por fecha + "Registrado por:" sin income_id
+          // 3. Buscar en Supabase todas las notas automáticas de la misma fecha
           const { data: autoFecha } = await db.from('patient_evolution')
             .select('id, nota')
             .eq('patient_id', patientId)
             .eq('fecha_iso', fechaNota);
           if (autoFecha && autoFecha.length > 0) {
             const autoFechaIds = autoFecha
-              .filter(n => n.nota && n.nota.includes('Registrado por:'))
+              .filter(n => esNotaAutomatica(n.nota))
               .map(n => n.id);
             if (autoFechaIds.length > 0) {
               await db.from('patient_evolution').delete().in('id', autoFechaIds);
+              // Limpiar también del localStorage
+              const localLista2 = getEvolLocal(patientId);
+              saveEvolLocal(patientId, localLista2.filter(n => !autoFechaIds.includes(n.id)));
             }
           }
         } catch(e2) { console.warn('Dedup:', e2); }
